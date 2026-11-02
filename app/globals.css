@@ -82,39 +82,39 @@
     --shadow-lifted: 0 22px 60px hsl(60 15% 20% / .10);
   }
   .dark {
-    --background: 150 24% 9%;
-    --foreground: 72 30% 94%;
-    --card: 150 22% 12%;
-    --card-foreground: 72 30% 94%;
-    --popover: 150 22% 12%;
-    --popover-foreground: 72 30% 94%;
-    --primary: 47 79% 72%;
-    --primary-foreground: 151 35% 18%;
-    --secondary: 150 19% 18%;
-    --secondary-foreground: 72 30% 94%;
-    --muted: 150 19% 18%;
-    --muted-foreground: 87 12% 67%;
-    --accent: 152 32% 27%;
-    --accent-foreground: 72 30% 94%;
+    --background: 60 8% 12%;
+    --foreground: 26 42% 95%;
+    --card: 60 7% 15%;
+    --card-foreground: 26 42% 95%;
+    --popover: 60 7% 15%;
+    --popover-foreground: 26 42% 95%;
+    --primary: 9 57% 55%; /* Terracotta #D67B6B */
+    --primary-foreground: 26 42% 97%;
+    --secondary: 60 10% 45%; /* Muted Sage #808068 */
+    --secondary-foreground: 26 42% 97%;
+    --muted: 60 7% 20%;
+    --muted-foreground: 26 20% 70%;
+    --accent: 3 55% 70%; /* Dusty Pink */
+    --accent-foreground: 60 15% 15%;
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
-    --border: 150 17% 24%;
-    --input: 150 17% 24%;
-    --ring: 47 79% 72%;
-    --chart-1: 47 79% 72%;
-    --chart-2: 152 46% 46%;
-    --chart-3: 196 66% 60%;
-    --chart-4: 273 58% 70%;
-    --chart-5: 12 72% 68%;
-    --sidebar-background: 150 28% 7%;
-    --sidebar-foreground: 72 30% 94%;
-    --sidebar-primary: 47 79% 72%;
-    --sidebar-primary-foreground: 151 35% 18%;
-    --sidebar-accent: 150 22% 14%;
-    --sidebar-accent-foreground: 72 30% 94%;
-    --sidebar-border: 150 17% 19%;
-    --sidebar-ring: 47 79% 72%;
-    --surface-glass: 150 22% 12% / .78;
+    --border: 60 6% 22%;
+    --input: 60 6% 22%;
+    --ring: 9 57% 55%;
+    --chart-1: 9 57% 63%;
+    --chart-2: 60 10% 45%;
+    --chart-3: 3 55% 81%;
+    --chart-4: 26 42% 93%;
+    --chart-5: 35 60% 50%;
+    --sidebar-background: 60 9% 10%;
+    --sidebar-foreground: 26 42% 95%;
+    --sidebar-primary: 9 57% 55%;
+    --sidebar-primary-foreground: 26 42% 97%;
+    --sidebar-accent: 60 7% 18%;
+    --sidebar-accent-foreground: 26 42% 95%;
+    --sidebar-border: 60 6% 20%;
+    --sidebar-ring: 9 57% 55%;
+    --surface-glass: 60 7% 15% / .78;
     --shadow-soft: 0 16px 40px hsl(0 0% 0% / .2);
     --shadow-lifted: 0 22px 60px hsl(0 0% 0% / .32);
   }

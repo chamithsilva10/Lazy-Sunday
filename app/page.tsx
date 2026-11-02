@@ -532,8 +532,8 @@ export default function POSPage() {
     const nextSeq = maxSeq + 1
     const formatted = String(nextSeq).padStart(6, "0")
     return {
-      orderNum: `CFJ-${formatted}`,
-      receiptNum: `CFJ-RC-${formatted}`,
+      orderNum: `LS-${formatted}`,
+      receiptNum: `LS-RC-${formatted}`,
       nextSeq,
     }
   }
@@ -2904,15 +2904,15 @@ export default function POSPage() {
             </div>
           </DialogHeader>
 
-          <div className="p-4 sm:p-6 flex-1 overflow-y-auto bg-[#fafbf9]">
+          <div className="p-4 sm:p-6 flex-1 overflow-y-auto bg-[#FAF5F1]">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
               {/* LEFT COLUMN: ORDER SUMMARY & TOTALS BREAKDOWN */}
               <div className="md:col-span-5 space-y-3.5">
                 {/* Order Header Summary */}
-                <div className="bg-white rounded-xl p-3 sm:p-3.5 border border-[#e2e6dc] shadow-sm text-xs space-y-1.5">
+                <div className="bg-white rounded-xl p-3 sm:p-3.5 border border-[#E5D8CF] shadow-sm text-xs space-y-1.5">
                   <div className="flex justify-between font-mono">
                     <span className="text-gray-500">Order No:</span>
-                    <span className="font-bold text-gray-900">#CFJ-{String(orderCount + 1).padStart(6, "0")}</span>
+                    <span className="font-bold text-gray-900">#LS-{String(orderCount + 1).padStart(6, "0")}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Table:</span>
@@ -2941,7 +2941,7 @@ export default function POSPage() {
                       {totalCartQty} item{totalCartQty === 1 ? "" : "s"}
                     </Badge>
                   </div>
-                  <div className="divide-y border border-[#e2e6dc] rounded-xl overflow-hidden bg-white text-xs max-h-[140px] overflow-y-auto shadow-sm">
+                  <div className="divide-y border border-[#E5D8CF] rounded-xl overflow-hidden bg-white text-xs max-h-[140px] overflow-y-auto shadow-sm">
                     {cart.map((item) => (
                       <div key={item.id} className="p-2.5 sm:p-3 flex justify-between items-center">
                         <div className="min-w-0 pr-2">
@@ -2959,7 +2959,7 @@ export default function POSPage() {
                 </div>
 
                 {/* Totals & Tax / Discount Adjustments Breakdown */}
-                <div className="bg-white rounded-xl p-3.5 sm:p-4 border border-[#e2e6dc] shadow-sm space-y-2.5 text-xs">
+                <div className="bg-white rounded-xl p-3.5 sm:p-4 border border-[#E5D8CF] shadow-sm space-y-2.5 text-xs">
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span>
                     <span className="font-mono font-medium">Rs. {subtotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
@@ -4632,12 +4632,12 @@ function POSView({
               </Button>
             )}
             <div className="relative flex-1 sm:w-64 min-w-[160px]">
-              <Search className="absolute left-3 top-2.5 size-4 text-[#9aa69b]" />
+              <Search className="absolute left-3 top-2.5 size-4 text-[#808068]" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search menu..."
-                className="w-full rounded-xl border-[#dfe5d8] bg-white pl-9 pr-8 text-sm h-10"
+                className="w-full rounded-xl border-[#E5D8CF] bg-white pl-9 pr-8 text-sm h-10"
               />
               {query && (
                 <button
@@ -4658,7 +4658,11 @@ function POSView({
                   key={categoryName}
                   variant={selectedCategory === categoryName ? "default" : "outline"}
                   onClick={() => setCategory(categoryName)}
-                  className="h-10 shrink-0 rounded-xl border-[#dfe5d8] px-4 text-sm font-semibold"
+                  className={`h-10 shrink-0 rounded-xl px-4 text-sm font-semibold transition-all ${
+                    selectedCategory === categoryName
+                      ? "bg-[#D67B6B] text-white shadow-xs hover:bg-[#c26555] border-[#D67B6B]"
+                      : "border-[#E5D8CF] bg-white text-gray-700 hover:bg-[#FAF5F1]"
+                  }`}
                 >
                   {categoryName}
                 </Button>
@@ -5036,7 +5040,7 @@ function POSView({
       {/* ========================================================= */}
       {/* DESKTOP CURRENT ORDER SUMMARY PANEL (hidden on < xl)       */}
       {/* ========================================================= */}
-      <aside className="hidden xl:flex min-w-0 rounded-2xl border border-[#e2e6dc] bg-white shadow-sm sticky top-4 flex-col h-[calc(100vh-5.5rem)] overflow-hidden">
+      <aside className="hidden xl:flex min-w-0 rounded-2xl border border-[#E5D8CF] bg-white shadow-sm sticky top-4 flex-col h-[calc(100vh-5.5rem)] overflow-hidden">
         {/* Panel Top Header & Mode Selectors (Pinned, Shrink-0) */}
         <div className="p-4 sm:p-5 pb-3 border-b border-[#E5D8CF] shrink-0 bg-white space-y-3">
           {/* Header */}
@@ -5629,7 +5633,7 @@ function ManagementView({
               <p className="mt-1 text-[10px] text-gray-400">10% staff service charge</p>
             </Card>
 
-            <Card className="rounded-2xl border-[#e2e6dc] bg-white p-3.5 sm:p-4">
+            <Card className="rounded-2xl border-[#E5D8CF] bg-white p-3.5 sm:p-4">
               <div className="flex items-center justify-between text-gray-500">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Stock Alerts</span>
                 <span className="p-1.5 rounded-lg bg-rose-50 text-rose-700">
@@ -5648,47 +5652,47 @@ function ManagementView({
             <Button
               variant="outline"
               onClick={() => setView("POS")}
-              className="h-11 rounded-xl justify-start gap-2 bg-white text-xs font-semibold text-gray-800 border-[#dfe5d8]"
+              className="h-11 rounded-xl justify-start gap-2 bg-white text-xs font-semibold text-gray-800 border-[#E5D8CF] hover:bg-[#FAF5F1]"
             >
-              <ShoppingBag className="size-4 text-emerald-700" />
+              <ShoppingBag className="size-4 text-[#D67B6B]" />
               Open POS Register
             </Button>
             <Button
               variant="outline"
               onClick={() => setView("Kitchen")}
-              className="h-11 rounded-xl justify-start gap-2 bg-white text-xs font-semibold text-gray-800 border-[#dfe5d8]"
+              className="h-11 rounded-xl justify-start gap-2 bg-white text-xs font-semibold text-gray-800 border-[#E5D8CF] hover:bg-[#FAF5F1]"
             >
-              <ChefHat className="size-4 text-amber-700" />
+              <ChefHat className="size-4 text-[#808068]" />
               Kitchen Queue ({countActiveTickets(allUnifiedOrders, "kitchen")})
             </Button>
             <Button
               variant="outline"
               onClick={() => setView("Bar")}
-              className="h-11 rounded-xl justify-start gap-2 bg-white text-xs font-semibold text-gray-800 border-[#dfe5d8]"
+              className="h-11 rounded-xl justify-start gap-2 bg-white text-xs font-semibold text-gray-800 border-[#E5D8CF] hover:bg-[#FAF5F1]"
             >
-              <Coffee className="size-4 text-amber-700" />
+              <Coffee className="size-4 text-[#808068]" />
               Bar Tickets ({countActiveTickets(allTicketOrders, "bar")})
             </Button>
             <Button
               variant="outline"
               onClick={() => setView("Tables")}
-              className="h-11 rounded-xl justify-start gap-2 bg-white text-xs font-semibold text-gray-800 border-[#dfe5d8]"
+              className="h-11 rounded-xl justify-start gap-2 bg-white text-xs font-semibold text-gray-800 border-[#E5D8CF] hover:bg-[#FAF5F1]"
             >
-              <Table2 className="size-4 text-blue-700" />
+              <Table2 className="size-4 text-[#808068]" />
               Dining Tables
             </Button>
             <Button
               variant="outline"
               onClick={() => setView("Reports")}
-              className="h-11 rounded-xl justify-start gap-2 bg-white text-xs font-semibold text-gray-800 border-[#dfe5d8]"
+              className="h-11 rounded-xl justify-start gap-2 bg-white text-xs font-semibold text-gray-800 border-[#E5D8CF] hover:bg-[#FAF5F1]"
             >
-              <TrendingUp className="size-4 text-purple-700" />
+              <TrendingUp className="size-4 text-[#D67B6B]" />
               Sales Reports
             </Button>
           </div>
 
           {/* Recent Orders List */}
-          <Card className="rounded-2xl border-[#e2e6dc] overflow-hidden bg-white">
+          <Card className="rounded-2xl border-[#E5D8CF] overflow-hidden bg-white">
             <div className="flex items-center justify-between border-b p-3.5 sm:p-4">
               <h3 className="font-serif text-base sm:text-lg font-bold">Recent Orders ({allUnifiedOrders.length})</h3>
               <Badge variant="outline" className="text-[10px]">Realtime</Badge>

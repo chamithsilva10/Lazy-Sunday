@@ -365,7 +365,7 @@ export async function POST(request: NextRequest) {
       const hasKitchen = formattedItems.some((i) => i.station === "kitchen")
       const hasBar = formattedItems.some((i) => i.station === "bar")
       const orderId = id || crypto.randomUUID()
-      const finalOrderNumber = order_number || `CFJ-${Date.now().toString().slice(-6)}`
+      const finalOrderNumber = order_number || `LS-${Date.now().toString().slice(-6)}`
 
       let newOrder: any = null
       try {
@@ -527,8 +527,8 @@ export async function POST(request: NextRequest) {
     // Offline / Local save
     const localOrder = {
       id: id || `ord-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      order_number: order_number || `CFJ-${(memoryOrders.length + 101).toString().padStart(6, "0")}`,
-      receipt_number: receipt_number || `CFJ-RC-${(memoryOrders.length + 101).toString().padStart(6, "0")}`,
+      order_number: order_number || `LS-${(memoryOrders.length + 101).toString().padStart(6, "0")}`,
+      receipt_number: receipt_number || `LS-RC-${(memoryOrders.length + 101).toString().padStart(6, "0")}`,
       table_name,
       cashier_name,
       department,

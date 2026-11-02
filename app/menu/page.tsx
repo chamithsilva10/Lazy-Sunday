@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import { ArrowLeft, Sparkles, Coffee } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { SharedPosService } from "@/lib/shared-pos-service"
@@ -176,51 +178,110 @@ export default function MenuPage() {
   }, [categories, products])
 
   return (
-    <main className="min-h-screen bg-[#1d2b24] px-4 py-8 text-[#f7f2e7] sm:px-8">
+    <main className="min-h-screen bg-[#F4EBE4] px-4 py-6 sm:py-10 text-[#343428] sm:px-8">
       <div className="mx-auto max-w-3xl">
-        <header className="mb-10 border-b border-[#6c806c]/40 pb-8 text-center">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-[#d5a83b]">Hiriketiya · Sri Lanka</p>
-          <h1 className="font-serif text-5xl font-bold tracking-tight text-[#f7f2e7]">LAZY SUNDAY</h1>
-          <p className="mt-3 text-sm text-[#b7c6b3]">Good coffee, honest food, slow mornings.</p>
+        {/* Navigation Bar */}
+        <div className="mb-6 flex items-center justify-between">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#808068] hover:text-[#D67B6B] bg-white border border-[#E5D8CF] px-3 py-1.5 rounded-xl shadow-xs transition-colors"
+          >
+            <ArrowLeft className="size-3.5" />
+            Back to POS
+          </Link>
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#808068] bg-[#FAF5F1] px-3 py-1 rounded-full border border-[#E5D8CF]">
+            <Coffee className="size-3.5 text-[#D67B6B]" />
+            <span>Digital Guest Menu</span>
+          </div>
+        </div>
+
+        <header className="mb-8 border-b border-[#E5D8CF] pb-8 text-center">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.35em] text-[#808068]">Hiriketiya · Sri Lanka</p>
+          <h1 className="font-serif text-4xl sm:text-5xl font-bold tracking-tight text-[#343428]">LAZY SUNDAY</h1>
+          <p className="mt-2 text-sm text-[#808068]">Good coffee, honest food, slow mornings.</p>
         </header>
 
         <div className="mb-8 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-[#789377]/40 bg-[#2b4838] p-5"><p className="text-sm font-semibold text-[#eef4e8]">Add to any drink</p><p className="mt-1 text-xs text-[#b7c6b3]">Oat milk · coconut milk · extra shot</p></div>
-          <div className="rounded-2xl border border-[#789377]/40 bg-[#2b4838] p-5"><p className="text-sm font-semibold text-[#eef4e8]">Brewed slow, served cold</p><p className="mt-1 text-xs text-[#b7c6b3]">Ask our team about today&apos;s specials.</p></div>
+          <div className="rounded-2xl border border-[#E5D8CF] bg-white p-4 sm:p-5 shadow-xs">
+            <p className="text-sm font-semibold text-[#343428] flex items-center gap-1.5">
+              <Sparkles className="size-3.5 text-[#D67B6B]" />
+              Add to any drink
+            </p>
+            <p className="mt-1 text-xs text-[#808068]">Oat milk · coconut milk · extra espresso shot</p>
+          </div>
+          <div className="rounded-2xl border border-[#E5D8CF] bg-white p-4 sm:p-5 shadow-xs">
+            <p className="text-sm font-semibold text-[#343428] flex items-center gap-1.5">
+              <Coffee className="size-3.5 text-[#D67B6B]" />
+              Brewed slow, served cold
+            </p>
+            <p className="mt-1 text-xs text-[#808068]">Ask our team about today&apos;s special origin roasts.</p>
+          </div>
         </div>
 
-        {loading ? <p className="py-20 text-center text-[#b7c6b3]">Loading today&apos;s menu...</p> : grouped.map(({ category, items }) => (
-          <section key={category.id} className="mb-10">
-            <div className="mb-4 flex items-end justify-between border-b border-[#6c806c]/30 pb-2"><h2 className="font-serif text-2xl font-bold text-[#f7f2e7]">{category.name}</h2>{cutoffLabel(category.available_until) && <span className="text-xs text-[#d5a83b]">{cutoffLabel(category.available_until)}</span>}</div>
-            <div className="space-y-4">{items.map((item) => <article key={item.id} className="flex items-center gap-4 py-2 border-b border-[#6c806c]/15 last:border-b-0">
-              <div className="relative size-16 sm:size-20 shrink-0 overflow-hidden rounded-xl bg-[#2b4838] border border-[#789377]/40 shadow-xs">
-                <img
-                  src={resolveProductImage(item.name, null, category.name)}
-                  alt={item.name}
-                  loading="lazy"
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = "/vibrant-mixed-salad.png";
-                  }}
-                  className="size-full object-cover"
-                />
+        {loading ? (
+          <div className="py-20 text-center text-[#808068] font-medium">Loading today&apos;s menu...</div>
+        ) : (
+          grouped.map(({ category, items }) => (
+            <section key={category.id} className="mb-8">
+              <div className="mb-4 flex items-end justify-between border-b border-[#E5D8CF] pb-2">
+                <h2 className="font-serif text-2xl font-bold text-[#343428]">{category.name}</h2>
+                {cutoffLabel(category.available_until) && (
+                  <span className="text-xs font-semibold text-[#D67B6B]">{cutoffLabel(category.available_until)}</span>
+                )}
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="font-semibold text-[#f7f2e7] text-base">{item.name}</h3>
-                  <p className="shrink-0 font-semibold text-[#d5a83b]">{money(Number(item.price))}</p>
-                </div>
-                {item.description && <p className="mt-0.5 text-xs sm:text-sm leading-5 text-[#b7c6b3] line-clamp-2">{item.description}</p>}
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {item.dietary_tags?.includes("VEG") && <Badge className="border-[#789377] bg-transparent text-[#a9d49d] text-[10px]">VEG</Badge>}
-                  {item.temperature !== "none" && <Badge className="border-[#789377]/50 bg-transparent text-[#b7c6b3] text-[10px]">{item.temperature}</Badge>}
-                </div>
+              <div className="space-y-3">
+                {items.map((item) => (
+                  <article
+                    key={item.id}
+                    className="flex items-center gap-3.5 sm:gap-4 p-3 sm:p-3.5 rounded-2xl bg-white border border-[#E5D8CF] shadow-xs hover:border-[#EAB8B5] transition-all"
+                  >
+                    <div className="relative size-16 sm:size-20 shrink-0 overflow-hidden rounded-xl bg-[#FAF5F1] border border-[#E5D8CF] shadow-2xs">
+                      <img
+                        src={resolveProductImage(item.name, null, category.name)}
+                        alt={item.name}
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null
+                          e.currentTarget.src = "/vibrant-mixed-salad.png"
+                        }}
+                        className="size-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="font-semibold text-gray-900 text-sm sm:text-base leading-snug">{item.name}</h3>
+                        <p className="shrink-0 font-bold font-mono text-[#D67B6B] text-sm sm:text-base">
+                          {money(Number(item.price))}
+                        </p>
+                      </div>
+                      {item.description && (
+                        <p className="mt-0.5 text-xs sm:text-sm leading-5 text-gray-600 line-clamp-2">
+                          {item.description}
+                        </p>
+                      )}
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {item.dietary_tags?.includes("VEG") && (
+                          <Badge className="border-[#EAB8B5] bg-[#FAF5F1] text-[#808068] text-[10px] font-semibold">
+                            🌱 VEG
+                          </Badge>
+                        )}
+                        {item.temperature !== "none" && (
+                          <Badge className="border-[#E5D8CF] bg-[#FAF5F1] text-[#808068] text-[10px]">
+                            {item.temperature}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
               </div>
-            </article>)}</div>
-          </section>
-        ))}
+            </section>
+          ))
+        )}
 
-        <footer className="border-t border-[#6c806c]/40 pt-6 text-center text-xs text-[#9faf9b]">All prices in Sri Lankan Rupees · subject to 10% service charge</footer>
+        <footer className="border-t border-[#E5D8CF] pt-6 text-center text-xs text-[#808068]">
+          All prices in Sri Lankan Rupees (Rs.) · subject to 10% service charge
+        </footer>
       </div>
     </main>
   )

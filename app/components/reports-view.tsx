@@ -927,15 +927,15 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
           </div>
         </Card>
 
-        <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Orders</p>
           <p className="font-mono text-xl sm:text-2xl font-bold text-gray-900 mt-1.5">
             {report.billCount} <span className="text-xs font-normal text-gray-500">orders</span>
           </p>
-          <p className="text-[11px] text-gray-400 mt-1">CFJ- prefix invoices</p>
+          <p className="text-[11px] text-gray-400 mt-1">LS- prefix invoices (Lazy Sunday)</p>
         </Card>
 
-        <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Items Sold</p>
           <p className="font-mono text-xl sm:text-2xl font-bold text-amber-800 mt-1.5">
             {report.totalItemsSold} <span className="text-xs font-normal text-gray-500">items</span>
@@ -943,7 +943,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
           <p className="text-[11px] text-gray-400 mt-1">Line item volume</p>
         </Card>
 
-        <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Average Order Value</p>
           <p className="font-mono text-xl sm:text-2xl font-bold text-blue-900 mt-1.5">
             Rs. {report.averageBillValue.toLocaleString()}
@@ -951,7 +951,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
           <p className="text-[11px] text-gray-400 mt-1">Spend per customer</p>
         </Card>
 
-        <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm col-span-2 lg:col-span-1">
+        <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm col-span-2 lg:col-span-1">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Service Charges</p>
           <p className="font-mono text-xl sm:text-2xl font-bold text-violet-900 mt-1.5">
             Rs. {report.totalServiceCharge.toLocaleString()}
@@ -961,7 +961,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
       </div>
 
       {/* Payment Settlements Breakdown (All 5 Payment Methods) */}
-      <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+      <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
         <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Settlement Breakdown</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50/50 border border-emerald-100">
@@ -1057,7 +1057,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
       </Card>
 
       {/* Station Sales Breakdown (Kitchen vs Bar) */}
-      <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+      <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Station Sales Breakdown</h4>
           <span className="text-[11px] text-gray-500">Live KDS & BOT fulfillment analytics</span>
@@ -1100,8 +1100,8 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
       </Card>
 
       {/* Category-Wise Sales Summary */}
-      <Card className="rounded-2xl border-[#dfe5d8] bg-white shadow-sm overflow-hidden">
-        <CardHeader className="bg-[#f7f8f4] border-b border-[#dfe5d8] py-3.5 px-5">
+      <Card className="rounded-2xl border-[#E5D8CF] bg-white shadow-sm overflow-hidden">
+        <CardHeader className="bg-[#FAF5F1] border-b border-[#E5D8CF] py-3.5 px-5">
           <CardTitle className="font-serif text-base font-bold text-gray-900">
             Category-Wise Sales Breakdown
           </CardTitle>
@@ -1260,8 +1260,8 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
       </Card>
 
       {/* Detailed Transaction Ledger Table */}
-      <Card className="rounded-2xl border-[#dfe5d8] bg-white shadow-sm overflow-hidden">
-        <CardHeader className="bg-[#f7f8f4] border-b border-[#dfe5d8] py-3.5 px-5 flex flex-row items-center justify-between">
+      <Card className="rounded-2xl border-[#E5D8CF] bg-white shadow-sm overflow-hidden">
+        <CardHeader className="bg-[#FAF5F1] border-b border-[#E5D8CF] py-3.5 px-5 flex flex-row items-center justify-between">
           <div>
             <CardTitle className="font-serif text-base font-bold text-gray-900">
               Orders & Transaction Ledger
@@ -1278,7 +1278,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-[#fcfdfa] border-b border-[#dfe5d8] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
+              <thead className="bg-[#FAF5F1] border-b border-[#E5D8CF] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
                 <tr>
                   <th className="py-3 px-4">Order / Receipt</th>
                   <th className="py-3 px-4">Department</th>
@@ -1426,7 +1426,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               <p className="text-[11px] text-gray-400 mt-1">From {report.billCount} completed orders</p>
             </Card>
 
-            <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+            <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Operating Expenses</span>
               <p className="font-mono text-2xl font-bold text-rose-700 mt-1.5">
                 Rs. {totalExpenseAmount.toLocaleString()}
@@ -1434,7 +1434,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               <p className="text-[11px] text-gray-400 mt-1">{expenses.length} logged expense entries</p>
             </Card>
 
-            <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+            <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Net Operating Profit</span>
               <p className={`font-mono text-2xl font-bold mt-1.5 ${netOperatingProfit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
                 Rs. {netOperatingProfit.toLocaleString()}
@@ -1444,7 +1444,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               </div>
             </Card>
 
-            <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+            <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Net Margin %</span>
               <p className={`font-mono text-2xl font-bold mt-1.5 ${profitMarginPercent >= 20 ? "text-emerald-700" : profitMarginPercent >= 0 ? "text-amber-700" : "text-rose-700"}`}>
                 {profitMarginPercent}%
@@ -1454,13 +1454,13 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
           </div>
 
           {/* Expenses by Category */}
-          <Card className="rounded-2xl border-[#dfe5d8] bg-white shadow-sm p-4">
+          <Card className="rounded-2xl border-[#E5D8CF] bg-white shadow-sm p-4">
             <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Expenses by Category</h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {["Raw Ingredients", "Utilities", "Salaries", "Rent", "Maintenance", "Packaging", "Marketing", "Other"].map((cat) => {
                 const catTotal = expenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0)
                 return (
-                  <div key={cat} className="p-3 rounded-xl border border-[#edf1ea] bg-[#fafbf8]">
+                  <div key={cat} className="p-3 rounded-xl border border-[#E5D8CF] bg-[#FAF5F1]">
                     <span className="text-xs font-semibold text-gray-700 block truncate">{cat}</span>
                     <span className="font-mono text-sm font-bold text-gray-900 mt-1 block">
                       Rs. {catTotal.toLocaleString()}
@@ -1472,8 +1472,8 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
           </Card>
 
           {/* Expenses Ledger Table */}
-          <Card className="rounded-2xl border-[#dfe5d8] bg-white shadow-sm overflow-hidden">
-            <CardHeader className="bg-[#f7f8f4] border-b border-[#dfe5d8] py-3.5 px-5 flex flex-row items-center justify-between">
+          <Card className="rounded-2xl border-[#E5D8CF] bg-white shadow-sm overflow-hidden">
+            <CardHeader className="bg-[#FAF5F1] border-b border-[#E5D8CF] py-3.5 px-5 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="font-serif text-base font-bold text-gray-900">Operating Expenses Ledger</CardTitle>
                 <CardDescription className="text-xs text-gray-500">Itemized log of overhead expenditures.</CardDescription>
@@ -1483,7 +1483,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs sm:text-sm">
-                  <thead className="bg-[#fcfdfa] border-b border-[#dfe5d8] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
+                  <thead className="bg-[#FAF5F1] border-b border-[#E5D8CF] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
                     <tr>
                       <th className="py-3 px-4">Date</th>
                       <th className="py-3 px-4">Category</th>
@@ -1546,7 +1546,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
             <Button
               onClick={() => window.print()}
               variant="outline"
-              className="rounded-xl border-[#dfe5d8] text-xs h-9 px-3 gap-1.5 text-emerald-800 hover:bg-[#f0f4ed]"
+              className="rounded-xl border-[#E5D8CF] text-xs h-9 px-3 gap-1.5 text-[#808068] hover:bg-[#FAF5F1] hover:text-[#343428]"
             >
               <Printer className="size-3.5" />
               Print Stock Sheet
@@ -1555,13 +1555,13 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
 
           {/* Stock KPI Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+            <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Products</span>
               <p className="font-mono text-2xl font-bold text-gray-900 mt-1.5">{inventoryValuation.totalItems}</p>
               <p className="text-[11px] text-gray-400 mt-1">Catalog items tracked</p>
             </Card>
 
-            <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+            <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Units on Hand</span>
               <p className="font-mono text-2xl font-bold text-blue-900 mt-1.5">{inventoryValuation.totalUnits}</p>
               <p className="text-[11px] text-gray-400 mt-1">Total physical stock</p>

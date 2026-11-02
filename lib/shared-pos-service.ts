@@ -2172,8 +2172,8 @@ export class SharedPosService {
     const nextSeq = maxSeq + 1
     const formatted = String(nextSeq).padStart(6, "0")
     return {
-      orderNumber: `CFJ-${formatted}`,
-      receiptNumber: `CFJ-RC-${formatted}`,
+      orderNumber: `LS-${formatted}`,
+      receiptNumber: `LS-RC-${formatted}`,
       seq: nextSeq,
     }
   }
