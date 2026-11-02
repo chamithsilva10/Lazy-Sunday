@@ -49,7 +49,7 @@ export interface ReceiptPricingProps extends React.ComponentProps<"section"> {
 
 export function ReceiptPricing({
   plans,
-  merchant = "RESTAURANT & BAR",
+  merchant = "LAZY SUNDAY",
   children,
   ...rest
 }: ReceiptPricingProps) {

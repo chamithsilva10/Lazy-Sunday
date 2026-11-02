@@ -95,9 +95,9 @@ if (!g.__rbac_users) {
     {
       id: "00000000-0000-0000-0000-000000000001",
       username: "admin",
-      full_name: "Jordan Vance (Administrator)",
-      email: "admin@posdemo.com",
-      password_hash: hashPassword("admin123"),
+      full_name: "Alexa Pheloung (Administrator)",
+      email: "alexa@lazysunday.com",
+      password_hash: hashPassword("Welcome123"),
       role_id: "admin",
       is_active: true,
       last_login_at: new Date().toISOString(),
@@ -577,9 +577,9 @@ export class RbacService {
       return user
     }
 
-    // Fallback for dev convenience (allow default passwords admin123, cashier123, kitchen123, staff123)
+    // Fallback for dev convenience (allow default passwords Welcome123, admin123, cashier123, kitchen123, staff123)
     if (
-      (user.username === "admin" && password === "admin123") ||
+      (user.username === "admin" && (password === "Welcome123" || password === "admin123")) ||
       (user.username === "cashier" && password === "cashier123") ||
       (user.username === "kitchen" && password === "kitchen123") ||
       (user.username === "staff" && password === "staff123")

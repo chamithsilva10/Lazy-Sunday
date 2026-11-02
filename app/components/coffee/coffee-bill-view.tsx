@@ -934,7 +934,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
           <DialogHeader>
             <DialogTitle className="font-serif text-lg font-bold text-center">Coffee Bill Slip</DialogTitle>
             <DialogDescription className="text-xs text-center text-gray-500">
-              Demo POS • Thermal Printer Slip
+              Lazy Sunday • Thermal Printer Slip
             </DialogDescription>
           </DialogHeader>
 

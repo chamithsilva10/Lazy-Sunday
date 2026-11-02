@@ -19,8 +19,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: "POS System · Coffee, kitchen and bar control",
-  description: "A real-time point of sale and digital menu for hospitality management.",
+  title: "Lazy Sunday POS · Coffee, kitchen and bar control",
+  description: "A real-time point of sale and digital menu for Lazy Sunday.",
   generator: "v0.app",
   icons: {
     icon: [

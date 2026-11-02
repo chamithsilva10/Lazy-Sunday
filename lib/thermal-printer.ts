@@ -289,7 +289,7 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
       </head>
       <body>
         <div class="text-center">
-          <h1 class="brand-title">RESTAURANT &amp; BAR</h1>
+          <h1 class="brand-title">LAZY SUNDAY</h1>
           <p class="brand-sub">POINT OF SALE TERMINAL</p>
           <p class="brand-tag">Specialty Dining &amp; Fresh Beverages</p>
           <p class="brand-contact">Customer Receipt</p>
@@ -480,7 +480,7 @@ export function printTicketSlipDoc(
             *** ${station === "bar" ? "BAR ORDER TICKET<br/>(BOT) ***" : "KITCHEN ORDER TICKET<br/>(KOT) ***"}
           </div>
           <div style="font-size: 11px; font-weight: 800; letter-spacing: 1.5px; margin-top: 4px; color: #111;">
-            RESTAURANT POS
+            LAZY SUNDAY POS
           </div>
         </div>
         <div style="border-top: 3px solid #000; margin: 8px 0 10px 0;"></div>

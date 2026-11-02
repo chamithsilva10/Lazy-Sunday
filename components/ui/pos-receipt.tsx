@@ -129,7 +129,7 @@ export function PosReceipt({
         {/* Top Header */}
         <header className="text-center space-y-0.5">
           <h2 className="font-sans text-xl sm:text-2xl font-black tracking-[0.18em] uppercase text-black">
-            RESTAURANT &amp; BAR
+            LAZY SUNDAY
           </h2>
           <p className="text-[11px] font-extrabold tracking-[0.16em] uppercase text-black">
             POINT OF SALE RECEIPT

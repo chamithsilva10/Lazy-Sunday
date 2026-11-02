@@ -13,7 +13,7 @@ INSERT OR REPLACE INTO roles (id, name, description, is_system) VALUES
 
 -- 2. Staff Users
 INSERT OR REPLACE INTO app_users (id, username, full_name, email, password_hash, role_id, is_active) VALUES
-('usr-001', 'admin', 'Jordan Vance (Administrator)', 'admin@posdemo.com', 'demo_hash_admin', 'admin', 1),
+('usr-001', 'admin', 'Alexa Pheloung (Administrator)', 'alexa@lazysunday.com', 'demo_hash_admin', 'admin', 1),
 ('usr-002', 'manager', 'Elena Rostova (Store Manager)', 'manager@posdemo.com', 'demo_hash_manager', 'manager', 1),
 ('usr-003', 'cashier', 'Alex Rivera (Head Cashier)', 'cashier@posdemo.com', 'demo_hash_cashier', 'cashier', 1),
 ('usr-004', 'kitchen', 'Marco Silva (Head Chef)', 'kitchen@posdemo.com', 'demo_hash_kitchen', 'kitchen', 1);

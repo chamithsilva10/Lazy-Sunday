@@ -29,7 +29,7 @@ pnpm run dev:demo
 
 | Role | Username | Password | Access Scope |
 | :--- | :--- | :--- | :--- |
-| 👨‍💼 **Administrator** | `admin` | `admin123` | Full access to all modules, audit logs, roles, and settings |
+| 👨‍💼 **Administrator** (Alexa Pheloung) | `admin` | `Welcome123` | Full access to all modules, audit logs, roles, and settings |
 | 👔 **Store Manager** | `manager` | `manager123` | Financial reports, product catalog, inventory POs, and CRM |
 | 💳 **Cashier** | `cashier` | `cashier123` | POS sales register, barcode scanner, cart checkout, split billing |
 | 👨‍🍳 **Kitchen Chef** | `kitchen` | `kitchen123` | Kitchen Display System (KDS), ticket status bump bar |

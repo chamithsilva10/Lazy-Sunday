@@ -2229,7 +2229,7 @@ export default function POSPage() {
       <div suppressHydrationWarning className="min-h-[100dvh] bg-[#fbfbf8] flex items-center justify-center">
         <div suppressHydrationWarning className="flex flex-col items-center gap-3 text-[#244f3d]">
           <div className="size-10 animate-spin rounded-full border-4 border-[#244f3d] border-t-transparent" />
-          <span className="font-serif text-lg font-bold tracking-tight">DEMO POS SYSTEM</span>
+          <span className="font-serif text-lg font-bold tracking-tight">LAZY SUNDAY</span>
           <p className="text-xs text-[#80907f]">Opening POS register…</p>
         </div>
       </div>
@@ -2247,8 +2247,8 @@ export default function POSPage() {
             <UtensilsCrossed className="size-5" />
           </div>
           <div>
-            <p className="font-serif text-[17px] font-bold leading-tight">DEMO POS</p>
-            <p className="text-[10px] uppercase tracking-[.2em] text-[#8a918a]">Point of Sale</p>
+            <p className="font-serif text-[17px] font-bold leading-tight">Lazy Sunday</p>
+            <p className="text-[10px] uppercase tracking-[.2em] text-[#8a918a]">Restaurant &amp; Bar</p>
           </div>
         </div>
 
@@ -2358,8 +2358,8 @@ export default function POSPage() {
                 <UtensilsCrossed className="size-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <SheetTitle className="font-serif text-lg font-bold leading-tight truncate text-[#25332c]">DEMO POS</SheetTitle>
-                <SheetDescription className="text-[10px] uppercase tracking-[.2em] text-[#8a918a]">Restaurant POS</SheetDescription>
+                <SheetTitle className="font-serif text-lg font-bold leading-tight truncate text-[#25332c]">Lazy Sunday</SheetTitle>
+                <SheetDescription className="text-[10px] uppercase tracking-[.2em] text-[#8a918a]">Restaurant &amp; Bar</SheetDescription>
               </div>
             </div>
 
@@ -2532,7 +2532,7 @@ export default function POSPage() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="text-[11px] font-semibold text-[#89918a] truncate hidden sm:inline">
-                  POS Register
+                  Lazy Sunday
                 </span>
                 <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 text-[10px] sm:text-[11px] font-semibold shrink-0">
                   <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -4209,7 +4209,7 @@ export default function POSPage() {
                     <p className="font-sans font-black text-sm sm:text-base tracking-wide uppercase leading-tight">
                       *** {station === "bar" ? "BAR ORDER TICKET\n(BOT) ***" : "KITCHEN ORDER TICKET\n(KOT) ***"}
                     </p>
-                    <p className="text-[11px] font-bold tracking-widest text-black mt-1">RESTAURANT POS</p>
+                    <p className="text-[11px] font-bold tracking-widest text-black mt-1">LAZY SUNDAY POS</p>
                   </div>
 
                   <div className="border-t-[2.5px] border-black my-1" />

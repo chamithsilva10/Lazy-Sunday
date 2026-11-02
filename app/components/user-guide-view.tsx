@@ -537,7 +537,7 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
               <span className="text-xs text-[#b8d4b3] font-mono">v2.4 Production</span>
             </div>
             <h1 className="font-serif text-2xl sm:text-4xl font-bold tracking-tight text-[#f4faee]">
-              {lang === "en" ? "POS System User Guide" : "POS පද්ධති පරිශීලක මාර්ගෝපදේශය"}
+              {lang === "en" ? "Lazy Sunday POS User Guide" : "Lazy Sunday POS පරිශීලක මාර්ගෝපදේශය"}
             </h1>
             <p className="text-xs sm:text-sm text-[#c8dec4] max-w-xl leading-relaxed">
               {lang === "en"
@@ -818,7 +818,7 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
       {/* Footer Support Notice & Developer Credit */}
       <div className="rounded-2xl border border-[#dfe5d8] bg-[#f8faf6] p-5 text-center space-y-2">
         <p className="text-xs font-semibold text-[#244f3d]">
-          {lang === "en" ? "Restaurant POS Management System" : "ආපනශාලා කළමනාකරණ පද්ධතිය"}
+          {lang === "en" ? "Lazy Sunday Restaurant Management System" : "Lazy Sunday ආපනශාලා කළමනාකරණ පද්ධතිය"}
         </p>
         <p className="text-[11px] text-[#718073] max-w-md mx-auto leading-relaxed">
           {lang === "en"

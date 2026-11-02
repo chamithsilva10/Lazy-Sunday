@@ -183,7 +183,7 @@ export function generateSalesReportXlsx(data: SalesReportExportData): Uint8Array
 
   // 1. WORKSHEET 1: TRANSACTIONS LEDGER (Horizontal Order-by-Order Table)
   const ledgerData: any[][] = [
-    ["RESTAURANT & BAR — TRANSACTIONS & SALES REGISTER"],
+    ["LAZY SUNDAY — TRANSACTIONS & SALES REGISTER"],
     [
       `Date Range: ${filters.dateRange}  |  Station: ${filters.stationScope}  |  Department: ${filters.departmentScope}  |  Payment: ${filters.paymentMethod}  |  Exported: ${filters.generatedAt}`,
     ],
@@ -596,7 +596,7 @@ export function generateSalesReportCsv(data: SalesReportExportData): string {
   let out = "\uFEFF" // UTF-8 BOM so Excel opens with proper encoding
 
   // Header Title & Metadata
-  out += `RESTAURANT & BAR - TRANSACTIONS & SALES REGISTER\r\n`
+  out += `LAZY SUNDAY - TRANSACTIONS & SALES REGISTER\r\n`
   out += `Date Range,${escapeCsv(filters.dateRange)},Station Scope,${escapeCsv(filters.stationScope)},Department,${escapeCsv(filters.departmentScope)},Payment Method,${escapeCsv(filters.paymentMethod)},Generated At,${escapeCsv(filters.generatedAt)}\r\n\r\n`
 
   // 1. Horizontal Executive KPI Row

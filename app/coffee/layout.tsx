@@ -20,7 +20,7 @@ export default function CoffeeLayout({ children }: { children: React.ReactNode }
               <Coffee className="size-4" />
             </div>
             <div>
-              <p className="font-serif text-sm font-bold leading-tight">ARTISAN CAFE</p>
+              <p className="font-serif text-sm font-bold leading-tight">LAZY SUNDAY</p>
               <p className="text-[9px] uppercase tracking-wider text-gray-500">Coffee & Bar Menu</p>
             </div>
           </div>

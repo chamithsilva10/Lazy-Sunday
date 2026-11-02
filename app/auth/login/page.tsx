@@ -89,7 +89,7 @@ export default function LoginPage() {
             </p>
           </div>
           <div className="pt-6 border-t border-[#346551]">
-            <p className="text-xs uppercase tracking-[.2em] text-[#adc6ad]">RESTAURANT & BAR</p>
+            <p className="text-xs uppercase tracking-[.2em] text-[#adc6ad]">LAZY SUNDAY</p>
             <p className="text-[11px] text-[#8fa78f] mt-0.5">Point of Sale & Hospitality Management</p>
             <p className="text-[10px] text-[#98b598] mt-2 font-medium">Created by Chamith · Full Stack Developer</p>
           </div>
@@ -104,7 +104,7 @@ export default function LoginPage() {
                 <UtensilsCrossed className="size-5" />
               </div>
               <div>
-                <span className="font-serif text-lg font-bold tracking-tight">DEMO POS</span>
+                <span className="font-serif text-lg font-bold tracking-tight">LAZY SUNDAY</span>
                 <p className="text-[10px] uppercase tracking-[.2em] text-[#80907f]">Restaurant Terminal</p>
               </div>
             </div>
@@ -115,7 +115,7 @@ export default function LoginPage() {
                 Demo Sandbox Mode • Mock Data Active
               </div>
               <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#80907f]">Staff access</p>
-              <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold text-gray-900">Welcome to POS Demo</h1>
+              <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold text-gray-900">Welcome to Lazy Sunday</h1>
               <p className="mt-1 text-xs sm:text-sm text-[#7a857b]">Sign in to open your POS register & workspace.</p>
 
               {/* 1-Click Demo Accounts */}
@@ -152,12 +152,12 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => {
                       setUsername("admin")
-                      setPassword("admin123")
+                      setPassword("Welcome123")
                     }}
                     className="flex flex-col items-start p-2 rounded-lg bg-white border border-[#dfe5d8] hover:border-[#244f3d] hover:bg-emerald-50/50 transition-all text-left shadow-2xs"
                   >
-                    <span className="font-bold text-[#244f3d]">Admin</span>
-                    <span className="text-[10px] text-gray-500">admin / admin123</span>
+                    <span className="font-bold text-[#244f3d]">Admin (Alexa Pheloung)</span>
+                    <span className="text-[10px] text-gray-500">admin / Welcome123</span>
                   </button>
 
                   <button

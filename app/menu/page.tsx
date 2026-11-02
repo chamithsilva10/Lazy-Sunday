@@ -180,7 +180,7 @@ export default function MenuPage() {
       <div className="mx-auto max-w-3xl">
         <header className="mb-10 border-b border-[#6c806c]/40 pb-8 text-center">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-[#d5a83b]">Hiriketiya · Sri Lanka</p>
-          <h1 className="font-serif text-5xl font-bold tracking-tight text-[#f7f2e7]">RESTAURANT &amp; BAR</h1>
+          <h1 className="font-serif text-5xl font-bold tracking-tight text-[#f7f2e7]">LAZY SUNDAY</h1>
           <p className="mt-3 text-sm text-[#b7c6b3]">Good coffee, honest food, slow mornings.</p>
         </header>
 

@@ -21,7 +21,7 @@ export function isDemoMode(): boolean {
 }
 
 export const DEMO_CONFIG = {
-  storeName: "RESTAURANT & BAR (DEMO)",
+  storeName: "Lazy Sunday",
   branchId: "branch-demo-01",
   currency: "LKR",
   currencySymbol: "Rs.",
@@ -39,7 +39,7 @@ export const DEMO_CONFIG = {
   },
   defaultAdmin: {
     username: "admin",
-    name: "Jordan Vance",
+    name: "Alexa Pheloung",
     role: "admin",
   },
   defaultKitchen: {
