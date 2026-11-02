@@ -117,62 +117,6 @@ export default function LoginPage() {
               <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#80907f]">Staff access</p>
               <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold text-gray-900">Welcome to Lazy Sunday</h1>
               <p className="mt-1 text-xs sm:text-sm text-[#7a857b]">Sign in to open your POS register & workspace.</p>
-
-              {/* 1-Click Demo Accounts */}
-              <div className="mt-4 rounded-xl border border-emerald-100 bg-[#f7faf5] p-3">
-                <p className="text-[11px] font-bold text-[#244f3d] uppercase tracking-wider mb-2">
-                  Select a Demo Role (1-Click Fill):
-                </p>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername("cashier")
-                      setPassword("cashier123")
-                    }}
-                    className="flex flex-col items-start p-2 rounded-lg bg-white border border-[#dfe5d8] hover:border-[#244f3d] hover:bg-emerald-50/50 transition-all text-left shadow-2xs"
-                  >
-                    <span className="font-bold text-[#244f3d]">Cashier</span>
-                    <span className="text-[10px] text-gray-500">cashier / cashier123</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername("manager")
-                      setPassword("manager123")
-                    }}
-                    className="flex flex-col items-start p-2 rounded-lg bg-white border border-[#dfe5d8] hover:border-[#244f3d] hover:bg-emerald-50/50 transition-all text-left shadow-2xs"
-                  >
-                    <span className="font-bold text-[#244f3d]">Manager</span>
-                    <span className="text-[10px] text-gray-500">manager / manager123</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername("admin")
-                      setPassword("Welcome123")
-                    }}
-                    className="flex flex-col items-start p-2 rounded-lg bg-white border border-[#dfe5d8] hover:border-[#244f3d] hover:bg-emerald-50/50 transition-all text-left shadow-2xs"
-                  >
-                    <span className="font-bold text-[#244f3d]">Admin (Alexa Pheloung)</span>
-                    <span className="text-[10px] text-gray-500">admin / Welcome123</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername("kitchen")
-                      setPassword("kitchen123")
-                    }}
-                    className="flex flex-col items-start p-2 rounded-lg bg-white border border-[#dfe5d8] hover:border-[#244f3d] hover:bg-emerald-50/50 transition-all text-left shadow-2xs"
-                  >
-                    <span className="font-bold text-[#244f3d]">Kitchen Chef</span>
-                    <span className="text-[10px] text-gray-500">kitchen / kitchen123</span>
-                  </button>
-                </div>
-              </div>
             </div>
 
             <form onSubmit={submit} className="flex flex-col gap-4">
