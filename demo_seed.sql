@@ -83,28 +83,25 @@ INSERT OR REPLACE INTO customers (id, name, phone, email, address, notes, credit
 ('cust-4', 'Liam O''Connor', '+94 70 333 7788', 'liam.oc@example.com', 'Sunset Point Road, Hiriketiya', 'Surf instructor, large groups for brunch.', 20000, 0, 210, 0, 19, 31200),
 ('cust-5', 'Ananya Patel', '+94 77 888 9911', 'ananya.p@example.com', '7 Temple View Crest', 'Strict vegetarian, loves Matcha and Acai.', 15000, 0, 290, 1, 22, 36400);
 
--- 7. Orders & Items
+-- 7. Orders & Items (Lazy Sunday Fresh State)
 INSERT OR REPLACE INTO pos_orders (id, order_number, receipt_number, table_name, cashier_name, department, order_type, subtotal, service_charge, service_charge_rate, discount, tax, total, payment_method, cash_received, change_amount, status, payment_status, kitchen_status, bar_status, customer_name, customer_id, created_at) VALUES
-('ord-mock-001', 'DEMO-1001', 'RC-DEMO-1001', 'Table 2', 'Alex Rivera', 'Juice & Food', 'dine_in', 7700, 770, 0.1, 0, 0, 8470, 'card', 8470, 0, 'paid', 'paid', 'served', 'served', 'David De Silva', 'cust-2', datetime('now', '-2 hours')),
-('ord-mock-002', 'DEMO-1002', 'RC-DEMO-1002', 'Takeaway', 'Alex Rivera', 'Coffee Bar', 'takeaway', 1700, 0, 0, 0, 0, 1700, 'cash', 2000, 300, 'paid', 'paid', 'served', 'served', 'Walk-in Guest', NULL, datetime('now', '-1 hours')),
-('ord-mock-003', 'DEMO-1003', 'RC-DEMO-1003', 'Terrace 2', 'Alex Rivera', 'Juice & Food', 'dine_in', 3600, 360, 0.1, 360, 0, 3600, 'split', 2000, 0, 'paid', 'paid', 'served', 'served', 'Elena Rostova', 'cust-3', datetime('now', '-30 minutes')),
-('ord-mock-004', 'DEMO-1004', 'RC-DEMO-1004', 'Table 4', 'Alex Rivera', 'Juice & Food', 'dine_in', 10950, 1095, 0.1, 0, 0, 12045, 'card', 12045, 0, 'paid', 'paid', 'served', 'served', 'Liam O''Connor', 'cust-4', datetime('now', '-1 days')),
-('ord-mock-005', 'DEMO-1005', 'RC-DEMO-1005', 'Takeaway', 'Elena Rostova', 'Coffee Bar', 'takeaway', 2200, 0, 0, 0, 0, 2200, 'qr', 2200, 0, 'paid', 'paid', 'served', 'served', 'Walk-in Guest', NULL, datetime('now', '-2 days'));
+('ord-ls-001', 'LS-000101', 'LS-RC-000101', 'Table 1', 'Alexa Pheloung', 'Juice & Food', 'dine_in', 3300, 330, 0.1, 0, 0, 3630, 'card', 3630, 0, 'completed', 'paid', 'served', 'served', 'Liam O''Connor', 'cust-4', datetime('now', '-2 hours')),
+('ord-ls-002', 'LS-000102', 'LS-RC-000102', 'Takeaway', 'Alexa Pheloung', 'Coffee Bar', 'takeaway', 1700, 0, 0, 0, 0, 1700, 'cash', 2000, 300, 'completed', 'paid', 'served', 'served', 'Walk-in Guest', NULL, datetime('now', '-1 hours')),
+('ord-ls-003', 'LS-000103', 'LS-RC-000103', 'Table 3', 'Alexa Pheloung', 'Juice & Food', 'dine_in', 3200, 320, 0.1, 0, 0, 3520, 'card', 3520, 0, 'paid', 'paid', 'preparing', 'preparing', 'Sarah Jenkins', 'cust-1', datetime('now', '-15 minutes'));
 
 INSERT OR REPLACE INTO order_items (id, order_id, product_id, product_name, unit_price, quantity, line_total, station, category) VALUES
-('item-1', 'ord-mock-001', 'prod-122', 'Prime Angus Cheeseburger', 2400, 2, 4800, 'kitchen', 'Gourmet Burgers'),
-('item-2', 'ord-mock-001', 'prod-129', 'Crispy Truffle Parmesan Fries', 1400, 1, 1400, 'kitchen', 'Sides & Starters'),
-('item-3', 'ord-mock-001', 'prod-103', 'Velvet Flat White', 750, 2, 1500, 'bar', 'Specialty Coffee'),
-('item-4', 'ord-mock-002', 'prod-106', 'Iced Vanilla Bean Latte', 950, 1, 950, 'bar', 'Specialty Coffee'),
-('item-5', 'ord-mock-002', 'prod-113', 'French Almond Butter Croissant', 750, 1, 750, 'kitchen', 'Bakery & Pastries'),
-('item-6', 'ord-mock-003', 'prod-117', 'Avocado Toast with Poached Eggs', 1800, 1, 1800, 'kitchen', 'Breakfast & Brunch'),
-('item-7', 'ord-mock-003', 'prod-109', 'Ceremonial Matcha Latte', 950, 1, 950, 'bar', 'Artisan Teas'),
-('item-8', 'ord-mock-003', 'prod-133', 'Green Cleanse Vitality Juice', 850, 1, 850, 'bar', 'Cold Pressed Juices');
+('item-ls-1', 'ord-ls-001', 'prod-103', 'Velvet Flat White', 750, 2, 1500, 'bar', 'Specialty Coffee'),
+('item-ls-2', 'ord-ls-001', 'prod-117', 'Avocado Toast with Poached Eggs', 1800, 1, 1800, 'kitchen', 'Breakfast & Brunch'),
+('item-ls-3', 'ord-ls-002', 'prod-106', 'Iced Vanilla Bean Latte', 950, 1, 950, 'bar', 'Specialty Coffee'),
+('item-ls-4', 'ord-ls-002', 'prod-113', 'French Almond Butter Croissant', 750, 1, 750, 'kitchen', 'Bakery & Pastries'),
+('item-ls-5', 'ord-ls-003', 'prod-109', 'Ceremonial Matcha Latte', 950, 1, 950, 'bar', 'Artisan Teas'),
+('item-ls-6', 'ord-ls-003', 'prod-135', 'Tropical Passionfruit Cooler', 850, 1, 850, 'bar', 'Cold Pressed Juices'),
+('item-ls-7', 'ord-ls-003', 'prod-129', 'Crispy Truffle Parmesan Fries', 1400, 1, 1400, 'kitchen', 'Sides & Starters');
 
 -- 8. Station Tickets
 INSERT OR REPLACE INTO station_tickets (id, order_id, ticket_number, station, status, notes) VALUES
-('tkt-1', 'ord-mock-001', 'KOT-DEMO-1001', 'kitchen', 'completed', 'Table: Table 2'),
-('tkt-2', 'ord-mock-001', 'BOT-DEMO-1001', 'bar', 'completed', 'Table: Table 2'),
-('tkt-3', 'ord-mock-002', 'BOT-DEMO-1002', 'bar', 'completed', 'Takeaway'),
-('tkt-4', 'ord-mock-003', 'KOT-DEMO-1003', 'kitchen', 'completed', 'Table: Terrace 2'),
-('tkt-5', 'ord-mock-003', 'BOT-DEMO-1003', 'bar', 'completed', 'Table: Terrace 2');
+('tkt-ls-1', 'ord-ls-001', 'KOT-LS-000101', 'kitchen', 'completed', 'Table: Table 1'),
+('tkt-ls-2', 'ord-ls-001', 'BOT-LS-000101', 'bar', 'completed', 'Table: Table 1'),
+('tkt-ls-3', 'ord-ls-002', 'BOT-LS-000102', 'bar', 'completed', 'Takeaway'),
+('tkt-ls-4', 'ord-ls-003', 'KOT-LS-000103', 'kitchen', 'preparing', 'Table: Table 3'),
+('tkt-ls-5', 'ord-ls-003', 'BOT-LS-000103', 'bar', 'preparing', 'Table: Table 3');

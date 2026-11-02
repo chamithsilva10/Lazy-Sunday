@@ -38,13 +38,10 @@ function it(description, fn) {
 const sharedPosPath = path.resolve("./lib/shared-pos-service.ts")
 const sharedPosCode = fs.readFileSync(sharedPosPath, "utf-8")
 
-it("DEFAULT_INITIAL_ORDERS contains all 6 diverse baseline orders and was not cleared", () => {
-  assert(sharedPosCode.includes("CFJ-000101"), "Order CFJ-000101 must exist")
-  assert(sharedPosCode.includes("CFJ-000102"), "Order CFJ-000102 must exist")
-  assert(sharedPosCode.includes("CFJ-000103"), "Order CFJ-000103 must exist")
-  assert(sharedPosCode.includes("CFJ-000104"), "Order CFJ-000104 must exist")
-  assert(sharedPosCode.includes("CFJ-000105"), "Order CFJ-000105 must exist")
-  assert(sharedPosCode.includes("COF-1001"), "Coffee Bar Order COF-1001 must exist")
+it("DEFAULT_INITIAL_ORDERS contains fresh Lazy Sunday baseline orders", () => {
+  assert(sharedPosCode.includes("LS-000101"), "Order LS-000101 must exist")
+  assert(sharedPosCode.includes("LS-000102"), "Order LS-000102 must exist")
+  assert(sharedPosCode.includes("LS-000103"), "Order LS-000103 must exist")
 })
 
 it("SharedPosService.init and reloadOrders persist orders to localStorage", () => {

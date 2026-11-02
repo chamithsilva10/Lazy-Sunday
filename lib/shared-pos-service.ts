@@ -555,7 +555,152 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
   { id: "prod-28", name: "Artisan Ice Cream Sundae", price: 950, category: "Desserts", category_id: "cat-desserts", image: resolveProductImage("Artisan Ice Cream Sundae", null, "Desserts"), stock: 100, department: "Juice & Food", station: "kitchen" },
 ]
 
-export const DEFAULT_INITIAL_ORDERS: SharedOrder[] = []
+export const DEFAULT_INITIAL_ORDERS: SharedOrder[] = [
+  {
+    id: "ord-ls-001",
+    order_number: "LS-000101",
+    receipt_number: "LS-RC-000101",
+    table_name: "Table 1",
+    cashier_name: "Alexa Pheloung",
+    department: "Juice & Food",
+    order_type: "dine_in",
+    items: [
+      {
+        id: "item-ls-1",
+        product_id: "prod-103",
+        name: "Velvet Flat White",
+        price: 750,
+        quantity: 2,
+        line_total: 1500,
+        station: "bar",
+        category: "Specialty Coffee",
+      },
+      {
+        id: "item-ls-2",
+        product_id: "prod-117",
+        name: "Avocado Toast with Poached Eggs",
+        price: 1800,
+        quantity: 1,
+        line_total: 1800,
+        station: "kitchen",
+        category: "Breakfast & Brunch",
+      },
+    ],
+    subtotal: 3300,
+    service_charge: 330,
+    service_charge_rate: 0.1,
+    discount: 0,
+    total: 3630,
+    payment_method: "card",
+    cash_received: 3630,
+    change_amount: 0,
+    status: "completed",
+    kitchen_status: "served",
+    bar_status: "served",
+    customer_name: "Liam O'Connor",
+    customer_id: "cust-4",
+    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "ord-ls-002",
+    order_number: "LS-000102",
+    receipt_number: "LS-RC-000102",
+    table_name: "Takeaway",
+    cashier_name: "Alexa Pheloung",
+    department: "Coffee Bar",
+    order_type: "takeaway",
+    items: [
+      {
+        id: "item-ls-3",
+        product_id: "prod-106",
+        name: "Iced Vanilla Bean Latte",
+        price: 950,
+        quantity: 1,
+        line_total: 950,
+        station: "bar",
+        category: "Specialty Coffee",
+      },
+      {
+        id: "item-ls-4",
+        product_id: "prod-113",
+        name: "French Almond Butter Croissant",
+        price: 750,
+        quantity: 1,
+        line_total: 750,
+        station: "kitchen",
+        category: "Bakery & Pastries",
+      },
+    ],
+    subtotal: 1700,
+    service_charge: 0,
+    service_charge_rate: 0,
+    discount: 0,
+    total: 1700,
+    payment_method: "cash",
+    cash_received: 2000,
+    change_amount: 300,
+    status: "completed",
+    kitchen_status: "served",
+    bar_status: "served",
+    customer_name: "Walk-in Guest",
+    created_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "ord-ls-003",
+    order_number: "LS-000103",
+    receipt_number: "LS-RC-000103",
+    table_name: "Table 3",
+    cashier_name: "Alexa Pheloung",
+    department: "Juice & Food",
+    order_type: "dine_in",
+    items: [
+      {
+        id: "item-ls-5",
+        product_id: "prod-109",
+        name: "Ceremonial Matcha Latte",
+        price: 950,
+        quantity: 1,
+        line_total: 950,
+        station: "bar",
+        category: "Artisan Teas",
+      },
+      {
+        id: "item-ls-6",
+        product_id: "prod-135",
+        name: "Tropical Passionfruit Cooler",
+        price: 850,
+        quantity: 1,
+        line_total: 850,
+        station: "bar",
+        category: "Cold Pressed Juices",
+      },
+      {
+        id: "item-ls-7",
+        product_id: "prod-129",
+        name: "Crispy Truffle Parmesan Fries",
+        price: 1400,
+        quantity: 1,
+        line_total: 1400,
+        station: "kitchen",
+        category: "Sides & Starters",
+      },
+    ],
+    subtotal: 3200,
+    service_charge: 320,
+    service_charge_rate: 0.1,
+    discount: 0,
+    total: 3520,
+    payment_method: "card",
+    cash_received: 3520,
+    change_amount: 0,
+    status: "paid",
+    kitchen_status: "preparing",
+    bar_status: "preparing",
+    customer_name: "Sarah Jenkins",
+    customer_id: "cust-1",
+    created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+  },
+]
 
 export const DEFAULT_CUSTOMERS: SharedCustomer[] = []
 
@@ -872,6 +1017,19 @@ export class SharedPosService {
       }
     } catch {
       this.categoriesCache = DEFAULT_CATEGORIES.map((c) => ({ ...c }))
+    }
+
+    // Clean-slate purge for Lazy Sunday: purge all legacy demo/previous orders across all storage keys
+    const LAZY_SUNDAY_ORDERS_PURGED_FLAG = "pos_lazy_sunday_clean_orders_v1"
+    const hasPurgedLazySundayOrders = this.isBrowser() && localStorage.getItem(LAZY_SUNDAY_ORDERS_PURGED_FLAG) === "true"
+
+    if (this.isBrowser() && !hasPurgedLazySundayOrders) {
+      try {
+        localStorage.removeItem("pos_coffee_bills")
+        localStorage.removeItem("pos_mock_orders")
+        localStorage.setItem(ORDERS_KEY, JSON.stringify(DEFAULT_INITIAL_ORDERS))
+        localStorage.setItem(LAZY_SUNDAY_ORDERS_PURGED_FLAG, "true")
+      } catch {}
     }
 
     // Orders - Load baseline initial orders, existing stored orders, and coffee bills
