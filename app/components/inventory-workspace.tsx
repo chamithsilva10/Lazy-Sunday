@@ -1353,7 +1353,7 @@ export function InventoryWorkspace({
               return (
                 <div
                   key={product.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border p-3 text-sm gap-2 bg-white hover:border-[#244f3d]/30 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border p-3 text-sm gap-2 bg-white hover:border-[#D67B6B]/40 transition-colors"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -1426,7 +1426,7 @@ export function InventoryWorkspace({
                 })
                 setShowAddSupplier(true)
               }}
-              className="gap-2 rounded-xl bg-[#244f3d] text-white hover:bg-[#1a382c]"
+              className="gap-2 rounded-xl bg-[#D67B6B] text-white hover:bg-[#c36859]"
             >
               <Plus className="size-4" />
               Add Supplier
@@ -1475,7 +1475,7 @@ export function InventoryWorkspace({
                     </div>
 
                     {sup.notes && (
-                      <p className="text-[11px] text-gray-500 italic bg-[#f7f8f4] p-2 rounded-xl">
+                      <p className="text-[11px] text-gray-500 italic bg-[#FAF5F1] p-2 rounded-xl">
                         "{sup.notes}"
                       </p>
                     )}
@@ -1553,7 +1553,7 @@ export function InventoryWorkspace({
                 </thead>
                 <tbody className="divide-y">
                   {wastage.map((item) => (
-                    <tr key={item.id} className="hover:bg-[#fbfcf9]">
+                    <tr key={item.id} className="hover:bg-[#FAF5F1]">
                       <td className="py-3 pl-2 font-bold text-gray-900">{item.item_name}</td>
                       <td className="py-3 text-xs text-gray-700">
                         {item.quantity} {item.unit}
@@ -1597,7 +1597,7 @@ export function InventoryWorkspace({
             </div>
             <Button
               onClick={() => setShowAddAdjustment(true)}
-              className="gap-2 rounded-xl bg-[#244f3d] text-white hover:bg-[#1a382c]"
+              className="gap-2 rounded-xl bg-[#D67B6B] text-white hover:bg-[#c36859]"
             >
               <Plus className="size-4" />
               Record Stock Adjustment
@@ -1619,7 +1619,7 @@ export function InventoryWorkspace({
                 </thead>
                 <tbody className="divide-y">
                   {adjustments.map((adj) => (
-                    <tr key={adj.id} className="hover:bg-[#fbfcf9]">
+                    <tr key={adj.id} className="hover:bg-[#FAF5F1]">
                       <td className="py-3 pl-2 font-bold text-gray-900">{adj.ingredient_name}</td>
                       <td className="py-3 text-xs text-gray-600">
                         {adj.previous_stock} {adj.unit}
@@ -2295,7 +2295,7 @@ export function InventoryWorkspace({
                   setShowAddSupplier(false)
                   toast.success("Supplier registered successfully")
                 }}
-                className="bg-[#244f3d] text-white hover:bg-[#1a382c]"
+                className="bg-[#D67B6B] text-white hover:bg-[#c36859]"
               >
                 Save Supplier
               </Button>
@@ -2539,7 +2539,7 @@ export function InventoryWorkspace({
                   toast.success(`${ing.name} reconciled to ${displayStock(nextBase, ing.base_unit)}`)
                   await load()
                 }}
-                className="bg-[#244f3d] text-white hover:bg-[#1a382c]"
+                className="bg-[#D67B6B] text-white hover:bg-[#c36859]"
               >
                 Save Adjustment
               </Button>

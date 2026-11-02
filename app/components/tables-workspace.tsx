@@ -475,12 +475,12 @@ export function TablesWorkspace({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 rounded-2xl border border-[#dce6d9] bg-white/80 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.18em] text-[#6e7d6e]">Live floor</p>
-          <h3 className="font-serif text-2xl font-bold text-[#244f3d]">Tables &amp; bookings</h3>
-          <p className="text-sm text-[#738075]">Seat guests, track tabs and keep the floor moving.</p>
+          <p className="text-xs font-bold uppercase tracking-[.18em] text-[#808068]">Live floor</p>
+          <h3 className="font-serif text-2xl font-bold text-[#343428]">Tables &amp; bookings</h3>
+          <p className="text-sm text-[#808068]">Seat guests, track tabs and keep the floor moving.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button className="h-11 rounded-xl bg-[#244f3d]" onClick={() => openSeat(selected && !sessionFor(selected) ? selected : null)}>
+          <Button className="h-11 rounded-xl bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(selected && !sessionFor(selected) ? selected : null)}>
             <Users className="size-4" /> Seat guests
           </Button>
           <Button variant="outline" className="h-11 rounded-xl" onClick={() => { setForm({ ...emptyBooking, table_id: selected?.id || "" }); setShowBooking(true) }}>
@@ -514,7 +514,7 @@ export function TablesWorkspace({
           <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
           <Input className="h-11 rounded-xl pl-9" placeholder="Search table or guest" value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
-        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#dfe5d8]">
+        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#E5D8CF]">
           {[
             { key: "all", label: "All Floor" },
             { key: "indoor", label: "Indoor AC" },
@@ -525,7 +525,7 @@ export function TablesWorkspace({
               key={z.key}
               onClick={() => setZoneFilter(z.key as any)}
               className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors ${
-                zoneFilter === z.key ? "bg-[#244f3d] text-white" : "text-gray-600 hover:text-gray-900"
+                zoneFilter === z.key ? "bg-[#D67B6B] text-white shadow-xs" : "text-[#808068] hover:text-[#343428]"
               }`}
             >
               {z.label}
@@ -536,7 +536,7 @@ export function TablesWorkspace({
           {(["available", "occupied", "reserved", "cleaning"] as const).map((key) => (
             <span key={key} className={`rounded-full border px-3 py-1.5 capitalize ${statusStyles[key]}`}>{counts[key] || 0} {key}</span>
           ))}
-          <Badge className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-800">Live sync</Badge>
+          <Badge className="rounded-full bg-[#FAF5F1] px-3 py-1.5 text-[#808068] border border-[#EAB8B5]">Live sync</Badge>
         </div>
       </div>
 
@@ -549,7 +549,7 @@ export function TablesWorkspace({
             <button
               key={table.id}
               onClick={() => setSelected(table)}
-              className={`min-h-[168px] rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${statusStyles[status] || statusStyles.available} ${selected?.id === table.id ? "ring-2 ring-[#244f3d]" : ""}`}
+              className={`min-h-[168px] rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${statusStyles[status] || statusStyles.available} ${selected?.id === table.id ? "ring-2 ring-[#D67B6B]" : ""}`}
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -594,7 +594,7 @@ export function TablesWorkspace({
                 {booking.special_requests && <p className="text-xs text-muted-foreground">“{booking.special_requests}”</p>}
               </div>
               <div className="flex shrink-0 gap-2">
-                <Button size="sm" className="bg-[#244f3d]" onClick={() => openSeat(tables.find((t) => t.id === booking.table_id) || null, booking)}>Seat now</Button>
+                <Button size="sm" className="bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(tables.find((t) => t.id === booking.table_id) || null, booking)}>Seat now</Button>
                 <Button size="sm" variant="outline" onClick={() => void updateBooking(booking, "no_show")}>No-show</Button>
                 <Button size="sm" variant="ghost" onClick={() => void updateBooking(booking, "cancelled")}>Cancel</Button>
               </div>
@@ -605,12 +605,12 @@ export function TablesWorkspace({
       </Card>
 
       {selected && (
-        <Card className="fixed inset-x-0 bottom-0 z-40 max-h-[88vh] overflow-auto rounded-t-3xl border-[#dce6d9] bg-[#fffdf7] shadow-2xl sm:inset-y-4 sm:left-auto sm:right-4 sm:w-[420px] sm:rounded-3xl">
+        <Card className="fixed inset-x-0 bottom-0 z-40 max-h-[88vh] overflow-auto rounded-t-3xl border-[#E5D8CF] bg-[#FAF5F1] shadow-2xl sm:inset-y-4 sm:left-auto sm:right-4 sm:w-[420px] sm:rounded-3xl">
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs uppercase tracking-widest text-muted-foreground">Table panel</p>
-                <CardTitle className="text-2xl text-[#244f3d]">{selected.name}</CardTitle>
+                <p className="text-xs uppercase tracking-widest text-[#808068]">Table panel</p>
+                <CardTitle className="text-2xl text-[#343428]">{selected.name}</CardTitle>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelected(null)} aria-label="Close table panel"><X className="size-5" /></Button>
             </div>
@@ -634,10 +634,10 @@ export function TablesWorkspace({
                   )
                   if (!activeOrder) return null
                   return (
-                    <div className="rounded-2xl border border-[#dfe5d8] bg-white p-3.5 space-y-2 text-xs">
+                    <div className="rounded-2xl border border-[#E5D8CF] bg-white p-3.5 space-y-2 text-xs">
                       <div className="flex items-center justify-between font-bold text-gray-900">
                         <span className="font-mono">{activeOrder.order_number}</span>
-                        <Badge className="bg-[#244f3d] text-white">LKR {activeOrder.total.toLocaleString()}</Badge>
+                        <Badge className="bg-[#808068] text-white">LKR {activeOrder.total.toLocaleString()}</Badge>
                       </div>
                       <div className="divide-y divide-gray-100 max-h-36 overflow-y-auto">
                         {activeOrder.items.map((it, idx) => (
@@ -654,7 +654,7 @@ export function TablesWorkspace({
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="h-11 flex-1 gap-1.5 rounded-xl border-[#244f3d]/30 text-[#244f3d] hover:bg-[#edf2e8]"
+                    className="h-11 flex-1 gap-1.5 rounded-xl border-[#808068]/30 text-[#808068] hover:bg-[#FAF5F1]"
                     onClick={() => {
                       setTransferSource(selected.id)
                       setShowTransfer(true)
@@ -674,13 +674,13 @@ export function TablesWorkspace({
                 </div>
 
                 {onStartOrder && (
-                  <Button className="h-11 w-full bg-[#244f3d]" onClick={() => onStartOrder(selected.name)}>
+                  <Button className="h-11 w-full bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => onStartOrder(selected.name)}>
                     <ShoppingBag className="size-4" /> Take / view order
                   </Button>
                 )}
                 <div className="grid grid-cols-2 gap-2">
                   <Button variant="outline" className="h-11" onClick={() => void updateSession("bill_requested")} disabled={saving || selectedSession.status === "bill_requested"}>Request bill</Button>
-                  <Button className="h-11 bg-[#244f3d]" onClick={() => void updateSession("closed")} disabled={saving}>Close session</Button>
+                  <Button className="h-11 bg-[#808068] hover:bg-[#6c6c57] text-white" onClick={() => void updateSession("closed")} disabled={saving}>Close session</Button>
                 </div>
               </>
             ) : (
@@ -693,7 +693,7 @@ export function TablesWorkspace({
                     {booking.special_requests && <p className="text-xs">{booking.special_requests}</p>}
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <Button size="sm" variant="outline" onClick={() => void updateBooking(booking, "arrived")}>Mark arrived</Button>
-                      <Button size="sm" className="bg-[#244f3d]" onClick={() => openSeat(selected, booking)}>Seat now</Button>
+                      <Button size="sm" className="bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(selected, booking)}>Seat now</Button>
                     </div>
                     <Button size="sm" variant="ghost" className="w-full" onClick={() => void updateBooking(booking, "cancelled")}>Cancel booking</Button>
                   </div>
@@ -702,7 +702,7 @@ export function TablesWorkspace({
                   {selectedBookings.length ? "Walk-ins can still be seated before the next booking." : "No active session. Seat walk-in guests or create a booking for this table."}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button className="h-11 bg-[#244f3d]" onClick={() => openSeat(selected)}>Seat guests</Button>
+                  <Button className="h-11 bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(selected)}>Seat guests</Button>
                   <Button variant="outline" className="h-11" onClick={() => { setForm({ ...emptyBooking, table_id: selected.id }); setShowBooking(true) }}>New booking</Button>
                 </div>
                 <Button variant="ghost" className="w-full" onClick={() => void setTableState(selected, selected.status === "cleaning" ? "available" : "cleaning")}>
@@ -737,7 +737,7 @@ export function TablesWorkspace({
               <Input placeholder="Special requests" value={form.special_requests} onChange={(e) => setForm({ ...form, special_requests: e.target.value })} />
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="ghost" onClick={() => setShowBooking(false)}>Cancel</Button>
-                <Button className="bg-[#244f3d]" disabled={saving || !form.customer_name || !form.phone || !form.reserved_for} onClick={() => void createBooking()}>
+                <Button className="bg-[#D67B6B] hover:bg-[#c26555] text-white" disabled={saving || !form.customer_name || !form.phone || !form.reserved_for} onClick={() => void createBooking()}>
                   {saving ? <Loader2 className="size-4 animate-spin" /> : <CalendarDays className="size-4" />} Confirm booking
                 </Button>
               </div>
@@ -761,7 +761,7 @@ export function TablesWorkspace({
               <Input placeholder="Notes" value={seatForm.notes} onChange={(e) => setSeatForm({ ...seatForm, notes: e.target.value })} />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => { setShowSeat(false); setSeatBookingId(null) }}>Cancel</Button>
-                <Button className="bg-[#244f3d]" disabled={saving || !seatTableId} onClick={() => void seatGuests()}>
+                <Button className="bg-[#D67B6B] hover:bg-[#c26555] text-white" disabled={saving || !seatTableId} onClick={() => void seatGuests()}>
                   {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Seat guests
                 </Button>
               </div>
@@ -779,7 +779,7 @@ export function TablesWorkspace({
               <Input type="number" min="1" placeholder="Seats" value={tableForm.capacity} onChange={(e) => setTableForm({ ...tableForm, capacity: e.target.value })} />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setShowAddTable(false)}>Cancel</Button>
-                <Button className="bg-[#244f3d]" disabled={saving || !tableForm.name.trim()} onClick={() => void addTable()}>
+                <Button className="bg-[#D67B6B] hover:bg-[#c26555] text-white" disabled={saving || !tableForm.name.trim()} onClick={() => void addTable()}>
                   {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Add table
                 </Button>
               </div>
@@ -792,9 +792,9 @@ export function TablesWorkspace({
       {showTransfer && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
           <Card className="w-full max-w-md rounded-3xl bg-white shadow-2xl">
-            <CardHeader className="bg-[#244f3d] text-white rounded-t-3xl p-5">
+            <CardHeader className="bg-[#808068] text-white rounded-t-3xl p-5">
               <CardTitle className="text-lg font-serif">Transfer Table / Open Tab</CardTitle>
-              <p className="text-xs text-[#e8f2dc]">
+              <p className="text-xs text-[#F4EBE4]/85">
                 Move guests and their active order tab from one table to another
               </p>
             </CardHeader>
@@ -840,7 +840,7 @@ export function TablesWorkspace({
                   Cancel
                 </Button>
                 <Button
-                  className="bg-[#244f3d] text-white hover:bg-[#1a382c]"
+                  className="bg-[#D67B6B] text-white hover:bg-[#c26555]"
                   disabled={saving || !transferSource || !transferTarget}
                   onClick={() => void handleTransferTable()}
                 >
@@ -857,9 +857,9 @@ export function TablesWorkspace({
       {showMerge && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
           <Card className="w-full max-w-md rounded-3xl bg-white shadow-2xl">
-            <CardHeader className="bg-[#244f3d] text-white rounded-t-3xl p-5">
+            <CardHeader className="bg-[#808068] text-white rounded-t-3xl p-5">
               <CardTitle className="text-lg font-serif">Merge Tables for Group</CardTitle>
-              <p className="text-xs text-[#e8f2dc]">
+              <p className="text-xs text-[#F4EBE4]/85">
                 Combine two tables to seat large parties under a single combined tab
               </p>
             </CardHeader>
@@ -903,7 +903,7 @@ export function TablesWorkspace({
                   Cancel
                 </Button>
                 <Button
-                  className="bg-[#244f3d] text-white hover:bg-[#1a382c]"
+                  className="bg-[#D67B6B] text-white hover:bg-[#c26555]"
                   disabled={saving || !mergePrimary || !mergeSecondary}
                   onClick={() => void handleMergeTables()}
                 >

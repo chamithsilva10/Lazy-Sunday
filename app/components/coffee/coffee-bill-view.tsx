@@ -452,15 +452,15 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
   return (
     <div className="space-y-5">
       {/* Top Banner & Quick Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#dfe5d8] shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E5D8CF] shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#244f3d] text-white shadow-sm">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#808068] text-white shadow-sm">
             <Coffee className="size-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-serif text-2xl font-bold text-gray-900">Coffee Bill</h2>
-              <Badge className="bg-[#244f3d] text-white font-mono text-xs px-2.5 py-0.5">
+              <Badge className="bg-[#808068] text-white font-mono text-xs px-2.5 py-0.5">
                 {editingBillId ? `Editing ${billNumber}` : billNumber}
               </Badge>
             </div>
@@ -474,9 +474,9 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
           <Button
             variant="outline"
             onClick={() => setHistoryOpen(true)}
-            className="rounded-xl border-[#dfe5d8] text-xs h-10 gap-2 flex-1 sm:flex-initial"
+            className="rounded-xl border-[#E5D8CF] text-xs h-10 gap-2 flex-1 sm:flex-initial"
           >
-            <History className="size-4 text-emerald-800" />
+            <History className="size-4 text-[#808068]" />
             Bill History ({pastBills.length})
           </Button>
 
@@ -497,7 +497,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column: Active Coffee Product Picker (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
-          <Card className="rounded-2xl border-[#dfe5d8] bg-white p-4 shadow-sm">
+          <Card className="rounded-2xl border-[#E5D8CF] bg-white p-4 shadow-sm">
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
               <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3.5 top-3 size-4 text-gray-400" />
@@ -506,7 +506,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                   placeholder="Filter coffee menu..."
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
-                  className="pl-10 h-10 rounded-xl border-[#d7ded0] text-xs"
+                  className="pl-10 h-10 rounded-xl border-[#E5D8CF] text-xs"
                 />
               </div>
 
@@ -519,8 +519,8 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                     onClick={() => setSelectedCategory(cat)}
                     className={`rounded-xl text-xs h-8 px-3 shrink-0 ${
                       selectedCategory === cat
-                        ? "bg-[#244f3d] text-white"
-                        : "border-[#dfe5d8] text-gray-600 hover:bg-[#f0f4ed]"
+                        ? "bg-[#D67B6B] text-white"
+                        : "border-[#E5D8CF] text-gray-600 hover:bg-[#FAF5F1]"
                     }`}
                   >
                     {cat}
@@ -537,9 +537,9 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                 <button
                   key={p.id}
                   onClick={() => handleAddItem(p)}
-                  className="flex flex-col text-left p-3.5 rounded-2xl border border-[#dfe5d8] bg-white hover:border-[#244f3d] hover:shadow-md transition-all group relative overflow-hidden"
+                  className="flex flex-col text-left p-3.5 rounded-2xl border border-[#E5D8CF] bg-white hover:border-[#D67B6B] hover:shadow-md transition-all group relative overflow-hidden"
                 >
-                  <div className="w-full h-24 rounded-xl overflow-hidden bg-[#f4f6f0] mb-2.5 relative">
+                  <div className="w-full h-24 rounded-xl overflow-hidden bg-[#FAF5F1] mb-2.5 relative">
                     <img
                       src={p.image_url || "/latte-coffee.png"}
                       alt={p.name}
@@ -552,22 +552,22 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                       {p.size || "Regular"}
                     </Badge>
                   </div>
-                  <p className="font-semibold text-xs sm:text-sm text-gray-900 line-clamp-1 group-hover:text-[#244f3d]">
+                  <p className="font-semibold text-xs sm:text-sm text-gray-900 line-clamp-1 group-hover:text-[#D67B6B]">
                     {p.name}
                   </p>
                   <p className="text-[11px] text-gray-400 mt-0.5">{p.category}</p>
                   <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between w-full">
-                    <span className="font-bold text-xs sm:text-sm text-[#244f3d] font-mono">
+                    <span className="font-bold text-xs sm:text-sm text-[#D67B6B] font-mono">
                       Rs. {p.price.toLocaleString()}
                     </span>
-                    <span className="size-6 rounded-lg bg-[#f0f4ed] text-[#244f3d] group-hover:bg-[#244f3d] group-hover:text-white flex items-center justify-center transition-colors">
+                    <span className="size-6 rounded-lg bg-[#FAF5F1] text-[#808068] group-hover:bg-[#D67B6B] group-hover:text-white flex items-center justify-center transition-colors">
                       <Plus className="size-3.5" />
                     </span>
                   </div>
                 </button>
               ))
             ) : (
-              <div className="col-span-full p-12 text-center bg-white rounded-2xl border border-dashed border-[#dfe5d8] text-gray-400">
+              <div className="col-span-full p-12 text-center bg-white rounded-2xl border border-dashed border-[#E5D8CF] text-gray-400">
                 <Coffee className="size-10 mx-auto mb-2 opacity-30" />
                 <p className="text-sm font-medium">No active coffee items match your search.</p>
                 <p className="text-xs text-gray-400 mt-1">Make sure items are set to "active" in Coffee Products.</p>
@@ -578,8 +578,8 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
 
         {/* Right Column: Bill Workspace (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
-          <Card className="rounded-2xl border-[#dfe5d8] bg-white shadow-sm overflow-hidden flex flex-col">
-            <CardHeader className="bg-[#f7f8f4] border-b border-[#dfe5d8] py-3.5 px-5">
+          <Card className="rounded-2xl border-[#E5D8CF] bg-white shadow-sm overflow-hidden flex flex-col">
+            <CardHeader className="bg-[#FAF5F1] border-b border-[#E5D8CF] py-3.5 px-5">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="font-serif text-lg font-bold text-gray-900">Current Coffee Order</CardTitle>
@@ -599,10 +599,10 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
 
             <CardContent className="p-4 space-y-4">
               {/* Customer & Dining Table Selection */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-[#f9faf7] p-2.5 rounded-xl border border-[#e5e9e0]">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-[#FAF5F1] p-2.5 rounded-xl border border-[#E5D8CF]">
                 <div>
                   <label className="text-[10px] font-bold text-gray-600 uppercase flex items-center gap-1">
-                    <Table2 className="size-3 text-[#244f3d]" /> Dining Table
+                    <Table2 className="size-3 text-[#808068]" /> Dining Table
                   </label>
                   <select
                     value={selectedTable}
@@ -613,7 +613,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                         SharedPosService.occupyTable(nextT, "Coffee Bar", billNumber, grandTotal, customerName)
                       }
                     }}
-                    className="h-8 w-full text-xs rounded-lg border border-gray-200 mt-0.5 bg-white px-2 font-medium text-gray-900 outline-none focus:ring-1 focus:ring-[#244f3d]"
+                    className="h-8 w-full text-xs rounded-lg border border-gray-200 mt-0.5 bg-white px-2 font-medium text-gray-900 outline-none focus:ring-1 focus:ring-[#D67B6B]"
                   >
                     <option value="Takeaway">Takeaway</option>
                     {tables
@@ -667,7 +667,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                         <span className="font-mono font-bold text-xs w-6 text-center">{item.quantity}</span>
                         <button
                           onClick={() => handleUpdateQuantity(item.id, 1)}
-                          className="size-6 rounded-md bg-[#244f3d] hover:bg-[#1a3a2d] flex items-center justify-center text-white"
+                          className="size-6 rounded-md bg-[#808068] hover:bg-[#6e6e58] flex items-center justify-center text-white"
                         >
                           <Plus className="size-3" />
                         </button>
@@ -696,7 +696,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
               </div>
 
               {/* Totals & Adjustments Breakdown */}
-              <div className="bg-[#f7f8f4] p-3.5 rounded-xl border border-[#dfe5d8] space-y-2 text-xs">
+              <div className="bg-[#FAF5F1] p-3.5 rounded-xl border border-[#E5D8CF] space-y-2 text-xs">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal:</span>
                   <span className="font-mono font-semibold">Rs. {subtotal.toLocaleString()}</span>
@@ -727,7 +727,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
 
                 <div className="flex justify-between items-baseline pt-2 border-t border-gray-200">
                   <span className="font-bold text-sm text-gray-900">Grand Total:</span>
-                  <span className="font-mono text-xl font-bold text-[#244f3d]">
+                  <span className="font-mono text-xl font-bold text-[#D67B6B]">
                     Rs. {grandTotal.toLocaleString()}
                   </span>
                 </div>
@@ -742,8 +742,8 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                     onClick={() => setPaymentMethod("cash")}
                     className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-semibold transition-all ${
                       paymentMethod === "cash"
-                        ? "bg-[#244f3d] text-white border-[#244f3d] shadow-sm"
-                        : "bg-white text-gray-700 border-[#dfe5d8] hover:bg-[#f0f4ed]"
+                        ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-sm"
+                        : "bg-white text-gray-700 border-[#E5D8CF] hover:bg-[#FAF5F1]"
                     }`}
                   >
                     <Banknote className="size-3.5" />
@@ -755,8 +755,8 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                     onClick={() => setPaymentMethod("card")}
                     className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-semibold transition-all ${
                       paymentMethod === "card"
-                        ? "bg-[#244f3d] text-white border-[#244f3d] shadow-sm"
-                        : "bg-white text-gray-700 border-[#dfe5d8] hover:bg-[#f0f4ed]"
+                        ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-sm"
+                        : "bg-white text-gray-700 border-[#E5D8CF] hover:bg-[#FAF5F1]"
                     }`}
                   >
                     <CreditCard className="size-3.5" />
@@ -768,8 +768,8 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                     onClick={() => setPaymentMethod("transfer")}
                     className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-semibold transition-all ${
                       paymentMethod === "transfer"
-                        ? "bg-[#244f3d] text-white border-[#244f3d] shadow-sm"
-                        : "bg-white text-gray-700 border-[#dfe5d8] hover:bg-[#f0f4ed]"
+                        ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-sm"
+                        : "bg-white text-gray-700 border-[#E5D8CF] hover:bg-[#FAF5F1]"
                     }`}
                   >
                     <QrCode className="size-3.5" />
@@ -780,7 +780,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
 
               {/* Cash Received & Change Calculator */}
               {paymentMethod === "cash" && (
-                <div className="grid grid-cols-2 gap-2 bg-[#f4f7f1] p-3 rounded-xl border border-[#d8e2d4]">
+                <div className="grid grid-cols-2 gap-2 bg-[#FAF5F1] p-3 rounded-xl border border-[#E5D8CF]">
                   <div>
                     <label className="text-[10px] font-bold text-gray-600 uppercase">Cash Received</label>
                     <Input
@@ -793,7 +793,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-gray-600 uppercase">Change Due</label>
-                    <div className="h-8 flex items-center px-2 bg-white rounded-lg border border-gray-200 font-mono font-bold text-xs text-emerald-800 mt-0.5">
+                    <div className="h-8 flex items-center px-2 bg-white rounded-lg border border-gray-200 font-mono font-bold text-xs text-[#808068] mt-0.5">
                       Rs. {changeDue.toLocaleString()}
                     </div>
                   </div>
@@ -805,7 +805,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                 <Button
                   onClick={() => handleSaveBill(false)}
                   disabled={billItems.length === 0}
-                  className="bg-[#244f3d] text-white hover:bg-[#1a3a2d] rounded-xl h-11 text-xs font-semibold gap-1.5 shadow-sm"
+                  className="bg-[#808068] text-white hover:bg-[#6e6e58] rounded-xl h-11 text-xs font-semibold gap-1.5 shadow-sm"
                 >
                   <Save className="size-4" />
                   {editingBillId ? "Update Bill" : "Save Bill"}
@@ -814,7 +814,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                 <Button
                   onClick={() => handleSaveBill(true)}
                   disabled={billItems.length === 0}
-                  className="bg-emerald-700 text-white hover:bg-emerald-800 rounded-xl h-11 text-xs font-semibold gap-1.5 shadow-sm"
+                  className="bg-[#D67B6B] text-white hover:bg-[#c36859] rounded-xl h-11 text-xs font-semibold gap-1.5 shadow-sm"
                 >
                   <Printer className="size-4" />
                   Save & Print
@@ -831,7 +831,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
           <DialogHeader>
             <DialogTitle className="font-serif text-xl font-bold flex items-center justify-between">
               <span>Coffee Bills History</span>
-              <Badge className="bg-[#244f3d] text-white">{pastBills.length} Bills</Badge>
+              <Badge className="bg-[#808068] text-white">{pastBills.length} Bills</Badge>
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
               View, reprint, edit, or delete past coffee bills. Line items preserve original pricing.
@@ -845,18 +845,18 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                 placeholder="Search by COF- bill number or customer..."
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
-                className="pl-10 h-10 rounded-xl border-[#d7ded0] text-xs"
+                className="pl-10 h-10 rounded-xl border-[#E5D8CF] text-xs"
               />
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto border border-[#dfe5d8] rounded-xl divide-y divide-gray-100">
+          <div className="flex-1 overflow-y-auto border border-[#E5D8CF] rounded-xl divide-y divide-gray-100">
             {filteredPastBills.length > 0 ? (
               filteredPastBills.map((b) => (
-                <div key={b.id} className="p-3.5 hover:bg-[#fafbf8] transition-colors flex items-center justify-between gap-3">
+                <div key={b.id} className="p-3.5 hover:bg-[#FAF5F1] transition-colors flex items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs text-[#244f3d]">{b.bill_number}</span>
+                      <span className="font-mono font-bold text-xs text-[#808068]">{b.bill_number}</span>
                       <Badge variant="outline" className="text-[10px] capitalize">
                         {b.payment_method}
                       </Badge>
@@ -920,7 +920,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
             <Button
               variant="outline"
               onClick={() => setHistoryOpen(false)}
-              className="rounded-xl border-[#dfe5d8] text-xs h-10 w-full"
+              className="rounded-xl border-[#E5D8CF] text-xs h-10 w-full"
             >
               Close History
             </Button>
@@ -969,13 +969,13 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
             <Button
               variant="outline"
               onClick={() => setPrintModalOpen(false)}
-              className="rounded-xl border-[#dfe5d8] text-xs h-10"
+              className="rounded-xl border-[#E5D8CF] text-xs h-10"
             >
               Close
             </Button>
             <Button
               onClick={handlePrintAction}
-              className="bg-[#244f3d] text-white hover:bg-[#1a3a2d] rounded-xl text-xs h-10 px-5 gap-1.5 shadow-sm font-bold"
+              className="bg-[#D67B6B] text-white hover:bg-[#c36859] rounded-xl text-xs h-10 px-5 gap-1.5 shadow-sm font-bold"
             >
               <Printer className="size-4" />
               Print Thermal Slip (80mm)

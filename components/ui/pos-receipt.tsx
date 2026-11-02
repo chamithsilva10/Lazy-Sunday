@@ -319,7 +319,7 @@ export function PosReceipt({
             <button
               type="button"
               onClick={onPrintAgain}
-              className="bg-[#244f3d] hover:bg-[#1a382b] text-white px-6 py-2 rounded-lg font-bold text-xs shadow-sm transition-colors"
+              className="bg-[#D67B6B] hover:bg-[#c36859] text-white px-6 py-2 rounded-lg font-bold text-xs shadow-sm transition-colors"
             >
               Print Again
             </button>

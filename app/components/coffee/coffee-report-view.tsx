@@ -200,15 +200,15 @@ export function CoffeeReportView() {
   return (
     <div className="space-y-6">
       {/* Top Banner & Export Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#dfe5d8] shadow-sm print:hidden">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E5D8CF] shadow-sm print:hidden">
         <div className="flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#244f3d] text-white shadow-sm">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#808068] text-white shadow-sm">
             <TrendingUp className="size-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-serif text-2xl font-bold text-gray-900">Coffee Sales Report</h2>
-              <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 text-[10px] font-semibold">
+              <Badge className="bg-[#FAF5F1] text-[#808068] border-[#E5D8CF] text-[10px] font-semibold">
                 Independent Module
               </Badge>
             </div>
@@ -222,15 +222,15 @@ export function CoffeeReportView() {
           <Button
             onClick={exportToExcel}
             variant="outline"
-            className="rounded-xl border-[#dfe5d8] text-xs h-10 gap-1.5 hover:bg-[#f0f4ed] text-emerald-800 flex-1 sm:flex-initial"
+            className="rounded-xl border-[#E5D8CF] text-xs h-10 gap-1.5 hover:bg-[#FAF5F1] text-[#808068] flex-1 sm:flex-initial"
           >
-            <FileSpreadsheet className="size-4 text-emerald-600" />
+            <FileSpreadsheet className="size-4 text-[#808068]" />
             Export to Excel
           </Button>
 
           <Button
             onClick={printReport}
-            className="bg-[#244f3d] text-white hover:bg-[#1a3a2d] rounded-xl text-xs h-10 px-4 gap-1.5 shadow-sm flex-1 sm:flex-initial"
+            className="bg-[#D67B6B] text-white hover:bg-[#c36859] rounded-xl text-xs h-10 px-4 gap-1.5 shadow-sm flex-1 sm:flex-initial"
           >
             <Printer className="size-4" />
             Print / PDF
@@ -239,7 +239,7 @@ export function CoffeeReportView() {
       </div>
 
       {/* Filter Toolbar */}
-      <Card className="rounded-2xl border-[#dfe5d8] bg-white p-4 shadow-sm print:hidden">
+      <Card className="rounded-2xl border-[#E5D8CF] bg-white p-4 shadow-sm print:hidden">
         <div className="space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -251,7 +251,7 @@ export function CoffeeReportView() {
                 variant={datePreset === "all" ? "default" : "outline"}
                 onClick={() => applyDatePreset("all")}
                 className={`rounded-xl text-xs h-8 px-3 ${
-                  datePreset === "all" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700"
+                  datePreset === "all" ? "bg-[#D67B6B] text-white" : "border-[#E5D8CF] text-gray-700 hover:bg-[#FAF5F1]"
                 }`}
               >
                 All Time
@@ -261,7 +261,7 @@ export function CoffeeReportView() {
                 variant={datePreset === "today" ? "default" : "outline"}
                 onClick={() => applyDatePreset("today")}
                 className={`rounded-xl text-xs h-8 px-3 ${
-                  datePreset === "today" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700"
+                  datePreset === "today" ? "bg-[#D67B6B] text-white" : "border-[#E5D8CF] text-gray-700 hover:bg-[#FAF5F1]"
                 }`}
               >
                 Today
@@ -271,7 +271,7 @@ export function CoffeeReportView() {
                 variant={datePreset === "week" ? "default" : "outline"}
                 onClick={() => applyDatePreset("week")}
                 className={`rounded-xl text-xs h-8 px-3 ${
-                  datePreset === "week" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700"
+                  datePreset === "week" ? "bg-[#D67B6B] text-white" : "border-[#E5D8CF] text-gray-700 hover:bg-[#FAF5F1]"
                 }`}
               >
                 Last 7 Days
@@ -281,7 +281,7 @@ export function CoffeeReportView() {
                 variant={datePreset === "month" ? "default" : "outline"}
                 onClick={() => applyDatePreset("month")}
                 className={`rounded-xl text-xs h-8 px-3 ${
-                  datePreset === "month" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700"
+                  datePreset === "month" ? "bg-[#D67B6B] text-white" : "border-[#E5D8CF] text-gray-700 hover:bg-[#FAF5F1]"
                 }`}
               >
                 Last 30 Days
@@ -309,7 +309,7 @@ export function CoffeeReportView() {
                   setStartDate(e.target.value)
                   setDatePreset("all")
                 }}
-                className="mt-1 h-9 text-xs rounded-xl border-[#d7ded0]"
+                className="mt-1 h-9 text-xs rounded-xl border-[#E5D8CF]"
               />
             </div>
 
@@ -322,7 +322,7 @@ export function CoffeeReportView() {
                   setEndDate(e.target.value)
                   setDatePreset("all")
                 }}
-                className="mt-1 h-9 text-xs rounded-xl border-[#d7ded0]"
+                className="mt-1 h-9 text-xs rounded-xl border-[#E5D8CF]"
               />
             </div>
 
@@ -331,7 +331,7 @@ export function CoffeeReportView() {
               <select
                 value={selectedProduct}
                 onChange={(e) => setSelectedProduct(e.target.value)}
-                className="mt-1 h-9 w-full rounded-xl border border-[#d7ded0] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#244f3d]"
+                className="mt-1 h-9 w-full rounded-xl border border-[#E5D8CF] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D67B6B]"
               >
                 <option value="all">All Coffee Products</option>
                 {products.map((p) => (
@@ -347,7 +347,7 @@ export function CoffeeReportView() {
               <select
                 value={selectedPayment}
                 onChange={(e) => setSelectedPayment(e.target.value)}
-                className="mt-1 h-9 w-full rounded-xl border border-[#d7ded0] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#244f3d]"
+                className="mt-1 h-9 w-full rounded-xl border border-[#E5D8CF] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D67B6B]"
               >
                 <option value="all">All Payment Methods</option>
                 <option value="cash">Cash Only</option>
@@ -361,18 +361,18 @@ export function CoffeeReportView() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Coffee Revenue</p>
-          <p className="font-mono text-xl sm:text-2xl font-bold text-[#244f3d] mt-1.5">
+          <p className="font-mono text-xl sm:text-2xl font-bold text-[#D67B6B] mt-1.5">
             Rs. {report.totalSales.toLocaleString()}
           </p>
-          <div className="flex items-center gap-1 text-[11px] text-emerald-700 mt-1">
+          <div className="flex items-center gap-1 text-[11px] text-[#808068] mt-1">
             <ArrowUpRight className="size-3.5" />
             <span>Pure Coffee Module</span>
           </div>
         </Card>
 
-        <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Bills Issued</p>
           <p className="font-mono text-xl sm:text-2xl font-bold text-gray-900 mt-1.5">
             {report.billCount} <span className="text-xs font-normal text-gray-500">bills</span>
@@ -380,17 +380,17 @@ export function CoffeeReportView() {
           <p className="text-[11px] text-gray-400 mt-1">COF- prefix invoices</p>
         </Card>
 
-        <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Cups Sold</p>
-          <p className="font-mono text-xl sm:text-2xl font-bold text-amber-800 mt-1.5">
+          <p className="font-mono text-xl sm:text-2xl font-bold text-[#808068] mt-1.5">
             {report.totalCupsSold} <span className="text-xs font-normal text-gray-500">cups</span>
           </p>
           <p className="text-[11px] text-gray-400 mt-1">Line item volume</p>
         </Card>
 
-        <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Average Bill Value</p>
-          <p className="font-mono text-xl sm:text-2xl font-bold text-blue-900 mt-1.5">
+          <p className="font-mono text-xl sm:text-2xl font-bold text-gray-900 mt-1.5">
             Rs. {report.averageBillValue.toLocaleString()}
           </p>
           <p className="text-[11px] text-gray-400 mt-1">Spend per coffee customer</p>
@@ -398,35 +398,35 @@ export function CoffeeReportView() {
       </div>
 
       {/* Payment Settlements Breakdown */}
-      <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+      <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
         <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Settlement Breakdown</h4>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50/50 border border-emerald-100">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-[#FAF5F1] border border-[#E5D8CF]">
             <div className="flex items-center gap-2">
-              <Banknote className="size-4 text-emerald-700" />
-              <span className="text-xs font-semibold text-emerald-950">Cash</span>
+              <Banknote className="size-4 text-[#808068]" />
+              <span className="text-xs font-semibold text-gray-900">Cash</span>
             </div>
-            <span className="font-mono font-bold text-xs sm:text-sm text-emerald-900">
+            <span className="font-mono font-bold text-xs sm:text-sm text-gray-900">
               Rs. {report.cashSales.toLocaleString()}
             </span>
           </div>
 
-          <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50/50 border border-blue-100">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-[#FAF5F1] border border-[#E5D8CF]">
             <div className="flex items-center gap-2">
-              <CreditCard className="size-4 text-blue-700" />
-              <span className="text-xs font-semibold text-blue-950">Card Terminal</span>
+              <CreditCard className="size-4 text-[#808068]" />
+              <span className="text-xs font-semibold text-gray-900">Card Terminal</span>
             </div>
-            <span className="font-mono font-bold text-xs sm:text-sm text-blue-900">
+            <span className="font-mono font-bold text-xs sm:text-sm text-gray-900">
               Rs. {report.cardSales.toLocaleString()}
             </span>
           </div>
 
-          <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50/50 border border-purple-100">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-[#FAF5F1] border border-[#E5D8CF]">
             <div className="flex items-center gap-2">
-              <Coffee className="size-4 text-purple-700" />
-              <span className="text-xs font-semibold text-purple-950">QR / Transfer</span>
+              <Coffee className="size-4 text-[#808068]" />
+              <span className="text-xs font-semibold text-gray-900">QR / Transfer</span>
             </div>
-            <span className="font-mono font-bold text-xs sm:text-sm text-purple-900">
+            <span className="font-mono font-bold text-xs sm:text-sm text-gray-900">
               Rs. {report.transferSales.toLocaleString()}
             </span>
           </div>
@@ -434,8 +434,8 @@ export function CoffeeReportView() {
       </Card>
 
       {/* Product-Wise Sales Table */}
-      <Card className="rounded-2xl border-[#dfe5d8] bg-white shadow-sm overflow-hidden">
-        <CardHeader className="bg-[#f7f8f4] border-b border-[#dfe5d8] py-3.5 px-5">
+      <Card className="rounded-2xl border-[#E5D8CF] bg-white shadow-sm overflow-hidden">
+        <CardHeader className="bg-[#FAF5F1] border-b border-[#E5D8CF] py-3.5 px-5">
           <CardTitle className="font-serif text-base font-bold text-gray-900">
             Product-Wise Coffee Sales
           </CardTitle>
@@ -447,7 +447,7 @@ export function CoffeeReportView() {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-[#fcfdfa] border-b border-[#dfe5d8] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
+              <thead className="bg-[#FAF5F1] border-b border-[#E5D8CF] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
                 <tr>
                   <th className="py-3 px-4">Coffee Product</th>
                   <th className="py-3 px-4">Size/Kind</th>
@@ -456,10 +456,10 @@ export function CoffeeReportView() {
                   <th className="py-3 px-4 text-right">Revenue (Rs.)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#edf1ea]">
+              <tbody className="divide-y divide-[#F4EBE4]">
                 {report.productSales.length > 0 ? (
                   report.productSales.map((p, idx) => (
-                    <tr key={idx} className="hover:bg-[#fafbf8]">
+                    <tr key={idx} className="hover:bg-[#FAF5F1]">
                       <td className="py-3 px-4 font-semibold text-gray-900">{p.productName}</td>
                       <td className="py-3 px-4 text-gray-500">{p.category}</td>
                       <td className="py-3 px-4 text-center font-mono font-bold">{p.quantitySold}</td>
@@ -467,14 +467,14 @@ export function CoffeeReportView() {
                         <div className="flex items-center gap-2">
                           <div className="w-24 bg-gray-200 h-2 rounded-full overflow-hidden">
                             <div
-                              className="bg-[#244f3d] h-full rounded-full"
+                              className="bg-[#808068] h-full rounded-full"
                               style={{ width: `${Math.min(100, p.percentageOfSales)}%` }}
                             />
                           </div>
                           <span className="text-[11px] font-mono text-gray-600">{p.percentageOfSales}%</span>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-[#244f3d]">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-[#D67B6B]">
                         Rs. {p.totalRevenue.toLocaleString()}
                       </td>
                     </tr>
@@ -493,8 +493,8 @@ export function CoffeeReportView() {
       </Card>
 
       {/* Daily Summary Table */}
-      <Card className="rounded-2xl border-[#dfe5d8] bg-white shadow-sm overflow-hidden">
-        <CardHeader className="bg-[#f7f8f4] border-b border-[#dfe5d8] py-3.5 px-5">
+      <Card className="rounded-2xl border-[#E5D8CF] bg-white shadow-sm overflow-hidden">
+        <CardHeader className="bg-[#FAF5F1] border-b border-[#E5D8CF] py-3.5 px-5">
           <CardTitle className="font-serif text-base font-bold text-gray-900">
             Daily / Chronological Summary
           </CardTitle>
@@ -506,7 +506,7 @@ export function CoffeeReportView() {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-[#fcfdfa] border-b border-[#dfe5d8] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
+              <thead className="bg-[#FAF5F1] border-b border-[#E5D8CF] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
                 <tr>
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4 text-center">Bills Count</th>
@@ -514,13 +514,13 @@ export function CoffeeReportView() {
                   <th className="py-3 px-4 text-right">Avg. Ticket (Rs.)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#edf1ea]">
+              <tbody className="divide-y divide-[#F4EBE4]">
                 {report.dailySummaries.length > 0 ? (
                   report.dailySummaries.map((d, idx) => (
-                    <tr key={idx} className="hover:bg-[#fafbf8]">
+                    <tr key={idx} className="hover:bg-[#FAF5F1]">
                       <td className="py-3 px-4 font-semibold text-gray-800">{d.date}</td>
                       <td className="py-3 px-4 text-center font-mono">{d.billCount}</td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-[#244f3d]">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-[#D67B6B]">
                         Rs. {d.totalRevenue.toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-gray-600">
@@ -543,10 +543,10 @@ export function CoffeeReportView() {
 
       {/* Advanced Professional Coffee Excel Export Modal */}
       <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
-        <DialogContent className="sm:max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-[#dfe5d8]">
+        <DialogContent className="sm:max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-[#E5D8CF]">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-[#244f3d] text-white shadow-sm">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-[#808068] text-white shadow-sm">
                 <FileSpreadsheet className="size-5" />
               </div>
               <div>
@@ -554,7 +554,7 @@ export function CoffeeReportView() {
                   Export Coffee Sales Spreadsheet
                 </DialogTitle>
                 <DialogDescription className="text-xs text-gray-500">
-                  Professional horizontal layout with native column auto-filters, bold green headers (#244f3d), and multi-sheet audit ledgers.
+                  Professional horizontal layout with native column auto-filters, warm brand headers (#808068), and multi-sheet audit ledgers.
                 </DialogDescription>
               </div>
             </div>
@@ -572,16 +572,16 @@ export function CoffeeReportView() {
                   onClick={() => setExportFormat("excel")}
                   className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
                     exportFormat === "excel"
-                      ? "border-[#244f3d] bg-emerald-50/60 ring-2 ring-[#244f3d]/20"
+                      ? "border-[#D67B6B] bg-[#FAF5F1] ring-2 ring-[#D67B6B]/20"
                       : "border-gray-200 hover:border-gray-300 bg-white"
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
-                    <span className="font-bold text-emerald-950 flex items-center gap-1.5">
-                      <FileSpreadsheet className="size-4 text-emerald-700" />
+                    <span className="font-bold text-gray-900 flex items-center gap-1.5">
+                      <FileSpreadsheet className="size-4 text-[#808068]" />
                       Excel Workbook (.xlsx)
                     </span>
-                    {exportFormat === "excel" && <CheckCircle2 className="size-3.5 text-emerald-700" />}
+                    {exportFormat === "excel" && <CheckCircle2 className="size-3.5 text-[#D67B6B]" />}
                   </div>
                   <p className="text-[10px] text-gray-500 mt-1">
                     Native Microsoft Excel (.xlsx) OpenXML workbook — zero warnings, native auto-filter dropdowns, and 4 detailed sheets.
@@ -593,7 +593,7 @@ export function CoffeeReportView() {
                   onClick={() => setExportFormat("csv")}
                   className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
                     exportFormat === "csv"
-                      ? "border-[#244f3d] bg-emerald-50/60 ring-2 ring-[#244f3d]/20"
+                      ? "border-[#D67B6B] bg-[#FAF5F1] ring-2 ring-[#D67B6B]/20"
                       : "border-gray-200 hover:border-gray-300 bg-white"
                   }`}
                 >
@@ -602,7 +602,7 @@ export function CoffeeReportView() {
                       <FileText className="size-4 text-gray-700" />
                       Horizontal CSV (.csv)
                     </span>
-                    {exportFormat === "csv" && <CheckCircle2 className="size-3.5 text-emerald-700" />}
+                    {exportFormat === "csv" && <CheckCircle2 className="size-3.5 text-[#D67B6B]" />}
                   </div>
                   <p className="text-[10px] text-gray-500 mt-1">
                     RFC-4180 horizontal table with UTF-8 BOM. Universal support in Excel, Google Sheets, &amp; Numbers.
@@ -612,7 +612,7 @@ export function CoffeeReportView() {
             </div>
 
             {/* Scope Summary Preview */}
-            <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 space-y-1.5">
+            <div className="p-3.5 rounded-xl bg-[#FAF5F1] border border-[#E5D8CF] space-y-1.5">
               <div className="flex justify-between text-gray-600">
                 <span>Date Range:</span>
                 <span className="font-semibold text-gray-900">
@@ -629,7 +629,7 @@ export function CoffeeReportView() {
               </div>
               <div className="flex justify-between text-gray-600 pt-1.5 border-t border-gray-200 font-bold">
                 <span>Bills Matching Filter:</span>
-                <span className="text-[#244f3d] font-mono">{report.billCount} bills · {report.totalCupsSold} cups · Rs. {report.totalSales.toLocaleString()}</span>
+                <span className="text-[#D67B6B] font-mono">{report.billCount} bills · {report.totalCupsSold} cups · Rs. {report.totalSales.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -638,13 +638,13 @@ export function CoffeeReportView() {
             <Button
               variant="outline"
               onClick={() => setShowExportModal(false)}
-              className="rounded-xl text-xs h-9 border-[#dfe5d8]"
+              className="rounded-xl text-xs h-9 border-[#E5D8CF]"
             >
               Cancel
             </Button>
             <Button
               onClick={() => handleDownloadCoffeeReport(exportFormat)}
-              className="bg-[#244f3d] text-white hover:bg-[#1a3a2d] rounded-xl text-xs h-9 gap-1.5 px-4 shadow-sm font-semibold"
+              className="bg-[#D67B6B] text-white hover:bg-[#c36859] rounded-xl text-xs h-9 gap-1.5 px-4 shadow-sm font-semibold"
             >
               <Download className="size-4" />
               Download {exportFormat === "excel" ? "Excel (.xlsx)" : "CSV (.csv)"}

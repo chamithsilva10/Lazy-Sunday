@@ -16,16 +16,16 @@ export function AccessDenied({
 }: AccessDeniedProps) {
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-4">
-      <div className="max-w-md w-full text-center bg-white border border-[#dfe5d8] rounded-2xl p-6 sm:p-8 shadow-sm">
+      <div className="max-w-md w-full text-center bg-white border border-[#E5D8CF] rounded-2xl p-6 sm:p-8 shadow-sm">
         <div className="size-14 mx-auto mb-4 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200">
           <ShieldAlert className="size-7" />
         </div>
-        <p className="text-xs uppercase tracking-[.2em] font-bold text-[#80907f]">Permission Denied</p>
+        <p className="text-xs uppercase tracking-[.2em] font-bold text-[#808068]">Permission Denied</p>
         <h2 className="mt-1 font-serif text-2xl font-bold text-gray-900">Access Restricted</h2>
         <p className="mt-2 text-xs sm:text-sm text-gray-600 leading-relaxed">
           Your current account role{" "}
           {role && (
-            <span className="font-semibold uppercase text-[#244f3d] bg-[#eef4ea] px-1.5 py-0.5 rounded text-xs">
+            <span className="font-semibold uppercase text-[#808068] bg-[#FAF5F1] px-1.5 py-0.5 rounded text-xs">
               {role}
             </span>
           )}{" "}
@@ -44,7 +44,7 @@ export function AccessDenied({
           {onBackToAllowed && (
             <Button
               onClick={onBackToAllowed}
-              className="bg-[#244f3d] hover:bg-[#1a3b2e] text-white font-semibold text-xs h-10 rounded-xl gap-2"
+              className="bg-[#D67B6B] hover:bg-[#c36859] text-white font-semibold text-xs h-10 rounded-xl gap-2"
             >
               <ArrowLeft className="size-4" />
               Return to Register

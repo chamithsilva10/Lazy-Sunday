@@ -263,15 +263,15 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
   return (
     <div className="space-y-6">
       {/* Top Header Card */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#dfe5d8] shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E5D8CF] shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#244f3d] text-white shadow-sm">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#808068] text-white shadow-sm">
             <Coffee className="size-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-serif text-2xl font-bold text-gray-900">Coffee Products</h2>
-              <Badge className={isAdmin ? "bg-amber-100 text-amber-900 border-amber-300 text-[10px] font-semibold" : "bg-emerald-100 text-emerald-900 border-emerald-300 text-[10px] font-semibold"}>
+              <Badge className={isAdmin ? "bg-amber-100 text-amber-900 border-amber-300 text-[10px] font-semibold" : "bg-[#FAF5F1] text-[#808068] border-[#E5D8CF] text-[10px] font-semibold"}>
                 {isAdmin ? "Admin Console" : "Staff View"}
               </Badge>
             </div>
@@ -284,7 +284,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
         {isAdmin && (
           <Button
             onClick={handleOpenAdd}
-            className="bg-[#244f3d] text-white hover:bg-[#1a3a2d] gap-2 rounded-xl h-11 px-4 shadow-sm w-full sm:w-auto"
+            className="bg-[#D67B6B] text-white hover:bg-[#c36859] gap-2 rounded-xl h-11 px-4 shadow-sm w-full sm:w-auto"
           >
             <Plus className="size-4" />
             Add Coffee Product
@@ -293,7 +293,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
       </div>
 
       {/* Filter and Search Bar */}
-      <Card className="rounded-2xl border-[#dfe5d8] bg-white p-4 shadow-sm">
+      <Card className="rounded-2xl border-[#E5D8CF] bg-white p-4 shadow-sm">
         <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3.5 top-3 size-4 text-gray-400" />
@@ -305,7 +305,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                 setSearchQuery(e.target.value)
                 setCurrentPage(1)
               }}
-              className="pl-10 h-10 rounded-xl border-[#d7ded0] text-xs sm:text-sm"
+              className="pl-10 h-10 rounded-xl border-[#E5D8CF] text-xs sm:text-sm"
             />
           </div>
 
@@ -320,7 +320,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                   setCurrentPage(1)
                 }}
                 className={`rounded-xl text-xs h-8 px-3 shrink-0 ${
-                  categoryFilter === cat ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-600 hover:bg-[#f0f4ed]"
+                  categoryFilter === cat ? "bg-[#D67B6B] text-white" : "border-[#E5D8CF] text-gray-600 hover:bg-[#FAF5F1]"
                 }`}
               >
                 {cat}
@@ -331,10 +331,10 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
       </Card>
 
       {/* Paginated Products List */}
-      <Card className="rounded-2xl border-[#dfe5d8] bg-white shadow-sm overflow-hidden">
+      <Card className="rounded-2xl border-[#E5D8CF] bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs sm:text-sm">
-            <thead className="bg-[#f7f8f4] border-b border-[#dfe5d8] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
+            <thead className="bg-[#FAF5F1] border-b border-[#E5D8CF] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
               <tr>
                 <th className="py-3 px-4">Coffee Item</th>
                 <th className="py-3 px-4">Kind / Category</th>
@@ -344,16 +344,16 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#edf1ea]">
+            <tbody className="divide-y divide-[#F4EBE4]">
               {paginatedProducts.length > 0 ? (
                 paginatedProducts.map((p) => (
-                  <tr key={p.id} className="hover:bg-[#fafbf8] transition-colors">
+                  <tr key={p.id} className="hover:bg-[#FAF5F1] transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <img
                           src={p.image_url || "/latte-coffee.png"}
                           alt={p.name}
-                          className="size-10 rounded-xl object-cover border border-gray-200 bg-[#f4f6f0] shrink-0"
+                          className="size-10 rounded-xl object-cover border border-gray-200 bg-[#FAF5F1] shrink-0"
                           onError={(e) => {
                             ;(e.target as HTMLImageElement).src = "/latte-coffee.png"
                           }}
@@ -373,7 +373,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                       <span className="font-medium text-gray-700">{p.size || "Regular"}</span>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="font-bold text-[#244f3d] font-mono text-sm">
+                      <span className="font-bold text-[#D67B6B] font-mono text-sm">
                         Rs. {p.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </td>
@@ -441,7 +441,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
         </div>
 
         {/* Pagination Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-[#dfe5d8] bg-[#fbfbf8] text-xs text-gray-600">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-[#E5D8CF] bg-[#FAF5F1] text-xs text-gray-600">
           <p>
             Showing <strong>{filteredProducts.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</strong> to{" "}
             <strong>{Math.min(currentPage * itemsPerPage, filteredProducts.length)}</strong> of{" "}
@@ -453,12 +453,12 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
               size="sm"
               disabled={currentPage <= 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="h-8 rounded-lg border-[#dfe5d8] text-xs"
+              className="h-8 rounded-lg border-[#E5D8CF] text-xs"
             >
               <ChevronLeft className="size-3.5 mr-1" />
               Previous
             </Button>
-            <span className="px-3 py-1 bg-white border border-[#dfe5d8] rounded-lg font-mono font-semibold">
+            <span className="px-3 py-1 bg-white border border-[#E5D8CF] rounded-lg font-mono font-semibold">
               {currentPage} / {totalPages}
             </span>
             <Button
@@ -466,7 +466,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
               size="sm"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="h-8 rounded-lg border-[#dfe5d8] text-xs"
+              className="h-8 rounded-lg border-[#E5D8CF] text-xs"
             >
               Next
               <ChevronRight className="size-3.5 ml-1" />
@@ -494,7 +494,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                 placeholder="e.g. Espresso, Latte, Cappuccino, Flat White"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="mt-1 h-10 rounded-xl border-[#d7ded0] text-sm"
+                className="mt-1 h-10 rounded-xl border-[#E5D8CF] text-sm"
               />
             </div>
 
@@ -504,7 +504,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="mt-1 h-10 w-full rounded-xl border border-[#d7ded0] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#244f3d]"
+                  className="mt-1 h-10 w-full rounded-xl border border-[#E5D8CF] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D67B6B]"
                 >
                   <option value="Espresso">Espresso</option>
                   <option value="Milk Coffee">Milk Coffee</option>
@@ -521,7 +521,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                 <select
                   value={formData.size}
                   onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                  className="mt-1 h-10 w-full rounded-xl border border-[#d7ded0] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#244f3d]"
+                  className="mt-1 h-10 w-full rounded-xl border border-[#E5D8CF] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D67B6B]"
                 >
                   <option value="Single">Single</option>
                   <option value="Double">Double</option>
@@ -542,7 +542,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                   placeholder="850.00"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className="mt-1 h-10 rounded-xl border-[#d7ded0] font-mono text-sm"
+                  className="mt-1 h-10 rounded-xl border-[#E5D8CF] font-mono text-sm"
                 />
               </div>
 
@@ -551,7 +551,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value as CoffeeStatus })}
-                  className="mt-1 h-10 w-full rounded-xl border border-[#d7ded0] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#244f3d]"
+                  className="mt-1 h-10 w-full rounded-xl border border-[#E5D8CF] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D67B6B]"
                 >
                   <option value="active">Active (Visible in Bill)</option>
                   <option value="inactive">Inactive (Hidden)</option>
@@ -564,7 +564,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
               <select
                 value={formData.image_url}
                 onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                className="mt-1 h-10 w-full rounded-xl border border-[#d7ded0] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#244f3d]"
+                className="mt-1 h-10 w-full rounded-xl border border-[#E5D8CF] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D67B6B]"
               >
                 <option value="/latte-coffee.png">Latte / Hot Coffee Cup</option>
                 <option value="/iced-tea.png">Iced / Cold Brew Glass</option>
@@ -578,13 +578,13 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
-              className="rounded-xl border-[#dfe5d8] text-xs h-10"
+              className="rounded-xl border-[#E5D8CF] text-xs h-10"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSaveProduct}
-              className="bg-[#244f3d] text-white hover:bg-[#1a3a2d] rounded-xl text-xs h-10 px-5 shadow-sm"
+              className="bg-[#D67B6B] text-white hover:bg-[#c36859] rounded-xl text-xs h-10 px-5 shadow-sm"
             >
               {editingProduct ? "Save Changes" : "Create Product"}
             </Button>
@@ -605,7 +605,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
             <Button
               variant="outline"
               onClick={() => setDeleteConfirmId(null)}
-              className="rounded-xl border-[#dfe5d8] text-xs h-9"
+              className="rounded-xl border-[#E5D8CF] text-xs h-9"
             >
               Cancel
             </Button>

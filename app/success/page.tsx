@@ -62,7 +62,7 @@ export default function SuccessPage() {
   return (
     <div className="container mx-auto max-w-md px-4 py-6 sm:py-8">
       <div className="mb-4 flex flex-col items-center justify-center text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 mb-2">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F4EBE4] text-[#808068] mb-2">
           <Check className="h-6 w-6" />
         </div>
         <h1 className="text-xl sm:text-2xl font-black text-black">Payment Successful</h1>
@@ -73,7 +73,7 @@ export default function SuccessPage() {
         receiptNumber={receiptNumber}
         orderNumber={orderNumber}
         tableName="Takeaway"
-        cashierName="System Administrator"
+        cashierName="Alexa Pheloung"
         orderType="takeaway"
         paymentMethod="CASH"
         items={cart.map((i) => ({
@@ -95,7 +95,7 @@ export default function SuccessPage() {
       <div className="mt-5 flex flex-col gap-2.5 print:hidden">
         <Button
           onClick={handlePrint}
-          className="w-full bg-[#244f3d] hover:bg-[#1a382b] text-white font-bold h-11 rounded-xl gap-2 shadow-sm"
+          className="w-full bg-[#D67B6B] hover:bg-[#c36859] text-white font-bold h-11 rounded-xl gap-2 shadow-sm"
         >
           <Printer className="size-4" />
           Print Thermal Receipt (80mm)

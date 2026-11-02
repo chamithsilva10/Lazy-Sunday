@@ -75,23 +75,23 @@ export default function LoginPage() {
   }
 
   return (
-    <main suppressHydrationWarning className="flex min-h-[100dvh] items-center justify-center bg-[#f4f5ef] p-3 sm:p-6 text-[#24352d]">
-      <section suppressHydrationWarning className="grid w-full max-w-4xl overflow-hidden rounded-2xl sm:rounded-[28px] border border-[#dfe5d8] bg-white shadow-[0_20px_60px_rgba(36,79,61,.1)] md:grid-cols-[1.05fr_.95fr]">
+    <main suppressHydrationWarning className="flex min-h-[100dvh] items-center justify-center bg-[#F4EBE4] p-3 sm:p-6 text-[#343428]">
+      <section suppressHydrationWarning className="grid w-full max-w-4xl overflow-hidden rounded-2xl sm:rounded-[28px] border border-[#E5D8CF] bg-white shadow-[0_20px_60px_rgba(128,128,104,0.12)] md:grid-cols-[1.05fr_.95fr]">
         {/* Desktop Brand Visual Column */}
-        <div suppressHydrationWarning className="hidden bg-[#244f3d] p-10 lg:p-12 text-[#eff7e7] md:flex md:flex-col md:justify-between">
+        <div suppressHydrationWarning className="hidden bg-[#808068] p-10 lg:p-12 text-[#F4EBE4] md:flex md:flex-col md:justify-between">
           <div>
-            <div className="mb-8 flex size-12 items-center justify-center rounded-2xl bg-[#dce8c8] text-[#244f3d]">
+            <div className="mb-8 flex size-12 items-center justify-center rounded-2xl bg-[#EAB8B5] text-[#808068] shadow-sm">
               <UtensilsCrossed className="size-6" />
             </div>
             <p className="font-serif text-3xl lg:text-4xl font-bold leading-tight">A calmer way to run service.</p>
-            <p className="mt-4 max-w-xs text-sm leading-6 text-[#c5d8c2]">
+            <p className="mt-4 max-w-xs text-sm leading-6 text-[#F4EBE4]/85">
               Manage orders, tables, kitchen flow, and inventory from one connected workspace.
             </p>
           </div>
-          <div className="pt-6 border-t border-[#346551]">
-            <p className="text-xs uppercase tracking-[.2em] text-[#adc6ad]">LAZY SUNDAY</p>
-            <p className="text-[11px] text-[#8fa78f] mt-0.5">Point of Sale & Hospitality Management</p>
-            <p className="text-[10px] text-[#98b598] mt-2 font-medium">Created by Chamith · Full Stack Developer</p>
+          <div className="pt-6 border-t border-[#9c9c82]">
+            <p className="text-xs uppercase tracking-[.25em] text-[#EAB8B5] font-bold">LAZY SUNDAY</p>
+            <p className="text-[11px] text-[#F4EBE4]/75 mt-0.5">Point of Sale & Hospitality Management</p>
+            <p className="text-[10px] text-[#F4EBE4]/65 mt-2 font-medium">Created by Chamith · Full Stack Developer</p>
           </div>
         </div>
 
@@ -100,23 +100,23 @@ export default function LoginPage() {
           <div>
             {/* Mobile Header Banner */}
             <div className="mb-6 flex items-center gap-3 md:hidden">
-              <div className="flex size-11 items-center justify-center rounded-xl bg-[#244f3d] text-[#e8f2dc] shadow-sm">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-[#808068] text-[#F4EBE4] shadow-sm">
                 <UtensilsCrossed className="size-5" />
               </div>
               <div>
-                <span className="font-serif text-lg font-bold tracking-tight">LAZY SUNDAY</span>
-                <p className="text-[10px] uppercase tracking-[.2em] text-[#80907f]">Restaurant Terminal</p>
+                <span className="font-serif text-lg font-bold tracking-tight text-[#343428]">LAZY SUNDAY</span>
+                <p className="text-[10px] uppercase tracking-[.2em] text-[#808068]">Restaurant Terminal</p>
               </div>
             </div>
 
             <div className="mb-6">
-              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#FAF5F1] px-2.5 py-0.5 text-[11px] font-semibold text-[#808068] border border-[#EAB8B5]">
+                <span className="size-2 rounded-full bg-[#D67B6B] animate-pulse" />
                 Demo Sandbox Mode • Mock Data Active
               </div>
-              <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#80907f]">Staff access</p>
+              <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#808068]">Staff access</p>
               <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold text-gray-900">Welcome to Lazy Sunday</h1>
-              <p className="mt-1 text-xs sm:text-sm text-[#7a857b]">Sign in to open your POS register & workspace.</p>
+              <p className="mt-1 text-xs sm:text-sm text-[#808068]/80">Sign in to open your POS register & workspace.</p>
             </div>
 
             <form onSubmit={submit} className="flex flex-col gap-4">
@@ -129,7 +129,7 @@ export default function LoginPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter username"
-                  className="h-11 sm:h-12 text-sm sm:text-base rounded-xl border-[#d7ded0] focus:ring-[#244f3d]"
+                  className="h-11 sm:h-12 text-sm sm:text-base rounded-xl border-[#E5D8CF] focus:ring-[#D67B6B] focus:border-[#D67B6B]"
                 />
               </label>
 
@@ -141,7 +141,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="h-11 sm:h-12 text-sm sm:text-base rounded-xl border-[#d7ded0] focus:ring-[#244f3d]"
+                  className="h-11 sm:h-12 text-sm sm:text-base rounded-xl border-[#E5D8CF] focus:ring-[#D67B6B] focus:border-[#D67B6B]"
                 />
               </label>
 
@@ -157,7 +157,7 @@ export default function LoginPage() {
                     value={mfaCode}
                     onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="6-digit code"
-                    className="h-11 sm:h-12 text-sm sm:text-base rounded-xl border-[#d7ded0] focus:ring-[#244f3d]"
+                    className="h-11 sm:h-12 text-sm sm:text-base rounded-xl border-[#E5D8CF] focus:ring-[#D67B6B]"
                   />
                 </label>
               )}
@@ -171,7 +171,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="h-11 sm:h-12 bg-[#244f3d] text-white hover:bg-[#193b2d] font-semibold text-sm sm:text-base rounded-xl mt-1 gap-2 shadow-sm"
+                className="h-11 sm:h-12 bg-[#D67B6B] hover:bg-[#c26555] text-white font-semibold text-sm sm:text-base rounded-xl mt-1 gap-2 shadow-sm transition-all"
               >
                 {loading ? "Signing in…" : mfaRequired ? "Verify and continue" : "Sign in to POS"}
                 <LockKeyhole className="size-4" />
@@ -180,10 +180,10 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-6 pt-4 border-t border-gray-100 text-center space-y-1">
-            <p className="text-[11px] text-[#8b948c]">
-              POINT OF SALE • Optimized for touch, mobile, & desktop terminals.
+            <p className="text-[11px] text-[#808068]">
+              LAZY SUNDAY POS • Optimized for touch, mobile, & desktop terminals.
             </p>
-            <p className="text-[10px] text-[#9ba59c] font-medium tracking-wide">
+            <p className="text-[10px] text-[#808068]/70 font-medium tracking-wide">
               Created by Chamith · Full Stack Developer
             </p>
           </div>

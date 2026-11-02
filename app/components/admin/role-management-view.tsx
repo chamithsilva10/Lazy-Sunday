@@ -295,17 +295,17 @@ export function RoleManagementView() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#dfe5d8] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5D8CF] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-[.18em] text-[#8a958a]">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-[.18em] text-[#808068]">
               Administration
             </span>
-            <Badge className="bg-[#e9f1e4] text-[#244f3d] border-0 text-[11px]">
+            <Badge className="bg-[#F4EBE4] text-[#808068] border-0 text-[11px]">
               {roles.length} Configured Roles
             </Badge>
           </div>
-          <h2 className="mt-1 font-serif text-2xl sm:text-3xl font-bold text-[#1e2e25]">
+          <h2 className="mt-1 font-serif text-2xl sm:text-3xl font-bold text-gray-900">
             Role-Based Access Control (RBAC)
           </h2>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -319,14 +319,14 @@ export function RoleManagementView() {
             size="sm"
             onClick={() => void loadData()}
             disabled={loading}
-            className="h-10 rounded-xl border-[#dfe5d8] text-gray-700 hover:bg-gray-50"
+            className="h-10 rounded-xl border-[#E5D8CF] text-gray-700 hover:bg-gray-50"
           >
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
 
           <Button
             onClick={() => setCreateRoleOpen(true)}
-            className="bg-[#244f3d] hover:bg-[#1a3b2e] text-white font-semibold text-xs sm:text-sm h-10 px-4 rounded-xl gap-2 shadow-sm"
+            className="bg-[#D67B6B] hover:bg-[#c36859] text-white font-semibold text-xs sm:text-sm h-10 px-4 rounded-xl gap-2 shadow-sm"
           >
             <Plus className="size-4" />
             <span>Create Custom Role</span>
@@ -351,13 +351,13 @@ export function RoleManagementView() {
                   onClick={() => selectRole(r)}
                   className={`w-full text-left p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-2 ${
                     isSelected
-                      ? "border-[#244f3d] bg-[#f4f7f2] shadow-sm ring-1 ring-[#244f3d]"
-                      : "border-[#e2e6dc] bg-white hover:bg-gray-50/70"
+                      ? "border-[#D67B6B] bg-[#FAF5F1] shadow-sm ring-1 ring-[#D67B6B]"
+                      : "border-[#E5D8CF] bg-white hover:bg-gray-50/70"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-serif font-bold text-sm text-gray-900 flex items-center gap-1.5">
-                      <Shield className={`size-4 ${isSelected ? "text-[#244f3d]" : "text-gray-400"}`} />
+                      <Shield className={`size-4 ${isSelected ? "text-[#D67B6B]" : "text-gray-400"}`} />
                       {r.name}
                     </span>
                     {r.is_system ? (
@@ -392,12 +392,12 @@ export function RoleManagementView() {
 
         {/* Permissions Configuration Workspace */}
         {activeRole && (
-          <div className="bg-white rounded-2xl border border-[#dfe5d8] p-5 sm:p-7 shadow-sm space-y-6">
+          <div className="bg-white rounded-2xl border border-[#E5D8CF] p-5 sm:p-7 shadow-sm space-y-6">
             {/* Active Role Header & Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#dfe5d8] pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E5D8CF] pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#1e2e25]">
+                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-gray-900">
                     {activeRole.name} Permissions
                   </h3>
                   {activeRole.is_system && (
@@ -444,7 +444,7 @@ export function RoleManagementView() {
                 <Button
                   onClick={handleSavePermissions}
                   disabled={saving}
-                  className="bg-[#244f3d] hover:bg-[#1a3b2e] text-white font-bold text-xs h-9 px-4 rounded-xl gap-2 shadow-sm"
+                  className="bg-[#D67B6B] hover:bg-[#c36859] text-white font-bold text-xs h-9 px-4 rounded-xl gap-2 shadow-sm"
                 >
                   <Save className="size-4" />
                   <span>{saving ? "Saving..." : "Save Role Permissions"}</span>
@@ -462,7 +462,7 @@ export function RoleManagementView() {
                 return (
                   <div
                     key={group.module}
-                    className="border border-[#e2e6dc] rounded-2xl p-4 sm:p-5 bg-[#fafbf8]"
+                    className="border border-[#E5D8CF] rounded-2xl p-4 sm:p-5 bg-[#FAF5F1]"
                   >
                     {/* Module Header with Quick Actions */}
                     <div className="flex items-center justify-between pb-3 border-b border-gray-200 gap-2 flex-wrap">
@@ -481,7 +481,7 @@ export function RoleManagementView() {
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleModulePermissions(modulePerms, true)}
-                          className="text-[11px] h-7 px-2 text-[#244f3d] hover:bg-[#e9f1e4] rounded-lg gap-1"
+                          className="text-[11px] h-7 px-2 text-[#808068] hover:bg-[#FAF5F1] rounded-lg gap-1"
                         >
                           <CheckSquare className="size-3" />
                           Select All
@@ -508,7 +508,7 @@ export function RoleManagementView() {
                             key={perm.code}
                             className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                               isChecked
-                                ? "bg-white border-[#244f3d] shadow-sm"
+                                ? "bg-white border-[#D67B6B] shadow-sm"
                                 : "bg-white/60 border-gray-200 hover:border-gray-300"
                             }`}
                           >
@@ -516,7 +516,7 @@ export function RoleManagementView() {
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => togglePermission(perm.code)}
-                              className="mt-0.5 size-4 rounded accent-[#244f3d] cursor-pointer"
+                              className="mt-0.5 size-4 rounded accent-[#D67B6B] cursor-pointer"
                             />
                             <div className="min-w-0">
                               <p className="text-xs font-bold text-gray-900 leading-snug">
@@ -525,7 +525,7 @@ export function RoleManagementView() {
                               <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
                                 {perm.description}
                               </p>
-                              <span className="font-mono text-[10px] text-[#244f3d] font-semibold mt-1 inline-block">
+                              <span className="font-mono text-[10px] text-[#808068] font-semibold mt-1 inline-block">
                                 {perm.code}
                               </span>
                             </div>
@@ -545,7 +545,7 @@ export function RoleManagementView() {
       <Dialog open={createRoleOpen} onOpenChange={setCreateRoleOpen}>
         <DialogContent className="max-w-md rounded-2xl bg-white p-6">
           <DialogHeader>
-            <DialogTitle className="font-serif text-xl font-bold text-[#1e2e25]">
+            <DialogTitle className="font-serif text-xl font-bold text-gray-900">
               Create Custom Role
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
@@ -588,7 +588,7 @@ export function RoleManagementView() {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-[#244f3d] hover:bg-[#1a3b2e] text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm"
+                className="bg-[#D67B6B] hover:bg-[#c36859] text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm"
               >
                 {saving ? "Creating..." : "Create Role"}
               </Button>
@@ -601,7 +601,7 @@ export function RoleManagementView() {
       <Dialog open={editRoleOpen} onOpenChange={setEditRoleOpen}>
         <DialogContent className="max-w-md rounded-2xl bg-white p-6">
           <DialogHeader>
-            <DialogTitle className="font-serif text-xl font-bold text-[#1e2e25]">
+            <DialogTitle className="font-serif text-xl font-bold text-gray-900">
               Rename Role
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
@@ -641,7 +641,7 @@ export function RoleManagementView() {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-[#244f3d] hover:bg-[#1a3b2e] text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm"
+                className="bg-[#D67B6B] hover:bg-[#c36859] text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm"
               >
                 {saving ? "Saving..." : "Save Changes"}
               </Button>

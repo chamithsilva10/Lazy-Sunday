@@ -248,10 +248,10 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-[#1b3d2f]">
+            <h1 className="font-serif text-2xl font-bold tracking-tight text-[#2B2B28]">
               Customer Management & CRM
             </h1>
-            <Badge className="bg-[#244f3d] text-white">Loyalty & Credit ERP</Badge>
+            <Badge className="bg-[#808068] text-white">Loyalty & Credit ERP</Badge>
           </div>
           <p className="text-sm text-gray-500">
             Guest directory, loyalty point rewards, credit ledger tabs, guest feedback & promotional campaigns
@@ -272,7 +272,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
               })
               setShowAddCustomer(true)
             }}
-            className="gap-2 rounded-xl bg-[#244f3d] text-white hover:bg-[#1a382c] shadow-sm"
+            className="gap-2 rounded-xl bg-[#D67B6B] text-white hover:bg-[#c36859] shadow-sm"
           >
             <Plus className="size-4" />
             Add Customer
@@ -280,7 +280,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
           <Button
             variant="outline"
             onClick={() => setShowAddPromo(true)}
-            className="gap-2 rounded-xl border-[#244f3d]/20 text-[#244f3d] hover:bg-[#eef4ea]"
+            className="gap-2 rounded-xl border-[#808068]/30 text-[#808068] hover:bg-[#FAF5F1]"
           >
             <Gift className="size-4" />
             New Promo Code
@@ -290,10 +290,10 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card className="rounded-2xl border-[#dfe5d8] bg-white p-4 shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Total Customers</span>
-            <Users className="size-4 text-[#244f3d]" />
+            <Users className="size-4 text-[#808068]" />
           </div>
           <p className="mt-2 text-2xl font-bold text-gray-900">{customers.length}</p>
           <p className="mt-1 text-[11px] text-gray-400">
@@ -301,18 +301,18 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
           </p>
         </Card>
 
-        <Card className="rounded-2xl border-[#dfe5d8] bg-white p-4 shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Loyalty Points Active</span>
-            <Award className="size-4 text-amber-600" />
+            <Award className="size-4 text-[#D67B6B]" />
           </div>
-          <p className="mt-2 text-2xl font-bold text-amber-600">{totalPoints.toLocaleString()} pts</p>
+          <p className="mt-2 text-2xl font-bold text-[#D67B6B]">{totalPoints.toLocaleString()} pts</p>
           <p className="mt-1 text-[11px] text-gray-400">
             1 pt per LKR 100 spent · LKR {(totalPoints * 2).toLocaleString()} value
           </p>
         </Card>
 
-        <Card className="rounded-2xl border-[#dfe5d8] bg-white p-4 shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Outstanding Customer Credit</span>
             <CreditCard className="size-4 text-rose-600" />
@@ -323,7 +323,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
           </p>
         </Card>
 
-        <Card className="rounded-2xl border-[#dfe5d8] bg-white p-4 shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Average Guest Rating</span>
             <Star className="size-4 text-amber-500 fill-amber-400" />
@@ -336,7 +336,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
       </div>
 
       {/* Tabs Bar */}
-      <div className="flex flex-wrap gap-2 border-b border-[#dfe5d8] pb-3">
+      <div className="flex flex-wrap gap-2 border-b border-[#E5D8CF] pb-3">
         {[
           { key: "directory", label: "Customer Directory", icon: Users, badge: customers.length },
           { key: "loyalty", label: "Loyalty & Rewards", icon: Award, badge: `${totalPoints} pts` },
@@ -352,8 +352,8 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
               onClick={() => setActiveTab(tab.key as any)}
               className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
                 active
-                  ? "bg-[#244f3d] text-white shadow-sm"
-                  : "bg-white text-gray-600 hover:bg-[#edf2e8] hover:text-[#244f3d] border border-[#dfe5d8]"
+                  ? "bg-[#D67B6B] text-white shadow-sm"
+                  : "bg-white text-gray-600 hover:bg-[#FAF5F1] hover:text-[#D67B6B] border border-[#E5D8CF]"
               }`}
             >
               <Icon className="size-4" />
@@ -383,7 +383,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                 placeholder="Search by name, phone, or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 rounded-xl border-[#dfe5d8] bg-white"
+                className="pl-9 rounded-xl border-[#E5D8CF] bg-white"
               />
             </div>
 
@@ -393,7 +393,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                 size="sm"
                 onClick={() => setFilterVip(!filterVip)}
                 className={`rounded-xl text-xs gap-1.5 ${
-                  filterVip ? "bg-amber-600 hover:bg-amber-700 text-white" : "border-[#dfe5d8] text-gray-700"
+                  filterVip ? "bg-[#D67B6B] hover:bg-[#c36859] text-white" : "border-[#E5D8CF] text-gray-700"
                 }`}
               >
                 <Award className="size-3.5" />
@@ -404,7 +404,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                 size="sm"
                 onClick={() => setFilterDebt(!filterDebt)}
                 className={`rounded-xl text-xs gap-1.5 ${
-                  filterDebt ? "bg-rose-600 hover:bg-rose-700 text-white" : "border-[#dfe5d8] text-gray-700"
+                  filterDebt ? "bg-rose-600 hover:bg-rose-700 text-white" : "border-[#E5D8CF] text-gray-700"
                 }`}
               >
                 <CreditCard className="size-3.5" />
@@ -422,12 +422,12 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
               return (
                 <Card
                   key={cust.id}
-                  className="rounded-2xl border-[#dfe5d8] bg-white p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+                  className="rounded-2xl border-[#E5D8CF] bg-white p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3">
-                        <div className="flex size-11 items-center justify-center rounded-2xl bg-[#e9f1e4] text-[#244f3d] font-bold text-base">
+                        <div className="flex size-11 items-center justify-center rounded-2xl bg-[#F4EBE4] text-[#808068] font-bold text-base">
                           {cust.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
@@ -496,23 +496,23 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                     )}
 
                     {cust.notes && (
-                      <div className="rounded-xl bg-[#f7f8f4] p-2.5 text-xs text-gray-600 italic">
+                      <div className="rounded-xl bg-[#FAF5F1] p-2.5 text-xs text-gray-600 italic">
                         "{cust.notes}"
                       </div>
                     )}
 
                     {/* Stats pills */}
-                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#f0f2eb]">
-                      <div className="rounded-xl bg-amber-50/80 border border-amber-200/60 p-2">
-                        <span className="text-[10px] uppercase font-bold text-amber-800 tracking-wider">Loyalty</span>
-                        <p className="text-sm font-bold text-amber-950 mt-0.5">{cust.loyalty_points || 0} pts</p>
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#F4EBE4]">
+                      <div className="rounded-xl bg-[#FAF5F1] border border-[#E5D8CF] p-2">
+                        <span className="text-[10px] uppercase font-bold text-[#808068] tracking-wider">Loyalty</span>
+                        <p className="text-sm font-bold text-gray-900 mt-0.5">{cust.loyalty_points || 0} pts</p>
                       </div>
 
                       <div
                         className={`rounded-xl border p-2 ${
                           hasDebt
                             ? "bg-rose-50/80 border-rose-200/60 text-rose-950"
-                            : "bg-emerald-50/80 border-emerald-200/60 text-emerald-950"
+                            : "bg-[#FAF5F1] border-[#E5D8CF] text-gray-900"
                         }`}
                       >
                         <span className="text-[10px] uppercase font-bold tracking-wider">Credit Tab</span>
@@ -524,12 +524,12 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                   </div>
 
                   {/* Actions Footer */}
-                  <div className="flex items-center gap-2 pt-4 mt-2 border-t border-[#f0f2eb]">
+                  <div className="flex items-center gap-2 pt-4 mt-2 border-t border-[#F4EBE4]">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setShowHistoryCustomer(cust)}
-                      className="flex-1 rounded-xl text-xs gap-1.5 border-[#dfe5d8] text-gray-700 hover:bg-[#edf2e8]"
+                      className="flex-1 rounded-xl text-xs gap-1.5 border-[#E5D8CF] text-gray-700 hover:bg-[#FAF5F1]"
                     >
                       <Receipt className="size-3.5" />
                       Orders ({custOrders.length})
@@ -589,7 +589,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
           </Card>
 
           {/* Tier Leaderboard */}
-          <Card className="rounded-2xl border-[#dfe5d8] bg-white p-5 shadow-sm">
+          <Card className="rounded-2xl border-[#E5D8CF] bg-white p-5 shadow-sm">
             <CardHeader className="p-0 pb-4">
               <CardTitle className="font-serif text-base font-bold text-gray-900">
                 Top Loyal Customers & Tiers
@@ -599,7 +599,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-[#f0f2eb]">
+              <div className="divide-y divide-[#F4EBE4]">
                 {[...customers]
                   .sort((a, b) => (b.loyalty_points || 0) - (a.loyalty_points || 0))
                   .map((cust, idx) => {
@@ -631,7 +631,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                               <p className="font-bold text-sm text-gray-900">{cust.name}</p>
                               <Badge className={`text-[10px] px-1.5 py-0 border ${tier.color}`}>{tier.name}</Badge>
                               {cust.vip && (
-                                <Badge className="bg-[#244f3d] text-white text-[9px] px-1 py-0">VIP</Badge>
+                                <Badge className="bg-[#808068] text-white text-[9px] px-1 py-0">VIP</Badge>
                               )}
                             </div>
                             <p className="text-xs text-gray-500 mt-0.5">{cust.phone}</p>
@@ -678,7 +678,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
           </div>
 
           {/* Table of Open Tabs */}
-          <Card className="rounded-2xl border-[#dfe5d8] bg-white p-5 shadow-sm">
+          <Card className="rounded-2xl border-[#E5D8CF] bg-white p-5 shadow-sm">
             <CardHeader className="p-0 pb-4">
               <CardTitle className="font-serif text-base font-bold text-gray-900">
                 Active Customer Tabs
@@ -691,7 +691,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-[#dfe5d8] text-xs font-bold uppercase text-gray-500">
+                    <tr className="border-b border-[#E5D8CF] text-xs font-bold uppercase text-gray-500">
                       <th className="pb-3 pl-2">Customer</th>
                       <th className="pb-3">Contact</th>
                       <th className="pb-3">Credit Limit</th>
@@ -700,13 +700,13 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                       <th className="pb-3 pr-2 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#f0f2eb]">
+                  <tbody className="divide-y divide-[#F4EBE4]">
                     {customers
                       .filter((c) => (c.credit_balance || 0) > 0)
                       .map((cust) => {
                         const remaining = Math.max(0, (cust.credit_limit || 15000) - (cust.credit_balance || 0))
                         return (
-                          <tr key={cust.id} className="hover:bg-[#fbfcf9]">
+                          <tr key={cust.id} className="hover:bg-[#FAF5F1]">
                             <td className="py-3 pl-2 font-bold text-gray-900">{cust.name}</td>
                             <td className="py-3 text-xs text-gray-600">{cust.phone}</td>
                             <td className="py-3 text-xs text-gray-600">
@@ -725,7 +725,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                                   setShowSettleCredit(cust)
                                   setSettleAmount(String(cust.credit_balance))
                                 }}
-                                className="rounded-xl text-xs gap-1 bg-[#244f3d] text-white hover:bg-[#1a382c]"
+                                className="rounded-xl text-xs gap-1 bg-[#D67B6B] text-white hover:bg-[#c36859]"
                               >
                                 <DollarSign className="size-3.5" />
                                 Record Payment
@@ -762,7 +762,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
             </div>
             <Button
               onClick={() => setShowAddFeedback(true)}
-              className="gap-2 rounded-xl bg-[#244f3d] text-white hover:bg-[#1a382c]"
+              className="gap-2 rounded-xl bg-[#D67B6B] text-white hover:bg-[#c36859]"
             >
               <Plus className="size-4" />
               Log Feedback
@@ -771,7 +771,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {feedback.map((item) => (
-              <Card key={item.id} className="rounded-2xl border-[#dfe5d8] bg-white p-5 shadow-sm space-y-3">
+              <Card key={item.id} className="rounded-2xl border-[#E5D8CF] bg-white p-5 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
@@ -786,7 +786,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                     ))}
                   </div>
                   {item.table_name && (
-                    <Badge variant="outline" className="text-[10px] border-[#dfe5d8] text-gray-500">
+                    <Badge variant="outline" className="text-[10px] border-[#E5D8CF] text-gray-500">
                       {item.table_name}
                     </Badge>
                   )}
@@ -796,7 +796,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                   "{item.comment}"
                 </p>
 
-                <div className="flex items-center justify-between pt-3 border-t border-[#f0f2eb] text-[11px] text-gray-500">
+                <div className="flex items-center justify-between pt-3 border-t border-[#F4EBE4] text-[11px] text-gray-500">
                   <span className="font-bold text-gray-900">{item.customer_name}</span>
                   <span className="flex items-center gap-1">
                     <Clock className="size-3" />
@@ -831,7 +831,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
             </div>
             <Button
               onClick={() => setShowAddPromo(true)}
-              className="gap-2 rounded-xl bg-[#244f3d] text-white hover:bg-[#1a382c]"
+              className="gap-2 rounded-xl bg-[#D67B6B] text-white hover:bg-[#c36859]"
             >
               <Plus className="size-4" />
               New Promo Code
@@ -843,13 +843,13 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
               <Card
                 key={promo.id}
                 className={`rounded-2xl border p-5 shadow-sm transition-all ${
-                  promo.active ? "border-[#dfe5d8] bg-white" : "border-gray-200 bg-gray-50 opacity-60"
+                  promo.active ? "border-[#E5D8CF] bg-white" : "border-gray-200 bg-gray-50 opacity-60"
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-base font-bold text-[#244f3d] tracking-wide">
+                      <span className="font-mono text-base font-bold text-[#808068] tracking-wide">
                         {promo.code}
                       </span>
                       <button
@@ -876,7 +876,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                   </Badge>
                 </div>
 
-                <div className="mt-4 space-y-1 text-xs text-gray-600 pt-3 border-t border-[#f0f2eb]">
+                <div className="mt-4 space-y-1 text-xs text-gray-600 pt-3 border-t border-[#F4EBE4]">
                   {promo.min_spend ? (
                     <p>Minimum order: LKR {promo.min_spend.toLocaleString()}</p>
                   ) : (
@@ -886,12 +886,12 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                   <p className="text-[11px] text-gray-400">Used {promo.usage_count || 0} times</p>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-[#f0f2eb]">
+                <div className="mt-4 flex items-center justify-between pt-3 border-t border-[#F4EBE4]">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => SharedPosService.updatePromo(promo.id, { active: !promo.active })}
-                    className="text-xs text-gray-600 hover:text-[#244f3d]"
+                    className="text-xs text-gray-600 hover:text-[#D67B6B]"
                   >
                     {promo.active ? "Deactivate" : "Activate"}
                   </Button>
@@ -929,11 +929,11 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
       {(showAddCustomer || showEditCustomer) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <Card className="w-full max-w-lg rounded-2xl border-none shadow-2xl bg-white overflow-hidden">
-            <CardHeader className="bg-[#244f3d] text-white p-5">
+            <CardHeader className="bg-[#808068] text-white p-5">
               <CardTitle className="font-serif text-lg font-bold">
                 {showEditCustomer ? "Edit Customer Profile" : "Register New Customer"}
               </CardTitle>
-              <CardDescription className="text-xs text-[#e8f2dc]">
+              <CardDescription className="text-xs text-[#FAF5F1]/80">
                 Add customer to directory for loyalty points, receipts, and dining tabs
               </CardDescription>
             </CardHeader>
@@ -1004,7 +1004,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                     id="vip-check"
                     checked={customerForm.vip}
                     onChange={(e) => setCustomerForm({ ...customerForm, vip: e.target.checked })}
-                    className="size-4 rounded text-[#244f3d] focus:ring-[#244f3d]"
+                    className="size-4 rounded text-[#D67B6B] focus:ring-[#D67B6B]"
                   />
                   <Label htmlFor="vip-check" className="text-xs font-bold text-gray-800 cursor-pointer">
                     Grant VIP Status (Priority table seating & special offers)
@@ -1012,7 +1012,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                 </div>
               </CardContent>
 
-              <div className="flex items-center justify-end gap-2 p-5 bg-[#f7f8f4] border-t border-[#dfe5d8]">
+              <div className="flex items-center justify-end gap-2 p-5 bg-[#FAF5F1] border-t border-[#E5D8CF]">
                 <Button
                   type="button"
                   variant="outline"
@@ -1024,7 +1024,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                 >
                   Cancel
                 </Button>
-                <Button type="submit" className="rounded-xl bg-[#244f3d] text-white hover:bg-[#1a382c]">
+                <Button type="submit" className="rounded-xl bg-[#D67B6B] text-white hover:bg-[#c36859]">
                   {showEditCustomer ? "Save Changes" : "Create Customer"}
                 </Button>
               </div>
@@ -1088,7 +1088,7 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                 </div>
               </CardContent>
 
-              <div className="flex items-center justify-end gap-2 p-5 bg-[#f7f8f4] border-t border-[#dfe5d8]">
+              <div className="flex items-center justify-end gap-2 p-5 bg-[#FAF5F1] border-t border-[#E5D8CF]">
                 <Button
                   type="button"
                   variant="outline"
@@ -1112,13 +1112,13 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
       {showHistoryCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <Card className="w-full max-w-2xl rounded-2xl border-none shadow-2xl bg-white overflow-hidden max-h-[85vh] flex flex-col">
-            <CardHeader className="bg-[#244f3d] text-white p-5 shrink-0">
+            <CardHeader className="bg-[#808068] text-white p-5 shrink-0">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="font-serif text-lg font-bold">
                     {showHistoryCustomer.name} - Order History
                   </CardTitle>
-                  <CardDescription className="text-xs text-[#e8f2dc]">
+                  <CardDescription className="text-xs text-[#FAF5F1]/80">
                     {showHistoryCustomer.phone} · Loyalty Points: {showHistoryCustomer.loyalty_points || 0}
                   </CardDescription>
                 </div>
@@ -1150,14 +1150,14 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                 return custOrders.map((ord) => (
                   <div
                     key={ord.id}
-                    className="rounded-xl border border-[#dfe5d8] p-3.5 bg-white space-y-2 text-xs"
+                    className="rounded-xl border border-[#E5D8CF] p-3.5 bg-white space-y-2 text-xs"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-mono font-bold text-gray-900">{ord.order_number}</span>
                       <span className="text-gray-400">{new Date(ord.created_at).toLocaleString()}</span>
                     </div>
 
-                    <div className="divide-y divide-[#f0f2eb]">
+                    <div className="divide-y divide-[#F4EBE4]">
                       {ord.items.map((it, idx) => (
                         <div key={idx} className="flex justify-between py-1 text-gray-700">
                           <span>
@@ -1168,9 +1168,9 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                       ))}
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-[#f0f2eb] font-bold text-gray-900">
+                    <div className="flex items-center justify-between pt-2 border-t border-[#F4EBE4] font-bold text-gray-900">
                       <span>Total Paid ({ord.payment_method?.toUpperCase()}):</span>
-                      <span className="text-[#244f3d]">LKR {ord.total.toLocaleString()}</span>
+                      <span className="text-[#D67B6B]">LKR {ord.total.toLocaleString()}</span>
                     </div>
                   </div>
                 ))
@@ -1186,9 +1186,9 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
       {showAddPromo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <Card className="w-full max-w-md rounded-2xl border-none shadow-2xl bg-white overflow-hidden">
-            <CardHeader className="bg-[#244f3d] text-white p-5">
+            <CardHeader className="bg-[#808068] text-white p-5">
               <CardTitle className="font-serif text-lg font-bold">Create Promo Code</CardTitle>
-              <CardDescription className="text-xs text-[#e8f2dc]">
+              <CardDescription className="text-xs text-[#FAF5F1]/80">
                 Add discount coupon for special seasons or loyal guests
               </CardDescription>
             </CardHeader>
@@ -1247,11 +1247,11 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                 </div>
               </CardContent>
 
-              <div className="flex items-center justify-end gap-2 p-5 bg-[#f7f8f4] border-t border-[#dfe5d8]">
+              <div className="flex items-center justify-end gap-2 p-5 bg-[#FAF5F1] border-t border-[#E5D8CF]">
                 <Button type="button" variant="outline" onClick={() => setShowAddPromo(false)} className="rounded-xl">
                   Cancel
                 </Button>
-                <Button type="submit" className="rounded-xl bg-[#244f3d] text-white hover:bg-[#1a382c]">
+                <Button type="submit" className="rounded-xl bg-[#D67B6B] text-white hover:bg-[#c36859]">
                   Create Promo
                 </Button>
               </div>
@@ -1266,9 +1266,9 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
       {showAddFeedback && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <Card className="w-full max-w-md rounded-2xl border-none shadow-2xl bg-white overflow-hidden">
-            <CardHeader className="bg-[#244f3d] text-white p-5">
+            <CardHeader className="bg-[#808068] text-white p-5">
               <CardTitle className="font-serif text-lg font-bold">Log Guest Feedback</CardTitle>
-              <CardDescription className="text-xs text-[#e8f2dc]">
+              <CardDescription className="text-xs text-[#FAF5F1]/80">
                 Capture customer reviews and dining impressions
               </CardDescription>
             </CardHeader>
@@ -1323,16 +1323,16 @@ export function CustomerManagementView({ role = "cashier" }: { role?: string }) 
                     placeholder="What did the customer say about food, drinks, or service?"
                     value={feedbackForm.comment}
                     onChange={(e) => setFeedbackForm({ ...feedbackForm, comment: e.target.value })}
-                    className="w-full rounded-xl border border-gray-300 p-2.5 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#244f3d]"
+                    className="w-full rounded-xl border border-gray-300 p-2.5 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#D67B6B]"
                   />
                 </div>
               </CardContent>
 
-              <div className="flex items-center justify-end gap-2 p-5 bg-[#f7f8f4] border-t border-[#dfe5d8]">
+              <div className="flex items-center justify-end gap-2 p-5 bg-[#FAF5F1] border-t border-[#E5D8CF]">
                 <Button type="button" variant="outline" onClick={() => setShowAddFeedback(false)} className="rounded-xl">
                   Cancel
                 </Button>
-                <Button type="submit" className="rounded-xl bg-[#244f3d] text-white hover:bg-[#1a382c]">
+                <Button type="submit" className="rounded-xl bg-[#D67B6B] text-white hover:bg-[#c36859]">
                   Save Feedback
                 </Button>
               </div>

@@ -627,15 +627,15 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
   return (
     <div className="space-y-6">
       {/* Top Banner & Export Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#dfe5d8] shadow-sm print:hidden">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E5D8CF] shadow-sm print:hidden">
         <div className="flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#244f3d] text-white shadow-sm">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#808068] text-white shadow-sm">
             <TrendingUp className="size-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-serif text-2xl font-bold text-gray-900">Service Sales Report</h2>
-              <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 text-[10px] font-semibold">
+              <Badge className="bg-[#FAF5F1] text-[#808068] border border-[#EAB8B5] text-[10px] font-semibold">
                 Full POS Analytics
               </Badge>
             </div>
@@ -649,15 +649,15 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
           <Button
             onClick={exportToExcel}
             variant="outline"
-            className="rounded-xl border-[#dfe5d8] text-xs h-10 gap-1.5 hover:bg-[#f0f4ed] text-emerald-800 flex-1 sm:flex-initial"
+            className="rounded-xl border-[#E5D8CF] text-xs h-10 gap-1.5 hover:bg-[#FAF5F1] text-[#808068] flex-1 sm:flex-initial"
           >
-            <FileSpreadsheet className="size-4 text-emerald-600" />
+            <FileSpreadsheet className="size-4 text-[#D67B6B]" />
             Export to Excel
           </Button>
 
           <Button
             onClick={printReport}
-            className="bg-[#244f3d] text-white hover:bg-[#1a3a2d] rounded-xl text-xs h-10 px-4 gap-1.5 shadow-sm flex-1 sm:flex-initial"
+            className="bg-[#D67B6B] text-white hover:bg-[#c26555] rounded-xl text-xs h-10 px-4 gap-1.5 shadow-sm flex-1 sm:flex-initial"
           >
             <Printer className="size-4" />
             Print / PDF
@@ -666,13 +666,13 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
       </div>
 
       {/* Report Section Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#dfe5d8] pb-2 print:hidden overflow-x-auto">
+      <div className="flex items-center gap-2 border-b border-[#E5D8CF] pb-2 print:hidden overflow-x-auto">
         <button
           onClick={() => setReportTab("sales")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             reportTab === "sales"
-              ? "bg-[#244f3d] text-white shadow-sm"
-              : "bg-white text-gray-700 border border-[#dfe5d8] hover:bg-[#f7f8f4]"
+              ? "bg-[#D67B6B] text-white shadow-xs"
+              : "bg-white text-gray-700 border border-[#E5D8CF] hover:bg-[#FAF5F1]"
           }`}
         >
           <BarChart3 className="size-4" />
@@ -682,8 +682,8 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
           onClick={() => setReportTab("expenses")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             reportTab === "expenses"
-              ? "bg-[#244f3d] text-white shadow-sm"
-              : "bg-white text-gray-700 border border-[#dfe5d8] hover:bg-[#f7f8f4]"
+              ? "bg-[#D67B6B] text-white shadow-xs"
+              : "bg-white text-gray-700 border border-[#E5D8CF] hover:bg-[#FAF5F1]"
           }`}
         >
           <DollarSign className="size-4" />
@@ -693,8 +693,8 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
           onClick={() => setReportTab("stock")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             reportTab === "stock"
-              ? "bg-[#244f3d] text-white shadow-sm"
-              : "bg-white text-gray-700 border border-[#dfe5d8] hover:bg-[#f7f8f4]"
+              ? "bg-[#D67B6B] text-white shadow-xs"
+              : "bg-white text-gray-700 border border-[#E5D8CF] hover:bg-[#FAF5F1]"
           }`}
         >
           <Boxes className="size-4" />
@@ -705,17 +705,17 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
       {reportTab === "sales" && (
         <>
           {/* Filter Toolbar */}
-          <Card className="rounded-2xl border-[#dfe5d8] bg-white p-4 shadow-sm print:hidden">
+          <Card className="rounded-2xl border-[#E5D8CF] bg-white p-4 shadow-sm print:hidden">
         <div className="space-y-3">
           {/* Department Selection */}
-          <div className="flex items-center gap-2 pb-2.5 border-b border-[#edf1ea] flex-wrap">
+          <div className="flex items-center gap-2 pb-2.5 border-b border-[#E5D8CF] flex-wrap">
             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider mr-1">Department:</span>
             <Button
               size="sm"
               variant={selectedDepartment === "all" ? "default" : "outline"}
               onClick={() => setSelectedDepartment("all")}
               className={`rounded-xl text-xs h-7 px-3 font-semibold ${
-                selectedDepartment === "all" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700 bg-white"
+                selectedDepartment === "all" ? "bg-[#D67B6B] text-white shadow-xs" : "border-[#E5D8CF] text-gray-700 bg-white hover:bg-[#FAF5F1]"
               }`}
             >
               All Departments
@@ -725,7 +725,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               variant={selectedDepartment === "Juice & Food" ? "default" : "outline"}
               onClick={() => setSelectedDepartment("Juice & Food")}
               className={`rounded-xl text-xs h-7 px-3 font-semibold ${
-                selectedDepartment === "Juice & Food" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700 bg-white"
+                selectedDepartment === "Juice & Food" ? "bg-[#D67B6B] text-white shadow-xs" : "border-[#E5D8CF] text-gray-700 bg-white hover:bg-[#FAF5F1]"
               }`}
             >
               🍹 Juice & Food POS
@@ -735,7 +735,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               variant={selectedDepartment === "Coffee Bar" ? "default" : "outline"}
               onClick={() => setSelectedDepartment("Coffee Bar")}
               className={`rounded-xl text-xs h-7 px-3 font-semibold ${
-                selectedDepartment === "Coffee Bar" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700 bg-white"
+                selectedDepartment === "Coffee Bar" ? "bg-[#D67B6B] text-white shadow-xs" : "border-[#E5D8CF] text-gray-700 bg-white hover:bg-[#FAF5F1]"
               }`}
             >
               ☕ Coffee Bar
@@ -743,14 +743,14 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
           </div>
 
           {/* Station Selection (Juice & Drinking items to Bar, Food & Meals to Kitchen) */}
-          <div className="flex items-center gap-2 pb-2.5 border-b border-[#edf1ea] flex-wrap">
+          <div className="flex items-center gap-2 pb-2.5 border-b border-[#E5D8CF] flex-wrap">
             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider mr-1">Station:</span>
             <Button
               size="sm"
               variant={selectedStation === "all" ? "default" : "outline"}
               onClick={() => setSelectedStation("all")}
               className={`rounded-xl text-xs h-7 px-3 font-semibold ${
-                selectedStation === "all" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700 bg-white"
+                selectedStation === "all" ? "bg-[#D67B6B] text-white shadow-xs" : "border-[#E5D8CF] text-gray-700 bg-white hover:bg-[#FAF5F1]"
               }`}
             >
               All Stations
@@ -760,7 +760,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               variant={selectedStation === "bar" ? "default" : "outline"}
               onClick={() => setSelectedStation("bar")}
               className={`rounded-xl text-xs h-7 px-3 font-semibold ${
-                selectedStation === "bar" ? "bg-amber-800 text-white" : "border-[#dfe5d8] text-amber-900 bg-amber-50/50 hover:bg-amber-100"
+                selectedStation === "bar" ? "bg-[#808068] text-white" : "border-[#E5D8CF] text-[#808068] bg-[#FAF5F1] hover:bg-[#eeeee7]"
               }`}
             >
               🍹 Bar (Juices & Drinks)
@@ -770,7 +770,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               variant={selectedStation === "kitchen" ? "default" : "outline"}
               onClick={() => setSelectedStation("kitchen")}
               className={`rounded-xl text-xs h-7 px-3 font-semibold ${
-                selectedStation === "kitchen" ? "bg-orange-800 text-white" : "border-[#dfe5d8] text-orange-900 bg-orange-50/50 hover:bg-orange-100"
+                selectedStation === "kitchen" ? "bg-[#808068] text-white" : "border-[#E5D8CF] text-[#808068] bg-[#FAF5F1] hover:bg-[#eeeee7]"
               }`}
             >
               🍳 Kitchen (Food & Meals)
@@ -780,14 +780,14 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs font-semibold text-gray-600 mr-1 flex items-center gap-1">
-                <Calendar className="size-3.5" /> Date Preset:
+                <Calendar className="size-3.5 text-[#D67B6B]" /> Date Preset:
               </span>
               <Button
                 size="sm"
                 variant={datePreset === "all" ? "default" : "outline"}
                 onClick={() => applyDatePreset("all")}
                 className={`rounded-xl text-xs h-8 px-3 ${
-                  datePreset === "all" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700"
+                  datePreset === "all" ? "bg-[#D67B6B] text-white shadow-xs" : "border-[#E5D8CF] text-gray-700 hover:bg-[#FAF5F1]"
                 }`}
               >
                 All Time
@@ -797,7 +797,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                 variant={datePreset === "today" ? "default" : "outline"}
                 onClick={() => applyDatePreset("today")}
                 className={`rounded-xl text-xs h-8 px-3 ${
-                  datePreset === "today" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700"
+                  datePreset === "today" ? "bg-[#D67B6B] text-white shadow-xs" : "border-[#E5D8CF] text-gray-700 hover:bg-[#FAF5F1]"
                 }`}
               >
                 Today
@@ -807,7 +807,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                 variant={datePreset === "week" ? "default" : "outline"}
                 onClick={() => applyDatePreset("week")}
                 className={`rounded-xl text-xs h-8 px-3 ${
-                  datePreset === "week" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700"
+                  datePreset === "week" ? "bg-[#D67B6B] text-white shadow-xs" : "border-[#E5D8CF] text-gray-700 hover:bg-[#FAF5F1]"
                 }`}
               >
                 Last 7 Days
@@ -817,7 +817,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                 variant={datePreset === "month" ? "default" : "outline"}
                 onClick={() => applyDatePreset("month")}
                 className={`rounded-xl text-xs h-8 px-3 ${
-                  datePreset === "month" ? "bg-[#244f3d] text-white" : "border-[#dfe5d8] text-gray-700"
+                  datePreset === "month" ? "bg-[#D67B6B] text-white shadow-xs" : "border-[#E5D8CF] text-gray-700 hover:bg-[#FAF5F1]"
                 }`}
               >
                 Last 30 Days
@@ -867,7 +867,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               <select
                 value={selectedProduct}
                 onChange={(e) => setSelectedProduct(e.target.value)}
-                className="mt-1 h-9 w-full rounded-xl border border-[#d7ded0] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#244f3d]"
+                className="mt-1 h-9 w-full rounded-xl border border-[#E5D8CF] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D67B6B]"
               >
                 <option value="all">All Products</option>
                 {productNames.map((name) => (
@@ -883,7 +883,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="mt-1 h-9 w-full rounded-xl border border-[#d7ded0] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#244f3d]"
+                className="mt-1 h-9 w-full rounded-xl border border-[#E5D8CF] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D67B6B]"
               >
                 <option value="all">All Categories</option>
                 {categoryNames.map((cat) => (
@@ -899,7 +899,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               <select
                 value={selectedPayment}
                 onChange={(e) => setSelectedPayment(e.target.value)}
-                className="mt-1 h-9 w-full rounded-xl border border-[#d7ded0] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#244f3d]"
+                className="mt-1 h-9 w-full rounded-xl border border-[#E5D8CF] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D67B6B]"
               >
                 <option value="all">All Payment Methods</option>
                 <option value="cash">Cash Only</option>
@@ -916,9 +916,9 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-        <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+        <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Revenue</p>
-          <p className="font-mono text-xl sm:text-2xl font-bold text-[#244f3d] mt-1.5">
+          <p className="font-mono text-xl sm:text-2xl font-bold text-[#D67B6B] mt-1.5">
             Rs. {report.totalSales.toLocaleString()}
           </p>
           <div className="flex items-center gap-1 text-[11px] text-emerald-700 mt-1">
@@ -1116,10 +1116,10 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               {report.categorySales.map((cat, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 rounded-xl border border-[#edf1ea] bg-[#fcfdfa] hover:bg-[#f7f8f4] transition-colors"
+                  className="flex items-center justify-between p-3 rounded-xl border border-[#E5D8CF] bg-white hover:bg-[#FAF5F1] transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="flex size-8 items-center justify-center rounded-lg bg-[#e9f1e4] text-[#244f3d] shrink-0">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-[#FAF5F1] text-[#808068] shrink-0 border border-[#E5D8CF]">
                       <UtensilsCrossed className="size-3.5" />
                     </div>
                     <div className="min-w-0">
@@ -1129,7 +1129,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                       </p>
                     </div>
                   </div>
-                  <span className="font-mono font-bold text-xs text-[#244f3d] shrink-0 ml-2">
+                  <span className="font-mono font-bold text-xs text-[#D67B6B] shrink-0 ml-2">
                     Rs. {cat.totalRevenue.toLocaleString()}
                   </span>
                 </div>
@@ -1142,8 +1142,8 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
       </Card>
 
       {/* Product-Wise Sales Table */}
-      <Card className="rounded-2xl border-[#dfe5d8] bg-white shadow-sm overflow-hidden">
-        <CardHeader className="bg-[#f7f8f4] border-b border-[#dfe5d8] py-3.5 px-5">
+      <Card className="rounded-2xl border-[#E5D8CF] bg-white shadow-sm overflow-hidden">
+        <CardHeader className="bg-[#FAF5F1] border-b border-[#E5D8CF] py-3.5 px-5">
           <CardTitle className="font-serif text-base font-bold text-gray-900">
             Product-Wise Sales
           </CardTitle>
@@ -1155,7 +1155,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-[#fcfdfa] border-b border-[#dfe5d8] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
+              <thead className="bg-[#FAF5F1] border-b border-[#E5D8CF] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
                 <tr>
                   <th className="py-3 px-4">#</th>
                   <th className="py-3 px-4">Product Name</th>
@@ -1165,14 +1165,14 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                   <th className="py-3 px-4 text-right">Revenue (Rs.)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#edf1ea]">
+              <tbody className="divide-y divide-[#E5D8CF]">
                 {report.productSales.length > 0 ? (
                   report.productSales.map((p, idx) => (
-                    <tr key={idx} className="hover:bg-[#fafbf8]">
+                    <tr key={idx} className="hover:bg-[#FAF5F1]">
                       <td className="py-3 px-4 text-gray-400 font-mono text-[10px]">{idx + 1}</td>
                       <td className="py-3 px-4 font-semibold text-gray-900">{p.productName}</td>
                       <td className="py-3 px-4">
-                        <Badge variant="outline" className="text-[10px] font-semibold border-[#dfe5d8] text-gray-600">
+                        <Badge variant="outline" className="text-[10px] font-semibold border-[#E5D8CF] text-gray-600">
                           {p.category}
                         </Badge>
                       </td>
@@ -1181,14 +1181,14 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                         <div className="flex items-center gap-2">
                           <div className="w-24 bg-gray-200 h-2 rounded-full overflow-hidden">
                             <div
-                              className="bg-[#244f3d] h-full rounded-full"
+                              className="bg-[#808068] h-full rounded-full"
                               style={{ width: `${Math.min(100, p.percentageOfSales)}%` }}
                             />
                           </div>
                           <span className="text-[11px] font-mono text-gray-600">{p.percentageOfSales}%</span>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-[#244f3d]">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-[#D67B6B]">
                         Rs. {p.totalRevenue.toLocaleString()}
                       </td>
                     </tr>
@@ -1207,8 +1207,8 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
       </Card>
 
       {/* Daily Summary Table */}
-      <Card className="rounded-2xl border-[#dfe5d8] bg-white shadow-sm overflow-hidden">
-        <CardHeader className="bg-[#f7f8f4] border-b border-[#dfe5d8] py-3.5 px-5">
+      <Card className="rounded-2xl border-[#E5D8CF] bg-white shadow-sm overflow-hidden">
+        <CardHeader className="bg-[#FAF5F1] border-b border-[#E5D8CF] py-3.5 px-5">
           <CardTitle className="font-serif text-base font-bold text-gray-900">
             Daily / Chronological Summary
           </CardTitle>
@@ -1220,7 +1220,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-[#fcfdfa] border-b border-[#dfe5d8] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
+              <thead className="bg-[#FAF5F1] border-b border-[#E5D8CF] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
                 <tr>
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4 text-center">Orders</th>
@@ -1229,13 +1229,13 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                   <th className="py-3 px-4 text-right">Avg. Ticket (Rs.)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#edf1ea]">
+              <tbody className="divide-y divide-[#E5D8CF]">
                 {report.dailySummaries.length > 0 ? (
                   report.dailySummaries.map((d, idx) => (
-                    <tr key={idx} className="hover:bg-[#fafbf8]">
+                    <tr key={idx} className="hover:bg-[#FAF5F1]">
                       <td className="py-3 px-4 font-semibold text-gray-800">{d.date}</td>
                       <td className="py-3 px-4 text-center font-mono">{d.billCount}</td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-[#244f3d]">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-[#D67B6B]">
                         Rs. {d.totalRevenue.toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-violet-700">
@@ -1366,7 +1366,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                           </Badge>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-[#244f3d]">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-[#D67B6B]">
                         Rs. {o.total.toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-center print:hidden">
@@ -1375,7 +1375,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                             size="sm"
                             variant="ghost"
                             onClick={() => onPrintReceipt(o)}
-                            className="h-7 text-xs text-emerald-800 hover:bg-emerald-50 px-2 rounded-lg"
+                            className="h-7 text-xs text-[#808068] hover:bg-[#FAF5F1] px-2 rounded-lg"
                           >
                             <Receipt className="size-3.5 mr-1" />
                             Receipt
@@ -1409,7 +1409,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
             </div>
             <Button
               onClick={() => setShowAddExpenseModal(true)}
-              className="bg-[#244f3d] text-white hover:bg-[#1a3a2d] rounded-xl text-xs h-9 px-3 gap-1.5 shadow-sm"
+              className="bg-[#D67B6B] text-white hover:bg-[#c26555] rounded-xl text-xs h-9 px-3 gap-1.5 shadow-sm"
             >
               <Plus className="size-3.5" />
               Log Expense
@@ -1418,9 +1418,9 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
 
           {/* P&L Financial Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+            <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Gross Sales Revenue</span>
-              <p className="font-mono text-2xl font-bold text-[#244f3d] mt-1.5">
+              <p className="font-mono text-2xl font-bold text-[#D67B6B] mt-1.5">
                 Rs. {report.totalSales.toLocaleString()}
               </p>
               <p className="text-[11px] text-gray-400 mt-1">From {report.billCount} completed orders</p>
@@ -1567,15 +1567,15 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
               <p className="text-[11px] text-gray-400 mt-1">Total physical stock</p>
             </Card>
 
-            <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+            <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Asset Valuation</span>
-              <p className="font-mono text-2xl font-bold text-[#244f3d] mt-1.5">
+              <p className="font-mono text-2xl font-bold text-[#D67B6B] mt-1.5">
                 Rs. {inventoryValuation.totalValue.toLocaleString()}
               </p>
               <p className="text-[11px] text-gray-400 mt-1">Selling retail value</p>
             </Card>
 
-            <Card className="rounded-2xl border-[#dfe5d8] p-4 bg-white shadow-sm">
+            <Card className="rounded-2xl border-[#E5D8CF] p-4 bg-white shadow-sm">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Low Stock Warnings</span>
               <p className={`font-mono text-2xl font-bold mt-1.5 ${inventoryValuation.lowStock.length > 0 ? "text-amber-700" : "text-emerald-700"}`}>
                 {inventoryValuation.lowStock.length}
@@ -1600,15 +1600,15 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
           )}
 
           {/* Product Stock Table */}
-          <Card className="rounded-2xl border-[#dfe5d8] bg-white shadow-sm overflow-hidden">
-            <CardHeader className="bg-[#f7f8f4] border-b border-[#dfe5d8] py-3.5 px-5">
+          <Card className="rounded-2xl border-[#E5D8CF] bg-white shadow-sm overflow-hidden">
+            <CardHeader className="bg-[#FAF5F1] border-b border-[#E5D8CF] py-3.5 px-5">
               <CardTitle className="font-serif text-base font-bold text-gray-900">Catalog Stock & Valuation Sheet</CardTitle>
               <CardDescription className="text-xs text-gray-500">Live inventory balances and item valuation breakdown.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs sm:text-sm">
-                  <thead className="bg-[#fcfdfa] border-b border-[#dfe5d8] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
+                  <thead className="bg-[#FAF5F1] border-b border-[#E5D8CF] text-gray-600 uppercase text-[10px] tracking-wider font-bold">
                     <tr>
                       <th className="py-3 px-4">Item Name</th>
                       <th className="py-3 px-4">Category</th>
@@ -1618,13 +1618,13 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                       <th className="py-3 px-4 text-center">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#edf1ea]">
+                  <tbody className="divide-y divide-[#E5D8CF]">
                     {products.map((p) => {
                       const itemVal = p.price * (p.stock || 0)
                       const isLow = (p.stock || 0) > 0 && (p.stock || 0) <= 10
                       const isOut = (p.stock || 0) <= 0
                       return (
-                        <tr key={p.id} className="hover:bg-[#fafbf8]">
+                        <tr key={p.id} className="hover:bg-[#FAF5F1]">
                           <td className="py-3 px-4 font-semibold text-gray-900">{p.name}</td>
                           <td className="py-3 px-4">
                             <Badge variant="outline" className="text-[10px] font-semibold text-gray-600">
@@ -1632,14 +1632,14 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                             </Badge>
                           </td>
                           <td className="py-3 px-4 text-center font-mono font-bold">
-                            <span className={isOut ? "text-red-600" : isLow ? "text-amber-600" : "text-emerald-700"}>
+                            <span className={isOut ? "text-red-600" : isLow ? "text-amber-600" : "text-[#808068]"}>
                               {p.stock ?? 0}
                             </span>
                           </td>
                           <td className="py-3 px-4 text-right font-mono text-gray-700">
                             Rs. {p.price.toLocaleString()}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold text-[#244f3d]">
+                          <td className="py-3 px-4 text-right font-mono font-bold text-[#D67B6B]">
                             Rs. {itemVal.toLocaleString()}
                           </td>
                           <td className="py-3 px-4 text-center">
@@ -1648,7 +1648,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                             ) : isLow ? (
                               <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">Low Stock</Badge>
                             ) : (
-                              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">Healthy</Badge>
+                              <Badge className="bg-[#FAF5F1] text-[#808068] border border-[#EAB8B5] text-[10px]">Healthy</Badge>
                             )}
                           </td>
                         </tr>
@@ -1665,8 +1665,8 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
       {/* Add Expense Modal */}
       {showAddExpenseModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-[#dfe5d8] space-y-4">
-            <div className="flex items-center justify-between border-b border-[#edf1ea] pb-3">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-[#E5D8CF] space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E5D8CF] pb-3">
               <h3 className="font-serif text-lg font-bold text-gray-900">Log Operating Expense</h3>
               <button
                 onClick={() => setShowAddExpenseModal(false)}
@@ -1681,7 +1681,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                 <select
                   value={expenseCategory}
                   onChange={(e) => setExpenseCategory(e.target.value)}
-                  className="w-full h-9 rounded-xl border border-[#dfe5d8] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#244f3d]"
+                  className="w-full h-9 rounded-xl border border-[#E5D8CF] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D67B6B]"
                 >
                   <option value="Raw Ingredients">Raw Ingredients</option>
                   <option value="Utilities">Utilities (Electricity, Water, Gas)</option>
@@ -1700,7 +1700,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                   placeholder="e.g. Electricity bill for November"
                   value={expenseDesc}
                   onChange={(e) => setExpenseDesc(e.target.value)}
-                  className="rounded-xl border-[#dfe5d8] text-xs h-9"
+                  className="rounded-xl border-[#E5D8CF] text-xs h-9"
                   required
                 />
               </div>
@@ -1712,7 +1712,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                   placeholder="e.g. 15000"
                   value={expenseAmount}
                   onChange={(e) => setExpenseAmount(e.target.value)}
-                  className="rounded-xl border-[#dfe5d8] text-xs h-9 font-mono"
+                  className="rounded-xl border-[#E5D8CF] text-xs h-9 font-mono"
                   required
                   min="1"
                 />
@@ -1724,23 +1724,23 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                   type="date"
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
-                  className="rounded-xl border-[#dfe5d8] text-xs h-9"
+                  className="rounded-xl border-[#E5D8CF] text-xs h-9"
                   required
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#edf1ea]">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5D8CF]">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setShowAddExpenseModal(false)}
-                  className="rounded-xl text-xs h-9 border-[#dfe5d8]"
+                  className="rounded-xl text-xs h-9 border-[#E5D8CF]"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-[#244f3d] text-white hover:bg-[#1a3a2d] rounded-xl text-xs h-9 px-4 font-semibold"
+                  className="bg-[#D67B6B] text-white hover:bg-[#c26555] rounded-xl text-xs h-9 px-4 font-semibold"
                 >
                   Save Expense
                 </Button>
@@ -1759,10 +1759,10 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
 
       {/* Advanced Professional Excel Export Modal */}
       <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
-        <DialogContent className="sm:max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-[#dfe5d8]">
+        <DialogContent className="sm:max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-[#E5D8CF]">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-[#244f3d] text-white shadow-sm">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-[#808068] text-white shadow-sm">
                 <FileSpreadsheet className="size-5" />
               </div>
               <div>
@@ -1770,7 +1770,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                   Export Sales Spreadsheet
                 </DialogTitle>
                 <DialogDescription className="text-xs text-gray-500">
-                  Professional horizontal layout with native column auto-filters, bold green headers (#244f3d), and multi-sheet audit ledgers.
+                  Professional horizontal layout with native column auto-filters, brand sage headers (#808068), and multi-sheet audit ledgers.
                 </DialogDescription>
               </div>
             </div>
@@ -1788,16 +1788,16 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                   onClick={() => setExportFormat("excel")}
                   className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
                     exportFormat === "excel"
-                      ? "border-[#244f3d] bg-emerald-50/60 ring-2 ring-[#244f3d]/20"
+                      ? "border-[#D67B6B] bg-[#FAF5F1] ring-2 ring-[#D67B6B]/20"
                       : "border-gray-200 hover:border-gray-300 bg-white"
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
-                    <span className="font-bold text-emerald-950 flex items-center gap-1.5">
-                      <FileSpreadsheet className="size-4 text-emerald-700" />
+                    <span className="font-bold text-[#808068] flex items-center gap-1.5">
+                      <FileSpreadsheet className="size-4 text-[#D67B6B]" />
                       Excel Workbook (.xlsx)
                     </span>
-                    {exportFormat === "excel" && <CheckCircle2 className="size-3.5 text-emerald-700" />}
+                    {exportFormat === "excel" && <CheckCircle2 className="size-3.5 text-[#D67B6B]" />}
                   </div>
                   <p className="text-[10px] text-gray-500 mt-1">
                     Native Microsoft Excel (.xlsx) OpenXML workbook — zero warnings, native auto-filter dropdowns, and 5 detailed sheets.
@@ -1809,7 +1809,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                   onClick={() => setExportFormat("csv")}
                   className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
                     exportFormat === "csv"
-                      ? "border-[#244f3d] bg-emerald-50/60 ring-2 ring-[#244f3d]/20"
+                      ? "border-[#D67B6B] bg-[#FAF5F1] ring-2 ring-[#D67B6B]/20"
                       : "border-gray-200 hover:border-gray-300 bg-white"
                   }`}
                 >
@@ -1818,7 +1818,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                       <FileText className="size-4 text-gray-700" />
                       Horizontal CSV (.csv)
                     </span>
-                    {exportFormat === "csv" && <CheckCircle2 className="size-3.5 text-emerald-700" />}
+                    {exportFormat === "csv" && <CheckCircle2 className="size-3.5 text-[#D67B6B]" />}
                   </div>
                   <p className="text-[10px] text-gray-500 mt-1">
                     RFC-4180 horizontal table with UTF-8 BOM. Universal support in Excel, Google Sheets, &amp; Numbers.
@@ -1839,7 +1839,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                   variant={exportStation === "all" ? "default" : "outline"}
                   onClick={() => setExportStation("all")}
                   className={`rounded-xl text-xs h-8 ${
-                    exportStation === "all" ? "bg-[#244f3d] text-white" : "border-gray-200 text-gray-700"
+                    exportStation === "all" ? "bg-[#D67B6B] text-white shadow-xs" : "border-gray-200 text-gray-700 hover:bg-[#FAF5F1]"
                   }`}
                 >
                   All Stations
@@ -1850,7 +1850,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                   variant={exportStation === "bar" ? "default" : "outline"}
                   onClick={() => setExportStation("bar")}
                   className={`rounded-xl text-xs h-8 ${
-                    exportStation === "bar" ? "bg-amber-800 text-white" : "border-gray-200 text-amber-900"
+                    exportStation === "bar" ? "bg-[#808068] text-white" : "border-gray-200 text-[#808068] hover:bg-[#FAF5F1]"
                   }`}
                 >
                   🍹 Bar Only
@@ -1861,7 +1861,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                   variant={exportStation === "kitchen" ? "default" : "outline"}
                   onClick={() => setExportStation("kitchen")}
                   className={`rounded-xl text-xs h-8 ${
-                    exportStation === "kitchen" ? "bg-orange-800 text-white" : "border-gray-200 text-orange-900"
+                    exportStation === "kitchen" ? "bg-[#808068] text-white" : "border-gray-200 text-[#808068] hover:bg-[#FAF5F1]"
                   }`}
                 >
                   🍳 Kitchen Only
@@ -1870,7 +1870,7 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
             </div>
 
             {/* Export Scope Summary Preview */}
-            <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 space-y-1.5">
+            <div className="p-3.5 rounded-xl bg-[#FAF5F1] border border-[#E5D8CF] space-y-1.5">
               <div className="flex justify-between text-gray-600">
                 <span>Date Range:</span>
                 <span className="font-semibold text-gray-900">
@@ -1885,9 +1885,9 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
                 <span>Payment Method:</span>
                 <span className="font-semibold text-gray-900">{selectedPayment === "all" ? "All Payment Methods" : selectedPayment}</span>
               </div>
-              <div className="flex justify-between text-gray-600 pt-1.5 border-t border-gray-200 font-bold">
+              <div className="flex justify-between text-gray-600 pt-1.5 border-t border-[#E5D8CF] font-bold">
                 <span>Orders Matching Filter:</span>
-                <span className="text-[#244f3d] font-mono">{report.billCount} records · Rs. {report.totalSales.toLocaleString()}</span>
+                <span className="text-[#D67B6B] font-mono">{report.billCount} records · Rs. {report.totalSales.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -1896,13 +1896,13 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
             <Button
               variant="outline"
               onClick={() => setShowExportModal(false)}
-              className="rounded-xl text-xs h-9 border-[#dfe5d8]"
+              className="rounded-xl text-xs h-9 border-[#E5D8CF]"
             >
               Cancel
             </Button>
             <Button
               onClick={() => handleDownloadReport(exportFormat, exportStation)}
-              className="bg-[#244f3d] text-white hover:bg-[#1a3a2d] rounded-xl text-xs h-9 gap-1.5 px-4 shadow-sm font-semibold"
+              className="bg-[#D67B6B] text-white hover:bg-[#c26555] rounded-xl text-xs h-9 gap-1.5 px-4 shadow-sm font-semibold"
             >
               <Download className="size-4" />
               Download {exportFormat === "excel" ? "Excel (.xlsx)" : "CSV (.csv)"}

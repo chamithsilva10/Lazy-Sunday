@@ -527,19 +527,19 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-16">
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-[#dfe5d8] bg-gradient-to-br from-[#244f3d] via-[#1c4232] to-[#153326] p-6 sm:p-8 text-white shadow-lg">
+      <div className="relative overflow-hidden rounded-3xl border border-[#E5D8CF] bg-gradient-to-br from-[#808068] via-[#6d6d56] to-[#595944] p-6 sm:p-8 text-white shadow-lg">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Badge className="bg-[#dce8c8] text-[#244f3d] hover:bg-[#dce8c8] text-xs font-bold uppercase tracking-wider px-2.5 py-0.5">
+              <Badge className="bg-[#F4EBE4] text-[#808068] hover:bg-[#F4EBE4] text-xs font-bold uppercase tracking-wider px-2.5 py-0.5">
                 {lang === "en" ? "System Manual & Guide" : "පද්ධති අත්පොත සහ මාර්ගෝපදේශය"}
               </Badge>
-              <span className="text-xs text-[#b8d4b3] font-mono">v2.4 Production</span>
+              <span className="text-xs text-[#EAB8B5] font-mono">v2.4 Production</span>
             </div>
-            <h1 className="font-serif text-2xl sm:text-4xl font-bold tracking-tight text-[#f4faee]">
+            <h1 className="font-serif text-2xl sm:text-4xl font-bold tracking-tight text-[#FAF5F1]">
               {lang === "en" ? "Lazy Sunday POS User Guide" : "Lazy Sunday POS පරිශීලක මාර්ගෝපදේශය"}
             </h1>
-            <p className="text-xs sm:text-sm text-[#c8dec4] max-w-xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#FAF5F1]/80 max-w-xl leading-relaxed">
               {lang === "en"
                 ? "Complete operating instructions for Restaurant Managers, Cashiers, Kitchen Chefs, and Floor Staff. Follow these standard operating procedures for smooth service."
                 : "ආපනශාලා කළමනාකරුවන්, අයකැමියන්, කුස්සියේ ප්‍රධානීන් සහ වේටර්වරුන් සඳහා වන සම්පූර්ණ මෙහෙයුම් උපදෙස් මාලාව."}
@@ -555,7 +555,7 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
                 onClick={() => setLang("en")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   lang === "en"
-                    ? "bg-white text-[#244f3d] shadow-sm"
+                    ? "bg-white text-[#808068] shadow-sm"
                     : "text-white/80 hover:text-white hover:bg-white/10"
                 }`}
               >
@@ -566,7 +566,7 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
                 onClick={() => setLang("si")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   lang === "si"
-                    ? "bg-white text-[#244f3d] shadow-sm"
+                    ? "bg-white text-[#808068] shadow-sm"
                     : "text-white/80 hover:text-white hover:bg-white/10"
                 }`}
               >
@@ -588,7 +588,7 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
         </div>
 
         {/* Decorative background glow */}
-        <div className="absolute -right-10 -bottom-10 size-60 rounded-full bg-emerald-400/10 blur-3xl pointer-events-none" />
+        <div className="absolute -right-10 -bottom-10 size-60 rounded-full bg-[#EAB8B5]/20 blur-3xl pointer-events-none" />
       </div>
 
       {/* Filter and Search Bar */}
@@ -606,7 +606,7 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
                   ? "Search topics (e.g. order, kitchen, discount, table)..."
                   : "මාතෘකා සොයන්න (උදා: ඇණවුම්, කුස්සිය, බිල්පත්, මේස)..."
               }
-              className="pl-9 h-11 rounded-2xl border-[#dce3d5] bg-white text-xs sm:text-sm focus:ring-[#244f3d] shadow-2xs"
+              className="pl-9 h-11 rounded-2xl border-[#E5D8CF] bg-white text-xs sm:text-sm focus:ring-[#D67B6B] shadow-2xs"
             />
             {search && (
               <button
@@ -619,7 +619,7 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
           </div>
 
           {/* Quick Summary Pill */}
-          <div className="text-xs text-[#6e7a70] flex items-center gap-2 self-end sm:self-center font-medium">
+          <div className="text-xs text-[#808068] flex items-center gap-2 self-end sm:self-center font-medium">
             <span>
               {lang === "en"
                 ? `Showing ${filteredSections.length} of ${GUIDE_SECTIONS.length} guides`
@@ -636,8 +636,8 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
               onClick={() => setSelectedCategory(cat.id)}
               className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
                 selectedCategory === cat.id
-                  ? "bg-[#244f3d] text-white shadow-sm"
-                  : "bg-white text-[#5b685d] border border-[#dce3d5] hover:bg-[#f1f5ed]"
+                  ? "bg-[#D67B6B] text-white shadow-sm"
+                  : "bg-white text-gray-700 border border-[#E5D8CF] hover:bg-[#FAF5F1]"
               }`}
             >
               {lang === "en" ? cat.labelEn : cat.labelSi}
@@ -649,7 +649,7 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
       {/* Guide Cards Accordion */}
       <div className="space-y-4">
         {filteredSections.length === 0 ? (
-          <div className="p-12 text-center rounded-3xl bg-white border border-[#dfe5d8] space-y-3">
+          <div className="p-12 text-center rounded-3xl bg-white border border-[#E5D8CF] space-y-3">
             <BookOpen className="size-10 text-gray-300 mx-auto" />
             <p className="text-sm font-semibold text-gray-700">
               {lang === "en" ? "No guide topics found matching your query." : "සෙවූ වචන වලට අදාළ මාතෘකා කිසිවක් හමු නොවීය."}
@@ -681,8 +681,8 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
                 key={section.id}
                 className={`overflow-hidden rounded-2xl sm:rounded-3xl border transition-all ${
                   isExpanded
-                    ? "border-[#244f3d]/40 bg-white shadow-md ring-1 ring-[#244f3d]/10"
-                    : "border-[#dfe5d8] bg-white hover:border-[#244f3d]/30 hover:bg-[#fafbf8]"
+                    ? "border-[#D67B6B]/60 bg-white shadow-md ring-1 ring-[#D67B6B]/20"
+                    : "border-[#E5D8CF] bg-white hover:border-[#D67B6B]/40 hover:bg-[#FAF5F1]"
                 }`}
               >
                 {/* Accordion Header */}
@@ -694,7 +694,7 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
                   <div className="flex items-start sm:items-center gap-3.5 min-w-0">
                     <div
                       className={`flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-2xl transition-colors ${
-                        isExpanded ? "bg-[#244f3d] text-white" : "bg-[#ecf3e7] text-[#244f3d]"
+                        isExpanded ? "bg-[#D67B6B] text-white" : "bg-[#F4EBE4] text-[#808068]"
                       }`}
                     >
                       <Icon className="size-5" />
@@ -708,20 +708,20 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
                           <Badge
                             key={r}
                             variant="secondary"
-                            className="bg-[#f0f4ec] text-[#34533f] text-[10px] px-1.5 py-0 border-0 font-medium"
+                            className="bg-[#FAF5F1] text-[#808068] text-[10px] px-1.5 py-0 border-0 font-medium"
                           >
                             {r}
                           </Badge>
                         ))}
                       </div>
-                      <p className="text-xs text-[#6e7a70] line-clamp-2 leading-relaxed">{desc}</p>
+                      <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">{desc}</p>
                     </div>
                   </div>
 
                   <div className="shrink-0 flex items-center gap-2">
                     <div
                       className={`flex size-8 items-center justify-center rounded-xl bg-gray-100 text-gray-600 transition-transform duration-200 ${
-                        isExpanded ? "rotate-180 bg-[#ecf3e7] text-[#244f3d]" : ""
+                        isExpanded ? "rotate-180 bg-[#F4EBE4] text-[#808068]" : ""
                       }`}
                     >
                       <ChevronDown className="size-4" />
@@ -731,29 +731,29 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
 
                 {/* Expanded Content Body */}
                 {isExpanded && (
-                  <div className="border-t border-[#edf2e8] bg-[#fcfdfa] p-4 sm:p-6 space-y-5 animate-in fade-in-50 duration-200">
+                  <div className="border-t border-[#E5D8CF] bg-[#FAF5F1]/30 p-4 sm:p-6 space-y-5 animate-in fade-in-50 duration-200">
                     {/* Steps Grid */}
                     <div className="space-y-3">
-                      <p className="text-[11px] font-bold uppercase tracking-[.15em] text-[#718073]">
+                      <p className="text-[11px] font-bold uppercase tracking-[.15em] text-[#808068]">
                         {lang === "en" ? "Standard Operating Steps" : "ක්‍රියාත්මක කිරීමේ පියවර"}
                       </p>
                       <div className="grid gap-3 sm:grid-cols-2">
                         {steps.map((step, idx) => (
                           <div
                             key={idx}
-                            className="rounded-2xl border border-[#e1e7dc] bg-white p-3.5 sm:p-4 shadow-2xs space-y-2 flex flex-col justify-between"
+                            className="rounded-2xl border border-[#E5D8CF] bg-white p-3.5 sm:p-4 shadow-2xs space-y-2 flex flex-col justify-between"
                           >
                             <div>
                               <div className="flex items-center gap-2 mb-1.5">
-                                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#244f3d] text-white text-[10px] font-bold">
+                                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#808068] text-white text-[10px] font-bold">
                                   {idx + 1}
                                 </span>
                                 <h3 className="text-xs sm:text-sm font-bold text-gray-900">{step.title}</h3>
                               </div>
-                              <p className="text-xs text-[#5f6c61] leading-relaxed pl-7">{step.desc}</p>
+                              <p className="text-xs text-gray-600 leading-relaxed pl-7">{step.desc}</p>
                             </div>
                             {step.tip && (
-                              <div className="mt-2 ml-7 p-2 rounded-xl bg-[#f4f7f1] border border-[#e4ebde] text-[11px] text-[#425e4c] flex items-start gap-1.5">
+                              <div className="mt-2 ml-7 p-2 rounded-xl bg-[#FAF5F1] border border-[#E5D8CF] text-[11px] text-gray-800 flex items-start gap-1.5">
                                 <Lightbulb className="size-3.5 text-amber-600 shrink-0 mt-0.5" />
                                 <span>{step.tip}</span>
                               </div>
@@ -796,7 +796,7 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
                           variant="outline"
                           size="sm"
                           onClick={() => onNavigateView(section.quickView!)}
-                          className="rounded-xl text-xs gap-1.5 border-[#244f3d]/30 text-[#244f3d] hover:bg-[#244f3d] hover:text-white transition-colors"
+                          className="rounded-xl text-xs gap-1.5 border-[#808068]/30 text-[#808068] hover:bg-[#808068] hover:text-white transition-colors"
                         >
                           <span>
                             {lang === "en"
@@ -816,17 +816,17 @@ export function UserGuideView({ onNavigateView }: UserGuideViewProps) {
       </div>
 
       {/* Footer Support Notice & Developer Credit */}
-      <div className="rounded-2xl border border-[#dfe5d8] bg-[#f8faf6] p-5 text-center space-y-2">
-        <p className="text-xs font-semibold text-[#244f3d]">
+      <div className="rounded-2xl border border-[#E5D8CF] bg-[#FAF5F1] p-5 text-center space-y-2">
+        <p className="text-xs font-semibold text-[#808068]">
           {lang === "en" ? "Lazy Sunday Restaurant Management System" : "Lazy Sunday ආපනශාලා කළමනාකරණ පද්ධතිය"}
         </p>
-        <p className="text-[11px] text-[#718073] max-w-md mx-auto leading-relaxed">
+        <p className="text-[11px] text-gray-500 max-w-md mx-auto leading-relaxed">
           {lang === "en"
             ? "Need custom POS features, receipt adjustments, or hardware integration? Contact your system developer."
             : "අමතර විශේෂාංග හෝ තාක්ෂණික සහාය සඳහා පද්ධති සංවර්ධකයා (Developer) අමතන්න."}
         </p>
         <div className="pt-1">
-          <Badge className="bg-[#244f3d] text-white hover:bg-[#244f3d] text-[10px] font-medium px-2.5 py-0.5">
+          <Badge className="bg-[#808068] text-white hover:bg-[#808068] text-[10px] font-medium px-2.5 py-0.5">
             Created by Chamith · Full Stack Developer
           </Badge>
         </div>

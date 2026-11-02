@@ -48,7 +48,7 @@ export function BarcodeScannerModal({ open, onOpenChange, onScan }: BarcodeScann
       <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-6 overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-[#F4EBE4] text-[#808068]">
               <Barcode className="size-5" />
             </div>
             <div>
@@ -84,7 +84,7 @@ export function BarcodeScannerModal({ open, onOpenChange, onScan }: BarcodeScann
             className="text-xs sm:text-sm h-10 font-mono"
             autoFocus
           />
-          <Button type="submit" className="h-10 bg-[#244f3d] hover:bg-[#1a3d2e] text-white text-xs px-4">
+          <Button type="submit" className="h-10 bg-[#D67B6B] hover:bg-[#c36859] text-white text-xs px-4">
             Scan
           </Button>
         </form>
@@ -113,10 +113,10 @@ export function BarcodeScannerModal({ open, onOpenChange, onScan }: BarcodeScann
                 key={item.id}
                 type="button"
                 onClick={() => handleScan(item.barcode, item.name)}
-                className="flex items-center justify-between p-2.5 rounded-lg border border-gray-200 hover:border-[#244f3d] hover:bg-emerald-50/40 transition-all text-left group"
+                className="flex items-center justify-between p-2.5 rounded-lg border border-gray-200 hover:border-[#D67B6B] hover:bg-[#FAF5F1] transition-all text-left group"
               >
                 <div className="min-w-0 pr-2">
-                  <p className="text-xs font-semibold text-gray-900 truncate group-hover:text-[#244f3d]">
+                  <p className="text-xs font-semibold text-gray-900 truncate group-hover:text-[#D67B6B]">
                     {item.name}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5">
@@ -127,8 +127,8 @@ export function BarcodeScannerModal({ open, onOpenChange, onScan }: BarcodeScann
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-xs font-bold text-[#244f3d]">Rs. {item.price.toLocaleString()}</p>
-                  <span className="text-[10px] font-medium text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+                  <p className="text-xs font-bold text-[#D67B6B]">Rs. {item.price.toLocaleString()}</p>
+                  <span className="text-[10px] font-medium text-[#808068] bg-[#F4EBE4] px-1.5 py-0.5 rounded">
                     Tap to Scan
                   </span>
                 </div>

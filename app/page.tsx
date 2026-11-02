@@ -2226,11 +2226,11 @@ export default function POSPage() {
 
   if (!mounted) {
     return (
-      <div suppressHydrationWarning className="min-h-[100dvh] bg-[#fbfbf8] flex items-center justify-center">
-        <div suppressHydrationWarning className="flex flex-col items-center gap-3 text-[#244f3d]">
-          <div className="size-10 animate-spin rounded-full border-4 border-[#244f3d] border-t-transparent" />
-          <span className="font-serif text-lg font-bold tracking-tight">LAZY SUNDAY</span>
-          <p className="text-xs text-[#80907f]">Opening POS register…</p>
+      <div suppressHydrationWarning className="min-h-[100dvh] bg-[#F4EBE4] flex items-center justify-center">
+        <div suppressHydrationWarning className="flex flex-col items-center gap-3 text-[#808068]">
+          <div className="size-10 animate-spin rounded-full border-4 border-[#D67B6B] border-t-transparent" />
+          <span className="font-serif text-lg font-bold tracking-tight text-[#343428]">LAZY SUNDAY</span>
+          <p className="text-xs text-[#808068]">Opening POS register…</p>
         </div>
       </div>
     )
@@ -2241,19 +2241,19 @@ export default function POSPage() {
       {/* ========================================================= */}
       {/* 1. DESKTOP SIDEBAR NAVIGATION                             */}
       {/* ========================================================= */}
-      <aside className="hidden w-[238px] shrink-0 flex-col border-r border-[#e3e5db] bg-[#fbfbf8] lg:flex sticky top-0 h-screen overflow-y-auto">
-        <div className="flex h-[78px] items-center gap-3 border-b border-[#e3e5db] px-6 shrink-0">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-[#244f3d] text-[#e8f2dc]">
+      <aside className="hidden w-[238px] shrink-0 flex-col border-r border-[#E5D8CF] bg-[#F4EBE4] lg:flex sticky top-0 h-screen overflow-y-auto">
+        <div className="flex h-[78px] items-center gap-3 border-b border-[#E5D8CF] px-6 shrink-0 bg-[#FAF5F1]">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-[#808068] text-[#F4EBE4] shadow-sm">
             <UtensilsCrossed className="size-5" />
           </div>
           <div>
-            <p className="font-serif text-[17px] font-bold leading-tight">Lazy Sunday</p>
-            <p className="text-[10px] uppercase tracking-[.2em] text-[#8a918a]">Restaurant &amp; Bar</p>
+            <p className="font-serif text-[17px] font-bold leading-tight text-[#343428]">Lazy Sunday</p>
+            <p className="text-[10px] uppercase tracking-[.2em] text-[#808068]">Restaurant &amp; Bar</p>
           </div>
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-4">
-          <p className="px-3 pb-2 pt-3 text-[10px] font-bold uppercase tracking-[.2em] text-[#9aa097]">Workspace</p>
+          <p className="px-3 pb-2 pt-3 text-[10px] font-bold uppercase tracking-[.2em] text-[#808068]">Workspace</p>
           {workspaceNav
             .filter(({ requiredPermission }) => !requiredPermission || hasPermission(requiredPermission))
             .map(({ label, icon: Icon }) => (
@@ -2262,7 +2262,7 @@ export default function POSPage() {
               variant="ghost"
               onClick={() => setView(label)}
               className={`justify-start gap-3 rounded-xl px-3 ${
-                view === label ? "bg-[#e9f1e4] text-[#244f3d] font-semibold" : "text-[#727c73] hover:bg-[#edf2e8]"
+                view === label ? "bg-[#D67B6B] text-white font-semibold shadow-xs hover:bg-[#c26555] hover:text-white" : "text-[#545442] hover:bg-[#EAB8B5]/25 hover:text-[#343428]"
               }`}
             >
               <Icon className="size-4" />
@@ -2276,10 +2276,10 @@ export default function POSPage() {
           <div className="pt-4">
             <button
               onClick={() => setCoffeeMenuOpen(!coffeeMenuOpen)}
-              className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-[#9aa097] hover:text-[#244f3d] transition-colors"
+              className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-[#808068] hover:text-[#D67B6B] transition-colors"
             >
               <span className="flex items-center gap-1.5">
-                <Coffee className="size-3.5 text-amber-700" />
+                <Coffee className="size-3.5 text-[#D67B6B]" />
                 Coffee
               </span>
               <ChevronRight
@@ -2288,7 +2288,7 @@ export default function POSPage() {
             </button>
 
             {coffeeMenuOpen && (
-              <div className="mt-1 space-y-1 pl-2 border-l-2 border-amber-600/25 ml-2.5">
+              <div className="mt-1 space-y-1 pl-2 border-l-2 border-[#D67B6B]/30 ml-2.5">
                 {coffeeNav
                   .filter((item) => !item.requiredPermission || hasPermission(item.requiredPermission))
                   .map(({ label, title, icon: Icon, adminOnly }) => (
@@ -2298,14 +2298,14 @@ export default function POSPage() {
                       onClick={() => setView(label)}
                       className={`w-full justify-start gap-2.5 rounded-xl px-2.5 text-xs h-9 ${
                         view === label
-                          ? "bg-amber-100/70 text-amber-950 font-bold border border-amber-300/60 shadow-sm"
-                          : "text-[#727c73] hover:bg-[#edf2e8]"
+                          ? "bg-[#D67B6B] text-white font-bold shadow-xs hover:bg-[#c26555] hover:text-white"
+                          : "text-[#545442] hover:bg-[#EAB8B5]/25 hover:text-[#343428]"
                       }`}
                     >
-                      <Icon className="size-3.5 text-amber-800 shrink-0" />
+                      <Icon className="size-3.5 shrink-0" />
                       <span className="truncate">{title}</span>
                       {adminOnly && (
-                        <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-amber-200/80 text-amber-900 font-semibold">
+                        <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-[#FAF5F1] text-[#808068] font-semibold border border-[#E5D8CF]">
                           Admin
                         </span>
                       )}
@@ -2315,7 +2315,7 @@ export default function POSPage() {
             )}
           </div>
 
-          <p className="px-3 pb-2 pt-5 text-[10px] font-bold uppercase tracking-[.2em] text-[#9aa097]">Management</p>
+          <p className="px-3 pb-2 pt-5 text-[10px] font-bold uppercase tracking-[.2em] text-[#808068]">Management</p>
           {managementNav
             .filter(({ requiredPermission }) => !requiredPermission || hasPermission(requiredPermission))
             .map(({ label, title, icon: Icon }) => (
@@ -2324,7 +2324,7 @@ export default function POSPage() {
               variant="ghost"
               onClick={() => setView(label)}
               className={`justify-start gap-3 rounded-xl px-3 ${
-                view === label ? "bg-[#e9f1e4] text-[#244f3d] font-semibold" : "text-[#727c73] hover:bg-[#edf2e8]"
+                view === label ? "bg-[#D67B6B] text-white font-semibold shadow-xs hover:bg-[#c26555] hover:text-white" : "text-[#545442] hover:bg-[#EAB8B5]/25 hover:text-[#343428]"
               }`}
             >
               <Icon className="size-4" />
@@ -2333,15 +2333,15 @@ export default function POSPage() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-[#e3e5db] shrink-0">
-          <div className="rounded-2xl bg-[#244f3d] p-3.5 text-[#e8f2dc]">
+        <div className="p-4 border-t border-[#E5D8CF] shrink-0">
+          <div className="rounded-2xl bg-[#808068] p-3.5 text-[#F4EBE4]">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold">POS Engine</p>
-              <Badge className="bg-[#dce8c8] text-[#244f3d] hover:bg-[#dce8c8] text-[9px] px-1.5 py-0.5">
+              <Badge className="bg-[#EAB8B5] text-[#808068] hover:bg-[#EAB8B5] font-bold text-[9px] px-1.5 py-0.5">
                 LIVE SYNC
               </Badge>
             </div>
-            <p className="mt-1 text-[11px] text-[#bfd0be]">Real-time orders & table automation.</p>
+            <p className="mt-1 text-[11px] text-[#F4EBE4]/80">Real-time orders & table automation.</p>
           </div>
         </div>
       </aside>
@@ -2350,26 +2350,26 @@ export default function POSPage() {
       {/* 2. MOBILE NAVIGATION DRAWER (Sheet)                       */}
       {/* ========================================================= */}
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent side="left" className="w-[82vw] max-w-xs p-0 flex flex-col justify-between bg-[#fbfbf8] z-50">
+        <SheetContent side="left" className="w-[82vw] max-w-xs p-0 flex flex-col justify-between bg-[#F4EBE4] z-50">
           <div>
             {/* Drawer Header */}
-            <div className="flex items-center gap-3 border-b border-[#e3e5db] p-5 bg-white">
-              <div className="flex size-11 items-center justify-center rounded-xl bg-[#244f3d] text-[#e8f2dc] shadow-sm">
+            <div className="flex items-center gap-3 border-b border-[#E5D8CF] p-5 bg-[#FAF5F1]">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-[#808068] text-[#F4EBE4] shadow-sm">
                 <UtensilsCrossed className="size-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <SheetTitle className="font-serif text-lg font-bold leading-tight truncate text-[#25332c]">Lazy Sunday</SheetTitle>
-                <SheetDescription className="text-[10px] uppercase tracking-[.2em] text-[#8a918a]">Restaurant &amp; Bar</SheetDescription>
+                <SheetTitle className="font-serif text-lg font-bold leading-tight truncate text-[#343428]">Lazy Sunday</SheetTitle>
+                <SheetDescription className="text-[10px] uppercase tracking-[.2em] text-[#808068]">Restaurant &amp; Bar</SheetDescription>
               </div>
             </div>
 
             {/* Active Cashier Badge */}
-            <div className="mx-4 mt-4 p-3 rounded-xl bg-[#f0f4ec] border border-[#e1e7dc] flex items-center justify-between">
+            <div className="mx-4 mt-4 p-3 rounded-xl bg-[#FAF5F1] border border-[#E5D8CF] flex items-center justify-between">
               <div>
-                <p className="text-[10px] uppercase font-bold text-[#627763]">Active Register</p>
-                <p className="text-sm font-semibold text-[#1f3d2e]">{cashierName}</p>
+                <p className="text-[10px] uppercase font-bold text-[#808068]">Active Register</p>
+                <p className="text-sm font-semibold text-[#343428]">{cashierName}</p>
               </div>
-              <Badge className="bg-[#244f3d] text-white capitalize text-[10px] px-2 py-0.5">
+              <Badge className="bg-[#808068] text-white capitalize text-[10px] px-2 py-0.5">
                 {role}
               </Badge>
             </div>
@@ -2377,7 +2377,7 @@ export default function POSPage() {
             {/* Drawer Navigation Links */}
             <div className="px-3 py-2 space-y-4 max-h-[calc(100dvh-270px)] overflow-y-auto">
               <div>
-                <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-[#9aa097]">Workspace</p>
+                <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-[#808068]">Workspace</p>
                 <div className="space-y-1">
                   {workspaceNav
                     .filter(({ requiredPermission }) => !requiredPermission || hasPermission(requiredPermission))
@@ -2390,14 +2390,14 @@ export default function POSPage() {
                       }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                         view === label
-                          ? "bg-[#244f3d] text-white font-semibold shadow-sm"
-                          : "text-[#58655a] hover:bg-[#edf2e8]"
+                          ? "bg-[#D67B6B] text-white font-semibold shadow-xs"
+                          : "text-[#545442] hover:bg-[#EAB8B5]/25"
                       }`}
                     >
                       <Icon className="size-4 shrink-0" />
                       <span>{label}</span>
                       {label === "POS" && cart.length > 0 && (
-                        <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-emerald-700 text-white font-mono">
+                        <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-[#808068] text-white font-mono">
                           {totalCartQty}
                         </span>
                       )}
@@ -2408,8 +2408,8 @@ export default function POSPage() {
 
               {/* Mobile Coffee Section */}
               <div>
-                <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-[#9aa097] flex items-center gap-1.5">
-                  <Coffee className="size-3 text-amber-700" />
+                <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-[#808068] flex items-center gap-1.5">
+                  <Coffee className="size-3 text-[#D67B6B]" />
                   Coffee
                 </p>
                 <div className="space-y-1">
@@ -2424,14 +2424,14 @@ export default function POSPage() {
                         }}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                           view === label
-                            ? "bg-amber-100 text-amber-950 font-semibold shadow-sm border border-amber-300/60"
-                            : "text-[#58655a] hover:bg-[#edf2e8]"
+                            ? "bg-[#D67B6B] text-white font-semibold shadow-xs"
+                            : "text-[#545442] hover:bg-[#EAB8B5]/25"
                         }`}
                       >
-                        <Icon className="size-4 shrink-0 text-amber-800" />
+                        <Icon className="size-4 shrink-0 text-[#808068]" />
                         <span>{title}</span>
                         {adminOnly && (
-                          <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-semibold">
+                          <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-[#FAF5F1] text-[#808068] border border-[#E5D8CF] font-semibold">
                             Admin
                           </span>
                         )}
@@ -2441,7 +2441,7 @@ export default function POSPage() {
               </div>
 
               <div>
-                <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-[#9aa097]">Management</p>
+                <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-[#808068]">Management</p>
                 <div className="space-y-1">
                   {managementNav
                     .filter(({ requiredPermission }) => !requiredPermission || hasPermission(requiredPermission))
@@ -2454,14 +2454,14 @@ export default function POSPage() {
                       }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                         view === label
-                          ? "bg-[#244f3d] text-white font-semibold shadow-sm"
-                          : "text-[#58655a] hover:bg-[#edf2e8]"
+                          ? "bg-[#D67B6B] text-white font-semibold shadow-xs"
+                          : "text-[#545442] hover:bg-[#EAB8B5]/25"
                       }`}
                     >
                       <Icon className="size-4 shrink-0" />
                       <span>{title || label}</span>
                       {label === "Orders" && orders.length > 0 && (
-                        <span className="ml-auto text-[11px] px-1.5 py-0.5 rounded-md bg-[#e3e8de] text-gray-700 font-mono">
+                        <span className="ml-auto text-[11px] px-1.5 py-0.5 rounded-md bg-[#FAF5F1] text-[#808068] font-mono border border-[#E5D8CF]">
                           {orders.length}
                         </span>
                       )}
@@ -2480,9 +2480,9 @@ export default function POSPage() {
                     setView("POS")
                     setMobileNavOpen(false)
                   }}
-                  className="w-full justify-start gap-2 border-emerald-600/40 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 text-xs h-9 rounded-xl font-medium"
+                  className="w-full justify-start gap-2 border-[#808068]/30 text-[#808068] bg-[#FAF5F1] hover:bg-[#eeeee7] text-xs h-9 rounded-xl font-medium"
                 >
-                  <Zap className="size-3.5 text-emerald-600 fill-emerald-600" />
+                  <Zap className="size-3.5 text-[#D67B6B] fill-[#D67B6B]" />
                   Load Test Order (Table 05)
                 </Button>
               </div>
@@ -2490,10 +2490,10 @@ export default function POSPage() {
           </div>
 
           {/* Drawer Footer with Sign Out */}
-          <div className="p-4 border-t border-[#e3e5db] bg-[#f7f8f3] space-y-3">
-            <div className="flex items-center justify-between text-xs text-[#6e7b6f]">
+          <div className="p-4 border-t border-[#E5D8CF] bg-[#FAF5F1] space-y-3">
+            <div className="flex items-center justify-between text-xs text-[#808068]">
               <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="size-2 rounded-full bg-[#D67B6B] animate-pulse"></span>
                 Realtime POS Sync
               </span>
               <span className="font-mono text-[11px]">v1.0</span>
@@ -2516,14 +2516,14 @@ export default function POSPage() {
       {/* ========================================================= */}
       <main className="flex min-w-0 flex-1 flex-col">
         {/* Top Responsive Navigation Bar */}
-        <header className="flex min-h-[64px] sm:min-h-[72px] items-center justify-between border-b border-[#e3e5db] bg-[#fbfbf8] px-3 sm:px-6 sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.03)] gap-2">
+        <header className="flex min-h-[64px] sm:min-h-[72px] items-center justify-between border-b border-[#E5D8CF] bg-[#F4EBE4] px-3 sm:px-6 sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.03)] gap-2">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
             {/* Hamburger Button for Mobile */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setMobileNavOpen(true)}
-              className="lg:hidden size-9 sm:size-10 rounded-xl hover:bg-[#edf2e8] text-[#244f3d] shrink-0"
+              className="lg:hidden size-9 sm:size-10 rounded-xl hover:bg-[#EAB8B5]/25 text-[#808068] shrink-0"
               aria-label="Open Navigation Menu"
             >
               <Menu className="size-5" />
@@ -2531,15 +2531,15 @@ export default function POSPage() {
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[11px] font-semibold text-[#89918a] truncate hidden sm:inline">
+                <span className="text-[11px] font-semibold text-[#808068] truncate hidden sm:inline">
                   Lazy Sunday
                 </span>
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 text-[10px] sm:text-[11px] font-semibold shrink-0">
-                  <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#FAF5F1] border border-[#EAB8B5] text-[#808068] text-[10px] sm:text-[11px] font-semibold shrink-0">
+                  <span className="size-2 rounded-full bg-[#D67B6B] animate-pulse" />
                   <span>DEMO SANDBOX</span>
                 </div>
               </div>
-              <h1 className="font-serif text-base sm:text-xl font-bold leading-tight text-[#1c2c23] truncate">
+              <h1 className="font-serif text-base sm:text-xl font-bold leading-tight text-[#343428] truncate">
                 Good day, {activeRole ? activeRole.charAt(0).toUpperCase() + activeRole.slice(1) : "Cashier"}
               </h1>
             </div>
@@ -2551,10 +2551,10 @@ export default function POSPage() {
               variant="outline"
               size="sm"
               onClick={() => setBarcodeModalOpen(true)}
-              className="h-8 sm:h-9 gap-1.5 border-emerald-600/40 text-emerald-900 bg-emerald-50/90 hover:bg-emerald-100 rounded-xl px-2 sm:px-3 text-xs font-semibold shadow-2xs shrink-0"
+              className="h-8 sm:h-9 gap-1.5 border-[#808068]/30 text-[#808068] bg-white hover:bg-[#EAB8B5]/20 rounded-xl px-2 sm:px-3 text-xs font-semibold shadow-2xs shrink-0"
               title="Simulate Hardware Barcode Laser Scanner"
             >
-              <Barcode className="size-4 text-[#244f3d] shrink-0" />
+              <Barcode className="size-4 text-[#808068] shrink-0" />
               <span className="hidden md:inline">Scan Barcode</span>
             </Button>
 
@@ -2564,9 +2564,9 @@ export default function POSPage() {
               size="sm"
               onClick={handleResetDemoData}
               title="Reset Mock Data to Initial State"
-              className="h-8 sm:h-9 gap-1.5 border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-xl px-2 sm:px-2.5 text-xs font-medium shrink-0"
+              className="h-8 sm:h-9 gap-1.5 border-[#D67B6B]/40 text-[#D67B6B] bg-[#FAF5F1] hover:bg-[#faecea] rounded-xl px-2 sm:px-2.5 text-xs font-medium shrink-0"
             >
-              <RotateCcw className="size-3.5 text-amber-700 shrink-0" />
+              <RotateCcw className="size-3.5 text-[#D67B6B] shrink-0" />
               <span className="hidden lg:inline">Reset Demo</span>
             </Button>
 
@@ -2576,9 +2576,9 @@ export default function POSPage() {
               size="sm"
               onClick={loadAcceptanceTestScenario}
               title="Load Test Order (Table 05)"
-              className="h-8 sm:h-9 gap-1.5 border-emerald-600/30 text-emerald-800 bg-emerald-50/60 hover:bg-emerald-100 rounded-xl px-2 sm:px-2.5 text-xs font-medium shrink-0"
+              className="h-8 sm:h-9 gap-1.5 border-[#808068]/30 text-[#808068] bg-[#FAF5F1] hover:bg-[#eeeee7] rounded-xl px-2 sm:px-2.5 text-xs font-medium shrink-0"
             >
-              <Zap className="size-3.5 text-emerald-600 fill-emerald-600 shrink-0" />
+              <Zap className="size-3.5 text-[#D67B6B] fill-[#D67B6B] shrink-0" />
               <span className="hidden xl:inline">Test Order</span>
             </Button>
 
@@ -2588,10 +2588,10 @@ export default function POSPage() {
               size="sm"
               onClick={() => setView("UserGuide")}
               title="User Guide & Manual (English / සිංහල)"
-              className={`h-8 sm:h-9 gap-1.5 border-[#244f3d]/20 rounded-xl px-2 sm:px-2.5 text-xs font-medium shrink-0 ${
+              className={`h-8 sm:h-9 gap-1.5 border-[#808068]/30 rounded-xl px-2 sm:px-2.5 text-xs font-medium shrink-0 ${
                 view === "UserGuide"
-                  ? "bg-[#244f3d] text-white hover:bg-[#1a3d2e] hover:text-white"
-                  : "text-[#244f3d] bg-[#244f3d]/5 hover:bg-[#244f3d]/10"
+                  ? "bg-[#808068] text-white hover:bg-[#6c6c57] hover:text-white"
+                  : "text-[#808068] bg-white hover:bg-[#EAB8B5]/20"
               }`}
             >
               <BookOpen className="size-3.5 shrink-0" />
@@ -2604,11 +2604,11 @@ export default function POSPage() {
               size="icon"
               onClick={() => setView("Orders")}
               title="View Orders History"
-              className="size-8 sm:size-9 rounded-xl hover:bg-[#edf2e8] text-gray-700 relative shrink-0"
+              className="size-8 sm:size-9 rounded-xl hover:bg-[#EAB8B5]/25 text-[#545442] relative shrink-0"
             >
               <Receipt className="size-4 shrink-0" />
               {orders.length > 0 && (
-                <span className="absolute top-1 right-1 size-2 rounded-full bg-emerald-600"></span>
+                <span className="absolute top-1 right-1 size-2 rounded-full bg-[#D67B6B]"></span>
               )}
             </Button>
 
@@ -2616,10 +2616,10 @@ export default function POSPage() {
             <Button
               variant="ghost"
               onClick={signOut}
-              className="h-8 sm:h-9 gap-1.5 text-[#6f7d70] hover:text-red-700 hover:bg-red-50 rounded-xl px-2 sm:px-2.5 text-xs shrink-0"
+              className="h-8 sm:h-9 gap-1.5 text-[#808068] hover:text-red-700 hover:bg-red-50 rounded-xl px-2 sm:px-2.5 text-xs shrink-0"
               title="Sign Out"
             >
-              <Badge className="bg-[#244f3d] text-white capitalize text-[10px] px-2 py-0.5 border-0 hidden sm:inline-flex">
+              <Badge className="bg-[#808068] text-white capitalize text-[10px] px-2 py-0.5 border-0 hidden sm:inline-flex">
                 {activeRole}
               </Badge>
               <LogOut className="size-3.5 shrink-0" />
@@ -2817,24 +2817,24 @@ export default function POSPage() {
       {/* ========================================================= */}
       {/* 4. MOBILE BOTTOM NAVIGATION BAR (lg:hidden)               */}
       {/* ========================================================= */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#fbfbf8]/95 backdrop-blur-md border-t border-[#e3e5db] lg:hidden flex items-center justify-around px-2 py-1.5 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#F4EBE4]/95 backdrop-blur-md border-t border-[#E5D8CF] lg:hidden flex items-center justify-around px-2 py-1.5 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
         <button
           onClick={() => setView("POS")}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all relative ${
-            view === "POS" ? "text-[#244f3d] font-bold scale-105" : "text-[#7b857c]"
+            view === "POS" ? "text-[#D67B6B] font-bold scale-105" : "text-[#808068]"
           }`}
         >
           <ShoppingBag className="size-5" />
           <span className="text-[10px] mt-0.5">POS</span>
           {cart.length > 0 && (
-            <span className="absolute top-0.5 right-2 size-2 rounded-full bg-emerald-600 ring-2 ring-white"></span>
+            <span className="absolute top-0.5 right-2 size-2 rounded-full bg-[#D67B6B] ring-2 ring-white"></span>
           )}
         </button>
 
         <button
           onClick={() => setView("Orders")}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
-            view === "Orders" ? "text-[#244f3d] font-bold scale-105" : "text-[#7b857c]"
+            view === "Orders" ? "text-[#D67B6B] font-bold scale-105" : "text-[#808068]"
           }`}
         >
           <ClipboardList className="size-5" />
@@ -2844,7 +2844,7 @@ export default function POSPage() {
         <button
           onClick={() => setView("Tables")}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
-            view === "Tables" ? "text-[#244f3d] font-bold scale-105" : "text-[#7b857c]"
+            view === "Tables" ? "text-[#D67B6B] font-bold scale-105" : "text-[#808068]"
           }`}
         >
           <Table2 className="size-5" />
@@ -2854,7 +2854,7 @@ export default function POSPage() {
         <button
           onClick={() => setView("Kitchen")}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
-            view === "Kitchen" ? "text-[#244f3d] font-bold scale-105" : "text-[#7b857c]"
+            view === "Kitchen" ? "text-[#D67B6B] font-bold scale-105" : "text-[#808068]"
           }`}
         >
           <UtensilsCrossed className="size-5" />
@@ -2864,7 +2864,7 @@ export default function POSPage() {
         <button
           onClick={() => setView("Bar")}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
-            view === "Bar" ? "text-[#244f3d] font-bold scale-105" : "text-[#7b857c]"
+            view === "Bar" ? "text-[#D67B6B] font-bold scale-105" : "text-[#808068]"
           }`}
           aria-label="Open Bar Order Tickets"
         >
@@ -2874,7 +2874,7 @@ export default function POSPage() {
 
         <button
           onClick={() => setMobileNavOpen(true)}
-          className="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-[#7b857c] hover:text-[#244f3d]"
+          className="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-[#808068] hover:text-[#D67B6B]"
         >
           <Menu className="size-5" />
           <span className="text-[10px] mt-0.5">Menu</span>
@@ -2885,19 +2885,19 @@ export default function POSPage() {
       {/* 5. COMPLETE PAYMENT MODAL / WINDOW (Mobile Responsive)    */}
       {/* ========================================================= */}
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
-        <DialogContent className="w-[96vw] sm:max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[92dvh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-[#dfe5d8] shadow-2xl bg-white [&>button:last-child]:text-white [&>button:last-child]:opacity-85 [&>button:last-child]:hover:opacity-100 [&>button:last-child]:hover:bg-white/20 [&>button:last-child]:rounded-full [&>button:last-child]:size-8 [&>button:last-child]:flex [&>button:last-child]:items-center [&>button:last-child]:justify-center [&>button:last-child]:top-3.5 [&>button:last-child]:right-3.5 [&>button:last-child]:transition-colors [&>button:last-child]:z-30">
-          <DialogHeader className="bg-[#244f3d] text-white p-4 sm:p-5 pr-14 sm:pr-16 shrink-0 relative">
+        <DialogContent className="w-[96vw] sm:max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[92dvh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-[#E5D8CF] shadow-2xl bg-white [&>button:last-child]:text-white [&>button:last-child]:opacity-85 [&>button:last-child]:hover:opacity-100 [&>button:last-child]:hover:bg-white/20 [&>button:last-child]:rounded-full [&>button:last-child]:size-8 [&>button:last-child]:flex [&>button:last-child]:items-center [&>button:last-child]:justify-center [&>button:last-child]:top-3.5 [&>button:last-child]:right-3.5 [&>button:last-child]:transition-colors [&>button:last-child]:z-30">
+          <DialogHeader className="bg-[#808068] text-white p-4 sm:p-5 pr-14 sm:pr-16 shrink-0 relative">
             <div className="flex justify-between items-center gap-3">
               <div>
                 <DialogTitle className="text-lg sm:text-xl font-serif text-white tracking-wide">
                   COMPLETE PAYMENT
                 </DialogTitle>
-                <DialogDescription className="text-[#bfd0be] text-[11px] sm:text-xs mt-0.5">
+                <DialogDescription className="text-[#F4EBE4]/85 text-[11px] sm:text-xs mt-0.5">
                   Point of Sale • Order Settlement
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Badge className="bg-[#386b55] text-white border border-[#4d876d] font-mono text-xs px-2.5 py-1">
+                <Badge className="bg-[#D67B6B] text-white border-0 font-mono text-xs px-2.5 py-1">
                   {selectedTable}
                 </Badge>
               </div>
@@ -3091,10 +3091,10 @@ export default function POSPage() {
                 </div>
 
                 {/* TOTAL AMOUNT DUE BANNER */}
-                <div className="bg-[#244f3d] text-white rounded-xl p-3.5 sm:p-4 flex items-center justify-between shadow-sm">
+                <div className="bg-[#808068] text-white rounded-xl p-3.5 sm:p-4 flex items-center justify-between shadow-sm">
                   <div>
-                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-[#bfd0be]">Total Amount Due</p>
-                    <p className="text-[11px] text-emerald-200">Table: {selectedTable} • {totalCartQty} item{totalCartQty === 1 ? "" : "s"}</p>
+                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-[#F4EBE4]/80">Total Amount Due</p>
+                    <p className="text-[11px] text-[#EAB8B5]">Table: {selectedTable} • {totalCartQty} item{totalCartQty === 1 ? "" : "s"}</p>
                   </div>
                   <div className="text-right">
                     <span className="font-mono font-black text-xl sm:text-2xl text-white tracking-tight">
@@ -3113,7 +3113,7 @@ export default function POSPage() {
                     <p className="text-[11px] text-gray-400">Choose single method or split across multiple tenders</p>
                   </div>
                   {paymentMode === "split" && (
-                    <Badge className="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[10px] gap-1 px-2 py-0.5">
+                    <Badge className="bg-[#FAF5F1] text-[#D67B6B] border border-[#EAB8B5] font-bold text-[10px] gap-1 px-2 py-0.5">
                       <Split className="size-3" />
                       Split Mode Active
                     </Badge>
@@ -3131,25 +3131,25 @@ export default function POSPage() {
                     }}
                     className={`relative flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl border-2 transition-all duration-150 select-none group min-h-[70px] sm:min-h-[78px] ${
                       paymentMode === "single" && paymentMethod === "cash"
-                        ? "bg-[#244f3d] text-white border-[#244f3d] shadow-md ring-2 ring-[#244f3d]/25"
-                        : "bg-white text-gray-700 border-gray-200 hover:border-[#244f3d]/40 hover:bg-emerald-50/20 hover:text-[#244f3d] shadow-sm"
+                        ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-md ring-2 ring-[#D67B6B]/25"
+                        : "bg-white text-gray-700 border-gray-200 hover:border-[#D67B6B]/40 hover:bg-[#FAF5F1] hover:text-[#D67B6B] shadow-sm"
                     }`}
                   >
                     {paymentMode === "single" && paymentMethod === "cash" && (
-                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-emerald-400 text-[#1b3d2f] flex items-center justify-center shadow-sm">
+                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-white text-[#D67B6B] flex items-center justify-center shadow-sm">
                         <Check className="size-2.5 stroke-[3]" />
                       </span>
                     )}
                     <div className={`p-1.5 rounded-lg mb-1 transition-colors ${
                       paymentMode === "single" && paymentMethod === "cash"
-                        ? "bg-white/15 text-white"
-                        : "bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-[#244f3d]"
+                        ? "bg-white/20 text-white"
+                        : "bg-gray-100 text-gray-600 group-hover:bg-[#EAB8B5]/30 group-hover:text-[#D67B6B]"
                     }`}>
                       <Banknote className="size-5" />
                     </div>
                     <span className="text-xs sm:text-sm font-black tracking-wider uppercase">CASH</span>
                     <span className={`text-[9px] sm:text-[10px] truncate max-w-full font-medium ${
-                      paymentMode === "single" && paymentMethod === "cash" ? "text-emerald-100" : "text-gray-400 group-hover:text-[#244f3d]/70"
+                      paymentMode === "single" && paymentMethod === "cash" ? "text-white/90" : "text-gray-400 group-hover:text-[#D67B6B]/70"
                     }`}>
                       Notes &amp; Coins
                     </span>
@@ -3164,25 +3164,25 @@ export default function POSPage() {
                     }}
                     className={`relative flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl border-2 transition-all duration-150 select-none group min-h-[70px] sm:min-h-[78px] ${
                       paymentMode === "single" && paymentMethod === "card"
-                        ? "bg-[#244f3d] text-white border-[#244f3d] shadow-md ring-2 ring-[#244f3d]/25"
-                        : "bg-white text-gray-700 border-gray-200 hover:border-[#244f3d]/40 hover:bg-emerald-50/20 hover:text-[#244f3d] shadow-sm"
+                        ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-md ring-2 ring-[#D67B6B]/25"
+                        : "bg-white text-gray-700 border-gray-200 hover:border-[#D67B6B]/40 hover:bg-[#FAF5F1] hover:text-[#D67B6B] shadow-sm"
                     }`}
                   >
                     {paymentMode === "single" && paymentMethod === "card" && (
-                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-emerald-400 text-[#1b3d2f] flex items-center justify-center shadow-sm">
+                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-white text-[#D67B6B] flex items-center justify-center shadow-sm">
                         <Check className="size-2.5 stroke-[3]" />
                       </span>
                     )}
                     <div className={`p-1.5 rounded-lg mb-1 transition-colors ${
                       paymentMode === "single" && paymentMethod === "card"
-                        ? "bg-white/15 text-white"
-                        : "bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-[#244f3d]"
+                        ? "bg-white/20 text-white"
+                        : "bg-gray-100 text-gray-600 group-hover:bg-[#EAB8B5]/30 group-hover:text-[#D67B6B]"
                     }`}>
                       <CreditCard className="size-5" />
                     </div>
                     <span className="text-xs sm:text-sm font-black tracking-wider uppercase">CARD</span>
                     <span className={`text-[9px] sm:text-[10px] truncate max-w-full font-medium ${
-                      paymentMode === "single" && paymentMethod === "card" ? "text-emerald-100" : "text-gray-400 group-hover:text-[#244f3d]/70"
+                      paymentMode === "single" && paymentMethod === "card" ? "text-white/90" : "text-gray-400 group-hover:text-[#D67B6B]/70"
                     }`}>
                       POS Terminal
                     </span>
@@ -3197,25 +3197,25 @@ export default function POSPage() {
                     }}
                     className={`relative flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl border-2 transition-all duration-150 select-none group min-h-[70px] sm:min-h-[78px] ${
                       paymentMode === "single" && paymentMethod === "qr"
-                        ? "bg-[#244f3d] text-white border-[#244f3d] shadow-md ring-2 ring-[#244f3d]/25"
-                        : "bg-white text-gray-700 border-gray-200 hover:border-[#244f3d]/40 hover:bg-emerald-50/20 hover:text-[#244f3d] shadow-sm"
+                        ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-md ring-2 ring-[#D67B6B]/25"
+                        : "bg-white text-gray-700 border-gray-200 hover:border-[#D67B6B]/40 hover:bg-[#FAF5F1] hover:text-[#D67B6B] shadow-sm"
                     }`}
                   >
                     {paymentMode === "single" && paymentMethod === "qr" && (
-                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-emerald-400 text-[#1b3d2f] flex items-center justify-center shadow-sm">
+                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-white text-[#D67B6B] flex items-center justify-center shadow-sm">
                         <Check className="size-2.5 stroke-[3]" />
                       </span>
                     )}
                     <div className={`p-1.5 rounded-lg mb-1 transition-colors ${
                       paymentMode === "single" && paymentMethod === "qr"
-                        ? "bg-white/15 text-white"
-                        : "bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-[#244f3d]"
+                        ? "bg-white/20 text-white"
+                        : "bg-gray-100 text-gray-600 group-hover:bg-[#EAB8B5]/30 group-hover:text-[#D67B6B]"
                     }`}>
                       <QrCode className="size-5" />
                     </div>
                     <span className="text-xs sm:text-sm font-black tracking-wider uppercase">QR PAY</span>
                     <span className={`text-[9px] sm:text-[10px] truncate max-w-full font-medium ${
-                      paymentMode === "single" && paymentMethod === "qr" ? "text-emerald-100" : "text-gray-400 group-hover:text-[#244f3d]/70"
+                      paymentMode === "single" && paymentMethod === "qr" ? "text-white/90" : "text-gray-400 group-hover:text-[#D67B6B]/70"
                     }`}>
                       LankaPay QR
                     </span>
@@ -3230,25 +3230,25 @@ export default function POSPage() {
                     }}
                     className={`relative flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl border-2 transition-all duration-150 select-none group min-h-[70px] sm:min-h-[78px] ${
                       paymentMode === "single" && paymentMethod === "bank_transfer"
-                        ? "bg-[#244f3d] text-white border-[#244f3d] shadow-md ring-2 ring-[#244f3d]/25"
-                        : "bg-white text-gray-700 border-gray-200 hover:border-[#244f3d]/40 hover:bg-emerald-50/20 hover:text-[#244f3d] shadow-sm"
+                        ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-md ring-2 ring-[#D67B6B]/25"
+                        : "bg-white text-gray-700 border-gray-200 hover:border-[#D67B6B]/40 hover:bg-[#FAF5F1] hover:text-[#D67B6B] shadow-sm"
                     }`}
                   >
                     {paymentMode === "single" && paymentMethod === "bank_transfer" && (
-                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-emerald-400 text-[#1b3d2f] flex items-center justify-center shadow-sm">
+                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-white text-[#D67B6B] flex items-center justify-center shadow-sm">
                         <Check className="size-2.5 stroke-[3]" />
                       </span>
                     )}
                     <div className={`p-1.5 rounded-lg mb-1 transition-colors ${
                       paymentMode === "single" && paymentMethod === "bank_transfer"
-                        ? "bg-white/15 text-white"
-                        : "bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-[#244f3d]"
+                        ? "bg-white/20 text-white"
+                        : "bg-gray-100 text-gray-600 group-hover:bg-[#EAB8B5]/30 group-hover:text-[#D67B6B]"
                     }`}>
                       <Landmark className="size-5" />
                     </div>
                     <span className="text-xs sm:text-sm font-black tracking-wider uppercase">TRANSFER</span>
                     <span className={`text-[9px] sm:text-[10px] truncate max-w-full font-medium ${
-                      paymentMode === "single" && paymentMethod === "bank_transfer" ? "text-emerald-100" : "text-gray-400 group-hover:text-[#244f3d]/70"
+                      paymentMode === "single" && paymentMethod === "bank_transfer" ? "text-white/90" : "text-gray-400 group-hover:text-[#D67B6B]/70"
                     }`}>
                       Bank Slip
                     </span>
@@ -3263,25 +3263,25 @@ export default function POSPage() {
                     }}
                     className={`relative flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl border-2 transition-all duration-150 select-none group min-h-[70px] sm:min-h-[78px] ${
                       paymentMode === "single" && paymentMethod === "credit"
-                        ? "bg-[#244f3d] text-white border-[#244f3d] shadow-md ring-2 ring-[#244f3d]/25"
-                        : "bg-white text-gray-700 border-gray-200 hover:border-[#244f3d]/40 hover:bg-emerald-50/20 hover:text-[#244f3d] shadow-sm"
+                        ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-md ring-2 ring-[#D67B6B]/25"
+                        : "bg-white text-gray-700 border-gray-200 hover:border-[#D67B6B]/40 hover:bg-[#FAF5F1] hover:text-[#D67B6B] shadow-sm"
                     }`}
                   >
                     {paymentMode === "single" && paymentMethod === "credit" && (
-                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-emerald-400 text-[#1b3d2f] flex items-center justify-center shadow-sm">
+                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-white text-[#D67B6B] flex items-center justify-center shadow-sm">
                         <Check className="size-2.5 stroke-[3]" />
                       </span>
                     )}
                     <div className={`p-1.5 rounded-lg mb-1 transition-colors ${
                       paymentMode === "single" && paymentMethod === "credit"
-                        ? "bg-white/15 text-white"
-                        : "bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-[#244f3d]"
+                        ? "bg-white/20 text-white"
+                        : "bg-gray-100 text-gray-600 group-hover:bg-[#EAB8B5]/30 group-hover:text-[#D67B6B]"
                     }`}>
                       <UserCheck className="size-5" />
                     </div>
                     <span className="text-xs sm:text-sm font-black tracking-wider uppercase">CREDIT</span>
                     <span className={`text-[9px] sm:text-[10px] truncate max-w-full font-medium ${
-                      paymentMode === "single" && paymentMethod === "credit" ? "text-emerald-100" : "text-gray-400 group-hover:text-[#244f3d]/70"
+                      paymentMode === "single" && paymentMethod === "credit" ? "text-white/90" : "text-gray-400 group-hover:text-[#D67B6B]/70"
                     }`}>
                       Customer Tab
                     </span>
@@ -3298,29 +3298,29 @@ export default function POSPage() {
                     }}
                     className={`relative flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl border-2 transition-all duration-150 select-none group min-h-[70px] sm:min-h-[78px] ${
                       paymentMode === "split"
-                        ? "bg-[#244f3d] text-white border-[#244f3d] shadow-md ring-2 ring-[#244f3d]/25"
-                        : "bg-emerald-50/60 text-emerald-900 border-dashed border-emerald-400 hover:bg-emerald-100 hover:border-emerald-600 shadow-sm"
+                        ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-md ring-2 ring-[#D67B6B]/25"
+                        : "bg-[#FAF5F1] text-[#808068] border-dashed border-[#D67B6B]/60 hover:bg-[#faecea] hover:border-[#D67B6B] shadow-sm"
                     }`}
                   >
                     {paymentMode === "split" ? (
-                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-emerald-400 text-[#1b3d2f] flex items-center justify-center shadow-sm">
+                      <span className="absolute top-1.5 right-1.5 size-4 rounded-full bg-white text-[#D67B6B] flex items-center justify-center shadow-sm">
                         <Check className="size-2.5 stroke-[3]" />
                       </span>
                     ) : (
-                      <span className="absolute top-1 right-1 rounded bg-amber-400 px-1 py-0.5 text-[8px] font-black text-amber-950 uppercase">
+                      <span className="absolute top-1 right-1 rounded bg-[#D67B6B] px-1 py-0.5 text-[8px] font-black text-white uppercase">
                         MIXED
                       </span>
                     )}
                     <div className={`p-1.5 rounded-lg mb-1 transition-colors ${
                       paymentMode === "split"
-                        ? "bg-white/15 text-white"
-                        : "bg-emerald-100 text-emerald-800 group-hover:bg-emerald-200"
+                        ? "bg-white/20 text-white"
+                        : "bg-[#EAB8B5]/40 text-[#808068] group-hover:bg-[#EAB8B5]"
                     }`}>
                       <Split className="size-5" />
                     </div>
                     <span className="text-xs sm:text-sm font-black tracking-wider uppercase">SPLIT BILL</span>
                     <span className={`text-[9px] sm:text-[10px] truncate max-w-full font-medium ${
-                      paymentMode === "split" ? "text-emerald-100" : "text-emerald-700/80 group-hover:text-emerald-900"
+                      paymentMode === "split" ? "text-white/90" : "text-[#808068]/80 group-hover:text-[#808068]"
                     }`}>
                       Multi-Tender
                     </span>
@@ -3615,7 +3615,7 @@ export default function POSPage() {
                         return (
                           <div
                             key={line.id}
-                            className="rounded-2xl border border-gray-200 bg-white p-3.5 sm:p-4 shadow-sm space-y-3 relative transition-all hover:border-[#244f3d]/40"
+                            className="rounded-2xl border border-gray-200 bg-white p-3.5 sm:p-4 shadow-sm space-y-3 relative transition-all hover:border-[#D67B6B]/40"
                           >
                             {/* Line Header */}
                             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
@@ -3675,8 +3675,8 @@ export default function POSPage() {
                                   onClick={() => updateSplitLineMethod(line.id, "cash")}
                                   className={`h-9 sm:h-10 rounded-xl px-2 text-[11px] font-bold flex items-center justify-center gap-1.5 border transition-all truncate ${
                                     line.method === "cash"
-                                      ? "bg-[#244f3d] text-white border-[#244f3d] shadow-sm"
-                                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                      ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-sm"
+                                      : "bg-white text-gray-700 border-gray-200 hover:bg-[#FAF5F1] hover:text-[#D67B6B]"
                                   }`}
                                 >
                                   <Banknote className="size-3.5 shrink-0" />
@@ -3688,8 +3688,8 @@ export default function POSPage() {
                                   onClick={() => updateSplitLineMethod(line.id, "card")}
                                   className={`h-9 sm:h-10 rounded-xl px-2 text-[11px] font-bold flex items-center justify-center gap-1.5 border transition-all truncate ${
                                     line.method === "card"
-                                      ? "bg-[#244f3d] text-white border-[#244f3d] shadow-sm"
-                                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                      ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-sm"
+                                      : "bg-white text-gray-700 border-gray-200 hover:bg-[#FAF5F1] hover:text-[#D67B6B]"
                                   }`}
                                 >
                                   <CreditCard className="size-3.5 shrink-0" />
@@ -3701,8 +3701,8 @@ export default function POSPage() {
                                   onClick={() => updateSplitLineMethod(line.id, "bank_transfer")}
                                   className={`h-9 sm:h-10 rounded-xl px-2 text-[11px] font-bold flex items-center justify-center gap-1.5 border transition-all truncate ${
                                     line.method === "bank_transfer"
-                                      ? "bg-[#244f3d] text-white border-[#244f3d] shadow-sm"
-                                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                      ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-sm"
+                                      : "bg-white text-gray-700 border-gray-200 hover:bg-[#FAF5F1] hover:text-[#D67B6B]"
                                   }`}
                                 >
                                   <Landmark className="size-3.5 shrink-0" />
@@ -3714,8 +3714,8 @@ export default function POSPage() {
                                   onClick={() => updateSplitLineMethod(line.id, "credit")}
                                   className={`h-9 sm:h-10 rounded-xl px-2 text-[11px] font-bold flex items-center justify-center gap-1.5 border transition-all truncate ${
                                     line.method === "credit"
-                                      ? "bg-[#244f3d] text-white border-[#244f3d] shadow-sm"
-                                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                      ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-sm"
+                                      : "bg-white text-gray-700 border-gray-200 hover:bg-[#FAF5F1] hover:text-[#D67B6B]"
                                   }`}
                                 >
                                   <UserCheck className="size-3.5 shrink-0" />
@@ -3727,8 +3727,8 @@ export default function POSPage() {
                                   onClick={() => updateSplitLineMethod(line.id, "qr")}
                                   className={`h-9 sm:h-10 rounded-xl px-2 text-[11px] font-bold flex items-center justify-center gap-1.5 border transition-all truncate col-span-2 sm:col-span-1 ${
                                     line.method === "qr"
-                                      ? "bg-[#244f3d] text-white border-[#244f3d] shadow-sm"
-                                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                      ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-sm"
+                                      : "bg-white text-gray-700 border-gray-200 hover:bg-[#FAF5F1] hover:text-[#D67B6B]"
                                   }`}
                                 >
                                   <QrCode className="size-3.5 shrink-0" />
@@ -3749,7 +3749,7 @@ export default function POSPage() {
                                     size="sm"
                                     variant="outline"
                                     onClick={() => handlePayRemaining(line.id)}
-                                    className="h-6 px-2 text-[10px] font-bold text-[#244f3d] border-[#244f3d]/40 bg-emerald-50/60 hover:bg-emerald-100 rounded-md"
+                                    className="h-6 px-2 text-[10px] font-bold text-[#808068] border-[#808068]/40 bg-[#FAF5F1] hover:bg-[#eeeee7] rounded-md"
                                   >
                                     Pay remaining (Rs. {maxAllowedForThisLine.toLocaleString()})
                                   </Button>
@@ -3766,7 +3766,7 @@ export default function POSPage() {
                                   value={line.amount}
                                   onChange={(e) => updateSplitLineAmount(idx, e.target.value)}
                                   placeholder={`Enter amount (max Rs. ${maxAllowedForThisLine.toLocaleString()})`}
-                                  className="h-11 pl-11 pr-3 text-base font-mono font-bold rounded-xl border-gray-300 focus:ring-2 focus:ring-[#244f3d]"
+                                  className="h-11 pl-11 pr-3 text-base font-mono font-bold rounded-xl border-gray-300 focus:ring-2 focus:ring-[#D67B6B]"
                                 />
                               </div>
 
@@ -3982,7 +3982,7 @@ export default function POSPage() {
                       type="button"
                       variant="outline"
                       onClick={addSplitPaymentLine}
-                      className="w-full h-12 rounded-xl border-dashed border-2 border-[#244f3d]/50 text-[#244f3d] bg-emerald-50/40 hover:bg-emerald-100/60 font-bold text-xs sm:text-sm gap-2 transition-all shadow-sm"
+                      className="w-full h-12 rounded-xl border-dashed border-2 border-[#808068]/50 text-[#808068] bg-[#FAF5F1] hover:bg-[#eeeee7] font-bold text-xs sm:text-sm gap-2 transition-all shadow-sm"
                     >
                       <Plus className="size-4" />
                       Add Payment Line {splitRemainingBalance > 0 ? `(Rs. ${splitRemainingBalance.toLocaleString()} Remaining)` : ""}
@@ -4008,11 +4008,11 @@ export default function POSPage() {
               className={`h-11 px-5 sm:px-7 font-bold gap-2 rounded-xl shadow-md text-xs sm:text-sm transition-all ${
                 isCompletePaymentDisabled
                   ? "bg-gray-200 text-gray-400 border border-gray-300 cursor-not-allowed shadow-none"
-                  : "bg-[#244f3d] text-white hover:bg-[#1a3b2e]"
+                  : "bg-[#D67B6B] hover:bg-[#c26555] text-white"
               }`}
             >
               <span>Complete Payment</span>
-              <span className="font-mono text-emerald-200 text-[11px] sm:text-xs">
+              <span className="font-mono text-white/90 text-[11px] sm:text-xs">
                 • Rs. {total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
               </span>
               <Check className="size-4 shrink-0" />
@@ -4025,19 +4025,19 @@ export default function POSPage() {
       {/* 6. COMPLETED RECEIPT / BILL PREVIEW WINDOW                */}
       {/* ========================================================= */}
       <Dialog open={!!completedReceipt} onOpenChange={() => setCompletedReceipt(null)}>
-        <DialogContent className="w-[95vw] sm:max-w-md max-h-[92dvh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-[#dfe5d8] shadow-2xl bg-white [&>button:last-child]:text-white [&>button:last-child]:opacity-85 [&>button:last-child]:hover:opacity-100 [&>button:last-child]:hover:bg-white/20 [&>button:last-child]:rounded-full [&>button:last-child]:size-8 [&>button:last-child]:flex [&>button:last-child]:items-center [&>button:last-child]:justify-center [&>button:last-child]:top-3.5 [&>button:last-child]:right-3.5 [&>button:last-child]:transition-colors [&>button:last-child]:z-30">
-          <DialogHeader className="bg-emerald-800 text-white p-4 sm:p-5 pr-14 sm:pr-16 shrink-0 relative">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[92dvh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-[#E5D8CF] shadow-2xl bg-white [&>button:last-child]:text-white [&>button:last-child]:opacity-85 [&>button:last-child]:hover:opacity-100 [&>button:last-child]:hover:bg-white/20 [&>button:last-child]:rounded-full [&>button:last-child]:size-8 [&>button:last-child]:flex [&>button:last-child]:items-center [&>button:last-child]:justify-center [&>button:last-child]:top-3.5 [&>button:last-child]:right-3.5 [&>button:last-child]:transition-colors [&>button:last-child]:z-30">
+          <DialogHeader className="bg-[#808068] text-white p-4 sm:p-5 pr-14 sm:pr-16 shrink-0 relative">
             <div className="flex justify-between items-center gap-3">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="size-5 sm:size-6 text-emerald-300 shrink-0" />
+                <CheckCircle2 className="size-5 sm:size-6 text-[#EAB8B5] shrink-0" />
                 <div>
                   <DialogTitle className="text-base sm:text-xl font-serif text-white">PAYMENT COMPLETED</DialogTitle>
-                  <DialogDescription className="text-emerald-100 text-[11px] sm:text-xs">
+                  <DialogDescription className="text-[#F4EBE4]/85 text-[11px] sm:text-xs">
                     ✓ Successful • Receipt Generated
                   </DialogDescription>
                 </div>
               </div>
-              <Badge className="bg-emerald-950 text-emerald-200 border-0 font-mono text-[10px] sm:text-xs">
+              <Badge className="bg-[#FAF5F1] text-[#808068] border-0 font-mono text-[10px] sm:text-xs">
                 {completedReceipt?.payment_method === "split" ? "SPLIT PAYMENT" : completedReceipt?.payment_method.toUpperCase()}
               </Badge>
             </div>
@@ -4075,7 +4075,7 @@ export default function POSPage() {
             </Button>
             <Button
               onClick={() => printThermalReceipt(completedReceipt)}
-              className="w-2/3 bg-[#244f3d] hover:bg-[#1a3b2e] text-white font-bold h-11 gap-1.5 sm:gap-2 rounded-xl text-xs sm:text-sm shadow-sm"
+              className="w-2/3 bg-[#D67B6B] hover:bg-[#c26555] text-white font-bold h-11 gap-1.5 sm:gap-2 rounded-xl text-xs sm:text-sm shadow-sm"
             >
               <Printer className="size-4 shrink-0" />
               PRINT RECEIPT (4-INCH)
@@ -4100,7 +4100,7 @@ export default function POSPage() {
         <DialogContent className="w-[92vw] sm:max-w-md rounded-2xl p-5 space-y-4">
           <DialogHeader>
             <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2 text-gray-900">
-              <Split className="size-5 text-[#244f3d]" />
+              <Split className="size-5 text-[#D67B6B]" />
               Split Bill Between Guests
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
@@ -4108,10 +4108,10 @@ export default function POSPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="bg-[#fafbf8] p-4 rounded-xl border border-[#dfe5d8] space-y-3">
+          <div className="bg-[#FAF5F1] p-4 rounded-xl border border-[#E5D8CF] space-y-3">
             <div className="flex justify-between items-center text-sm font-semibold">
               <span className="text-gray-600">Total Order Amount:</span>
-              <span className="font-mono text-base font-bold text-[#244f3d]">
+              <span className="font-mono text-base font-bold text-[#D67B6B]">
                 Rs. {total.toLocaleString()}
               </span>
             </div>
@@ -4128,8 +4128,8 @@ export default function POSPage() {
                     onClick={() => setSplitWays(ways)}
                     className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
                       splitWays === ways
-                        ? "bg-[#244f3d] text-white border-[#244f3d] shadow-sm"
-                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                        ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-xs"
+                        : "bg-white text-gray-700 border-gray-300 hover:bg-[#FAF5F1]"
                     }`}
                   >
                     {ways} Ways
@@ -4138,12 +4138,12 @@ export default function POSPage() {
               </div>
             </div>
 
-            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex justify-between items-center">
+            <div className="p-3 bg-white rounded-xl border border-[#EAB8B5] flex justify-between items-center">
               <div>
-                <p className="text-xs font-bold text-emerald-950">Amount per Guest:</p>
-                <p className="text-[10px] text-emerald-700">Split into {splitWays} equal payments</p>
+                <p className="text-xs font-bold text-[#808068]">Amount per Guest:</p>
+                <p className="text-[10px] text-gray-500">Split into {splitWays} equal payments</p>
               </div>
-              <span className="font-mono text-lg font-bold text-emerald-900">
+              <span className="font-mono text-lg font-bold text-[#D67B6B]">
                 Rs. {Math.round(total / splitWays).toLocaleString()}
               </span>
             </div>
@@ -4153,7 +4153,7 @@ export default function POSPage() {
             <Button
               variant="outline"
               onClick={() => setSplitModalOpen(false)}
-              className="rounded-xl h-10 text-xs"
+              className="rounded-xl h-10 text-xs border-[#E5D8CF]"
             >
               Cancel
             </Button>
@@ -4163,7 +4163,7 @@ export default function POSPage() {
                 toast.success(`Bill split ${splitWays} ways at Rs. ${Math.round(total / splitWays).toLocaleString()} each`)
                 openPaymentModal()
               }}
-              className="bg-[#244f3d] text-white hover:bg-[#1a3b2e] rounded-xl h-10 text-xs font-bold px-4"
+              className="bg-[#D67B6B] text-white hover:bg-[#c26555] rounded-xl h-10 text-xs font-bold px-4 shadow-sm"
             >
               Proceed to Split Checkout
             </Button>
@@ -4291,7 +4291,7 @@ export default function POSPage() {
                       onClick={() => {
                         printTicketSlip(kotTicketData, "bar")
                       }}
-                      className="bg-[#244f3d] hover:bg-[#1a382b] text-white rounded-xl h-9 text-xs font-bold px-3 gap-1.5"
+                      className="bg-[#808068] hover:bg-[#6c6c57] text-white rounded-xl h-9 text-xs font-bold px-3 gap-1.5"
                     >
                       <Coffee className="size-3.5" />
                       Print Bar BOT
@@ -4397,7 +4397,7 @@ export default function POSPage() {
                   <button
                     type="button"
                     onClick={() => setShowAddCategoryInline(!showAddCategoryInline)}
-                    className="text-xs text-[#244f3d] font-bold hover:underline"
+                    className="text-xs text-[#D67B6B] font-bold hover:underline"
                   >
                     {showAddCategoryInline ? "Cancel" : "+ New Category"}
                   </button>
@@ -4446,7 +4446,7 @@ export default function POSPage() {
                     <Button
                       type="button"
                       onClick={() => void handleAddCategory()}
-                      className="h-10 bg-[#244f3d] text-white rounded-xl text-xs font-semibold px-4"
+                      className="h-10 bg-[#D67B6B] hover:bg-[#c26555] text-white rounded-xl text-xs font-semibold px-4"
                     >
                       Add
                     </Button>
@@ -4469,7 +4469,7 @@ export default function POSPage() {
                 onChange={(e) => setForm({ ...form, stock: e.target.value })}
                 className="h-11 rounded-xl"
               />
-              <Button onClick={saveProduct} className="bg-[#244f3d] text-white h-11 rounded-xl font-bold mt-2">
+              <Button onClick={saveProduct} className="bg-[#D67B6B] hover:bg-[#c26555] text-white h-11 rounded-xl font-bold mt-2">
                 {editingProductId ? "Save Changes" : "Create Product"}
               </Button>
             </div>
@@ -4505,7 +4505,7 @@ export default function POSPage() {
                   await handleAddCategory()
                   setDialogType(null)
                 }}
-                className="bg-[#244f3d] text-white h-11 rounded-xl font-bold mt-2"
+                className="bg-[#D67B6B] hover:bg-[#c26555] text-white h-11 rounded-xl font-bold mt-2"
               >
                 Create Category
               </Button>
@@ -4515,7 +4515,7 @@ export default function POSPage() {
             <div className="flex flex-col gap-3 pt-2">
               <Input placeholder="Table name (e.g. Table 07)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-11 rounded-xl" />
               <Input type="number" placeholder="Seating Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} className="h-11 rounded-xl" />
-              <Button onClick={saveTable} className="bg-[#244f3d] text-white h-11 rounded-xl font-bold mt-2">
+              <Button onClick={saveTable} className="bg-[#D67B6B] hover:bg-[#c26555] text-white h-11 rounded-xl font-bold mt-2">
                 Create Table
               </Button>
             </div>
@@ -4530,7 +4530,7 @@ export default function POSPage() {
                   const targetP = products.find((x) => x.name === form.name)
                   if (targetP && el) adjustStock(targetP, Number(el.value))
                 }}
-                className="bg-[#244f3d] text-white h-11 rounded-xl font-bold mt-2"
+                className="bg-[#D67B6B] hover:bg-[#c26555] text-white h-11 rounded-xl font-bold mt-2"
               >
                 Save Stock Adjustment
               </Button>
@@ -4613,7 +4613,7 @@ function POSView({
               onClick={addAllProductsToCart}
               variant="outline"
               size="sm"
-              className="h-10 shrink-0 gap-1.5 rounded-xl border-[#244f3d] text-[#244f3d] hover:bg-[#e9f1e4] font-semibold text-xs sm:text-sm px-3 shadow-sm"
+              className="h-10 shrink-0 gap-1.5 rounded-xl border-[#808068] text-[#808068] hover:bg-[#FAF5F1] font-semibold text-xs sm:text-sm px-3 shadow-sm"
               title="Add all menu products to this order"
             >
               <PlusCircle className="size-4" />
@@ -4671,7 +4671,7 @@ function POSView({
             <button
               key={p.id}
               onClick={() => addToCart(p)}
-              className="group flex flex-col justify-between rounded-xl sm:rounded-2xl border bg-white p-2.5 sm:p-3 text-left transition-all active:scale-[0.98] hover:shadow-md border-[#e2e6dc] hover:border-[#244f3d]"
+              className="group flex flex-col justify-between rounded-xl sm:rounded-2xl border bg-white p-2.5 sm:p-3 text-left transition-all active:scale-[0.98] hover:shadow-md border-[#E5D8CF] hover:border-[#D67B6B]"
             >
               <div>
                 <div className="relative mb-2 aspect-[4/3] w-full overflow-hidden rounded-lg sm:rounded-xl bg-gray-100">
@@ -4691,7 +4691,7 @@ function POSView({
                     </Badge>
                   )}
                   {p.stock <= 0 && (
-                    <Badge variant="secondary" className="absolute left-1.5 top-1.5 text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0 bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <Badge variant="secondary" className="absolute left-1.5 top-1.5 text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0 bg-[#FAF5F1] text-[#808068] border border-[#EAB8B5]">
                       Available
                     </Badge>
                   )}
@@ -4701,8 +4701,8 @@ function POSView({
               </div>
 
               <div className="mt-2.5 flex items-center justify-between border-t border-gray-100 pt-2">
-                <p className="font-mono text-xs sm:text-sm font-bold text-[#244f3d]">Rs. {p.price.toLocaleString()}</p>
-                <span className="flex size-7 sm:size-8 items-center justify-center rounded-lg bg-[#e9f1e4] text-[#244f3d] group-hover:bg-[#244f3d] group-hover:text-white transition-colors shrink-0">
+                <p className="font-mono text-xs sm:text-sm font-bold text-[#D67B6B]">Rs. {p.price.toLocaleString()}</p>
+                <span className="flex size-7 sm:size-8 items-center justify-center rounded-lg bg-[#FAF5F1] text-[#808068] group-hover:bg-[#D67B6B] group-hover:text-white transition-colors shrink-0">
                   <Plus className="size-4" />
                 </span>
               </div>
@@ -4723,26 +4723,26 @@ function POSView({
       {/* ========================================================= */}
       {cart.length > 0 && (
         <div className="xl:hidden fixed bottom-[68px] left-3 right-3 sm:left-6 sm:right-6 z-30 animate-in slide-in-from-bottom-4 duration-300">
-          <div className="bg-[#244f3d] text-white rounded-2xl shadow-xl p-3 flex items-center justify-between border border-[#346550]">
+          <div className="bg-[#808068] text-white rounded-2xl shadow-xl p-3 flex items-center justify-between border border-[#6c6c57]">
             <button
               onClick={() => setMobileCartOpen(true)}
               className="flex items-center gap-3 text-left flex-1 min-w-0"
             >
               <div className="size-9 rounded-xl bg-white/15 flex items-center justify-center relative shrink-0">
                 <ShoppingBag className="size-4 text-white" />
-                <span className="absolute -top-1 -right-1 size-4 rounded-full bg-emerald-400 text-[#1b3d2e] font-mono text-[10px] font-bold flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 size-4 rounded-full bg-[#D67B6B] text-white font-mono text-[10px] font-bold flex items-center justify-center">
                   {totalCartQty}
                 </span>
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold truncate text-[#d8ead8]">Order: {selectedTable}</p>
+                <p className="text-xs font-semibold truncate text-[#F4EBE4]/90">Order: {selectedTable}</p>
                 <p className="font-mono text-sm font-bold text-white">Rs. {total.toLocaleString()}</p>
               </div>
             </button>
 
             <Button
               onClick={() => setMobileCartOpen(true)}
-              className="bg-[#dce8c8] hover:bg-[#d0dfbb] text-[#1b3d2e] font-bold text-xs h-9 px-3.5 rounded-xl shrink-0 gap-1.5"
+              className="bg-[#D67B6B] hover:bg-[#c26555] text-white font-bold text-xs h-9 px-3.5 rounded-xl shrink-0 gap-1.5 shadow-xs"
             >
               View Order
               <ChevronRight className="size-4" />
@@ -4757,13 +4757,13 @@ function POSView({
       <Sheet open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
         <SheetContent side="right" className="w-[92vw] sm:max-w-md p-0 flex flex-col h-full bg-white z-50 overflow-hidden">
           {/* Pinned Header */}
-          <div className="p-3.5 sm:p-4 border-b border-[#e2e6dc] shrink-0 bg-[#fbfbf8]">
+          <div className="p-3.5 sm:p-4 border-b border-[#E5D8CF] shrink-0 bg-[#FAF5F1]">
             <div className="flex items-center justify-between">
               <div>
-                <SheetDescription className="text-[10px] font-bold uppercase tracking-[.18em] text-[#8a958a]">
+                <SheetDescription className="text-[10px] font-bold uppercase tracking-[.18em] text-[#808068]">
                   {activeOpenOrder ? `OPEN TAB #${activeOpenOrder.order_number}` : `NEW ORDER #${nextOrderNumber}`}
                 </SheetDescription>
-                <SheetTitle className="font-serif text-lg font-bold text-[#1e2e25]">Order Summary</SheetTitle>
+                <SheetTitle className="font-serif text-lg font-bold text-[#343428]">Order Summary</SheetTitle>
               </div>
               <div className="flex items-center gap-1.5">
                 {activeOpenOrder && (
@@ -4771,23 +4771,23 @@ function POSView({
                     size="sm"
                     variant="outline"
                     onClick={startNewOrder}
-                    className="text-[11px] h-7 px-2 border-amber-400 text-amber-800"
+                    className="text-[11px] h-7 px-2 border-[#D67B6B]/40 text-[#D67B6B] hover:bg-[#faecea]"
                   >
                     New Order
                   </Button>
                 )}
-                <Badge className="bg-[#e9f1e4] text-[#244f3d] border-0 font-medium">{totalCartQty} items</Badge>
+                <Badge className="bg-[#FAF5F1] text-[#808068] border border-[#E5D8CF] font-medium">{totalCartQty} items</Badge>
               </div>
             </div>
 
             {/* Order Type Selector */}
-            <div className="mt-3 grid grid-cols-3 gap-1.5 p-1 bg-[#edf1ea] rounded-xl text-xs">
+            <div className="mt-3 grid grid-cols-3 gap-1.5 p-1 bg-[#FAF5F1] rounded-xl text-xs border border-[#E5D8CF]">
               <button
                 type="button"
                 onClick={() => setOrderType("dine_in")}
                 className={`py-1 text-[11px] font-bold rounded-lg transition-all ${
                   orderType === "dine_in"
-                    ? "bg-[#244f3d] text-white shadow-sm"
+                    ? "bg-[#D67B6B] text-white shadow-xs"
                     : "text-gray-700 hover:bg-white/60"
                 }`}
               >
@@ -4798,7 +4798,7 @@ function POSView({
                 onClick={() => setOrderType("takeaway")}
                 className={`py-1 text-[11px] font-bold rounded-lg transition-all ${
                   orderType === "takeaway"
-                    ? "bg-[#244f3d] text-white shadow-sm"
+                    ? "bg-[#D67B6B] text-white shadow-xs"
                     : "text-gray-700 hover:bg-white/60"
                 }`}
               >
@@ -4809,7 +4809,7 @@ function POSView({
                 onClick={() => setOrderType("delivery")}
                 className={`py-1 text-[11px] font-bold rounded-lg transition-all ${
                   orderType === "delivery"
-                    ? "bg-[#244f3d] text-white shadow-sm"
+                    ? "bg-[#D67B6B] text-white shadow-xs"
                     : "text-gray-700 hover:bg-white/60"
                 }`}
               >
@@ -4819,15 +4819,15 @@ function POSView({
 
             {/* Table / Delivery / Takeaway contextual info */}
             {orderType === "dine_in" && (
-              <div className="mt-2.5 flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-xl border border-[#e2e6dc]">
+              <div className="mt-2.5 flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-xl border border-[#E5D8CF]">
                 <div className="flex items-center gap-1.5">
-                  <Table2 className="size-3.5 text-[#244f3d]" />
+                  <Table2 className="size-3.5 text-[#808068]" />
                   <span className="text-[11px] font-semibold text-gray-700">Table:</span>
                 </div>
                 <select
                   value={selectedTable}
                   onChange={(e) => setSelectedTable(e.target.value)}
-                  className="h-7 rounded-lg border border-gray-300 bg-white px-2 text-xs font-bold text-gray-900 outline-none"
+                  className="h-7 rounded-lg border border-gray-300 bg-white px-2 text-xs font-bold text-gray-900 outline-none focus:ring-1 focus:ring-[#D67B6B]"
                 >
                   {tables.map((t: TableInfo) => (
                     <option key={t.id} value={t.name}>
@@ -4908,7 +4908,7 @@ function POSView({
                   size="sm"
                   variant="outline"
                   onClick={addAllProductsToCart}
-                  className="mt-3 text-xs gap-1.5 border-[#244f3d] text-[#244f3d] bg-[#e9f1e4] hover:bg-[#dfead7] rounded-xl font-semibold"
+                  className="mt-3 text-xs gap-1.5 border-[#808068] text-[#808068] bg-[#FAF5F1] hover:bg-[#eeeee7] rounded-xl font-semibold"
                 >
                   <PlusCircle className="size-3.5" />
                   Add All Products
@@ -4919,7 +4919,7 @@ function POSView({
 
           {/* Cart Footer - PINNED AT BOTTOM */}
           {cart.length > 0 && (
-            <div className="p-3.5 sm:p-4 border-t border-gray-200 bg-[#fbfbf8] space-y-2.5 shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
+            <div className="p-3.5 sm:p-4 border-t border-[#E5D8CF] bg-[#FAF5F1] space-y-2.5 shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
               <div className="space-y-1 text-xs text-gray-600">
                 <div className="flex justify-between">
                   <span className="text-stone-500">Subtotal ({totalCartQty} items)</span>
@@ -4931,7 +4931,7 @@ function POSView({
                     <span className="font-mono">- Rs. {discountNum.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-emerald-800 font-medium">
+                <div className="flex justify-between text-[#808068] font-medium">
                   <span>Hospitality Service Charge (10%)</span>
                   <span className="font-mono">Rs. {serviceCharge.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                 </div>
@@ -4949,24 +4949,24 @@ function POSView({
                   type="button"
                   size="sm"
                   onClick={onApplyPromoCode}
-                  className="h-7 text-xs px-2.5 bg-[#244f3d] text-white hover:bg-[#1b3b2e] rounded-lg shrink-0 font-semibold"
+                  className="h-7 text-xs px-2.5 bg-[#808068] text-white hover:bg-[#6c6c57] rounded-lg shrink-0 font-semibold"
                 >
                   Apply
                 </Button>
               </div>
 
               {appliedPromoCode && (
-                <div className="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                <div className="flex items-center justify-between text-[11px] text-[#808068] bg-white px-2 py-0.5 rounded-md border border-[#EAB8B5]">
                   <span className="font-semibold">Code: {appliedPromoCode}</span>
-                  <Badge className="bg-emerald-700 text-white text-[9px] h-3.5 px-1">Applied</Badge>
+                  <Badge className="bg-[#D67B6B] text-white text-[9px] h-3.5 px-1">Applied</Badge>
                 </div>
               )}
 
               {/* Total Due Card */}
-              <div className="rounded-xl bg-gradient-to-r from-[#244f3d] to-[#1a382b] p-2.5 text-white shadow-sm flex items-center justify-between">
+              <div className="rounded-xl bg-gradient-to-r from-[#808068] to-[#5c5c49] p-2.5 text-white shadow-sm flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-200/90">Total Payable</p>
-                  <p className="text-[11px] text-stone-300">Incl. 10% Service Charge</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#EAB8B5]">Total Payable</p>
+                  <p className="text-[11px] text-[#F4EBE4]/80">Incl. 10% Service Charge</p>
                 </div>
                 <div className="text-right">
                   <p className="font-mono text-lg font-black tracking-tight text-white drop-shadow-sm">
@@ -5002,10 +5002,10 @@ function POSView({
                     onClick={onPrintBill}
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2 text-[11px] font-semibold border-emerald-300 text-emerald-900 bg-emerald-50/40 hover:bg-emerald-100 rounded-lg gap-1"
+                    className="h-8 px-2 text-[11px] font-semibold border-[#808068]/30 text-[#808068] bg-white hover:bg-[#FAF5F1] rounded-lg gap-1"
                     title="Print 80mm dining check"
                   >
-                    <Printer className="size-3 text-[#244f3d] shrink-0" />
+                    <Printer className="size-3 text-[#808068] shrink-0" />
                     <span className="truncate">Guest Bill</span>
                   </Button>
                   <Button
@@ -5022,7 +5022,7 @@ function POSView({
 
                 <Button
                   onClick={onPay}
-                  className="w-full h-10 bg-[#244f3d] hover:bg-[#1a382b] text-white font-bold text-xs shadow-md rounded-xl flex items-center justify-center gap-1.5"
+                  className="w-full h-10 bg-[#D67B6B] hover:bg-[#c26555] text-white font-bold text-xs shadow-md rounded-xl flex items-center justify-center gap-1.5"
                 >
                   <CreditCard className="size-3.5" />
                   <span>Pay & Settle (Rs. {total.toLocaleString("en-US", { minimumFractionDigits: 2 })})</span>
@@ -5038,14 +5038,14 @@ function POSView({
       {/* ========================================================= */}
       <aside className="hidden xl:flex min-w-0 rounded-2xl border border-[#e2e6dc] bg-white shadow-sm sticky top-4 flex-col h-[calc(100vh-5.5rem)] overflow-hidden">
         {/* Panel Top Header & Mode Selectors (Pinned, Shrink-0) */}
-        <div className="p-4 sm:p-5 pb-3 border-b border-[#e2e6dc] shrink-0 bg-white space-y-3">
+        <div className="p-4 sm:p-5 pb-3 border-b border-[#E5D8CF] shrink-0 bg-white space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#8a958a]">
+              <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#808068]">
                 {activeOpenOrder ? `OPEN TAB #${activeOpenOrder.order_number}` : `NEW ORDER #${nextOrderNumber}`}
               </p>
-              <h3 className="font-serif text-xl font-bold text-[#1e2e25]">Order Summary</h3>
+              <h3 className="font-serif text-xl font-bold text-[#343428]">Order Summary</h3>
             </div>
             <div className="flex items-center gap-1.5">
               {activeOpenOrder && (
@@ -5053,24 +5053,24 @@ function POSView({
                   size="sm"
                   variant="outline"
                   onClick={startNewOrder}
-                  className="text-xs h-7 px-2 border-amber-400 text-amber-800 hover:bg-amber-50"
+                  className="text-xs h-7 px-2 border-[#D67B6B]/40 text-[#D67B6B] hover:bg-[#faecea]"
                   title="Switch to creating a new fresh order"
                 >
                   New Order
                 </Button>
               )}
-              <Badge className="bg-[#e9f1e4] text-[#244f3d] border-0 font-medium">{totalCartQty} items</Badge>
+              <Badge className="bg-[#FAF5F1] text-[#808068] border border-[#E5D8CF] font-medium">{totalCartQty} items</Badge>
             </div>
           </div>
 
           {/* Order Type Selector: Dine-in / Takeaway / Delivery */}
-          <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#edf1ea] rounded-xl text-xs">
+          <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#FAF5F1] rounded-xl text-xs border border-[#E5D8CF]">
             <button
               type="button"
               onClick={() => setOrderType("dine_in")}
               className={`py-1.5 font-bold rounded-lg transition-all ${
                 orderType === "dine_in"
-                  ? "bg-[#244f3d] text-white shadow-sm"
+                  ? "bg-[#D67B6B] text-white shadow-xs"
                   : "text-gray-700 hover:bg-white/60"
               }`}
             >
@@ -5081,7 +5081,7 @@ function POSView({
               onClick={() => setOrderType("takeaway")}
               className={`py-1.5 font-bold rounded-lg transition-all ${
                 orderType === "takeaway"
-                  ? "bg-[#244f3d] text-white shadow-sm"
+                  ? "bg-[#D67B6B] text-white shadow-xs"
                   : "text-gray-700 hover:bg-white/60"
               }`}
             >
@@ -5092,7 +5092,7 @@ function POSView({
               onClick={() => setOrderType("delivery")}
               className={`py-1.5 font-bold rounded-lg transition-all ${
                 orderType === "delivery"
-                  ? "bg-[#244f3d] text-white shadow-sm"
+                  ? "bg-[#D67B6B] text-white shadow-xs"
                   : "text-gray-700 hover:bg-white/60"
               }`}
             >
@@ -5102,15 +5102,15 @@ function POSView({
 
           {/* Table Selector (for Dine-in) */}
           {orderType === "dine_in" && (
-            <div className="flex items-center justify-between gap-2 bg-[#f4f6ef] px-3 py-2 rounded-xl border border-[#e2e6dc]">
+            <div className="flex items-center justify-between gap-2 bg-[#FAF5F1] px-3 py-2 rounded-xl border border-[#E5D8CF]">
               <div className="flex items-center gap-2">
-                <Table2 className="size-4 text-[#244f3d]" />
+                <Table2 className="size-4 text-[#808068]" />
                 <span className="text-xs font-semibold text-gray-700">Dining Table:</span>
               </div>
               <select
                 value={selectedTable}
                 onChange={(e) => setSelectedTable(e.target.value)}
-                className="h-8 rounded-lg border border-gray-300 bg-white px-2.5 text-xs font-bold text-gray-900 outline-none focus:ring-1 focus:ring-[#244f3d]"
+                className="h-8 rounded-lg border border-gray-300 bg-white px-2.5 text-xs font-bold text-gray-900 outline-none focus:ring-1 focus:ring-[#D67B6B]"
               >
                 {tables.map((t: TableInfo) => (
                   <option key={t.id} value={t.name}>
@@ -5190,7 +5190,7 @@ function POSView({
               </div>
             ))
           ) : (
-            <div className="h-full flex flex-col items-center justify-center py-8 text-center text-xs text-gray-500 border-2 border-dashed border-[#e2e6dc] rounded-2xl p-4">
+            <div className="h-full flex flex-col items-center justify-center py-8 text-center text-xs text-gray-500 border-2 border-dashed border-[#E5D8CF] rounded-2xl p-4">
               <ShoppingBag className="size-9 text-gray-300 mb-2" />
               <p className="font-semibold text-gray-700 text-sm">Cart is currently empty</p>
               <p className="mt-1 text-gray-400 max-w-[200px]">Click any product from the catalog on the left to add it here.</p>
@@ -5199,7 +5199,7 @@ function POSView({
                   size="sm"
                   variant="outline"
                   onClick={addAllProductsToCart}
-                  className="w-full text-xs gap-1.5 border-[#244f3d] text-[#244f3d] bg-[#e9f1e4] hover:bg-[#dfead7] rounded-xl font-semibold h-9"
+                  className="w-full text-xs gap-1.5 border-[#808068] text-[#808068] bg-[#FAF5F1] hover:bg-[#eeeee7] rounded-xl font-semibold h-9"
                 >
                   <PlusCircle className="size-3.5" />
                   Add All Products
@@ -5208,9 +5208,9 @@ function POSView({
                   size="sm"
                   variant="outline"
                   onClick={onLoadTest}
-                  className="w-full text-xs gap-1.5 border-emerald-600 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-xl h-9"
+                  className="w-full text-xs gap-1.5 border-[#808068]/30 text-[#808068] bg-[#FAF5F1] hover:bg-[#eeeee7] rounded-xl h-9"
                 >
-                  <Zap className="size-3.5 fill-emerald-600" />
+                  <Zap className="size-3.5 text-[#D67B6B] fill-[#D67B6B]" />
                   Load Acceptance Test Order
                 </Button>
               </div>
@@ -5220,7 +5220,7 @@ function POSView({
 
         {/* Section 3: Summary Breakdown & Action Buttons (Pinned Footer, Shrink-0) */}
         {cart.length > 0 && (
-          <div className="shrink-0 border-t border-[#e2e6dc] bg-[#fbfbf8] p-4 sm:p-5 space-y-3 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
+          <div className="shrink-0 border-t border-[#E5D8CF] bg-[#FAF5F1] p-4 sm:p-5 space-y-3 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
             {/* Calculation details */}
             <div className="space-y-1.5 text-xs text-stone-600">
               <div className="flex justify-between">
@@ -5239,7 +5239,7 @@ function POSView({
                 </div>
               )}
 
-              <div className="flex justify-between text-emerald-800 font-medium">
+              <div className="flex justify-between text-[#808068] font-medium">
                 <span>Hospitality Service Charge (10%)</span>
                 <span className="font-mono">
                   Rs. {serviceCharge.toLocaleString("en-US", { minimumFractionDigits: 2 })}
@@ -5258,25 +5258,25 @@ function POSView({
                   type="button"
                   size="sm"
                   onClick={onApplyPromoCode}
-                  className="h-7 text-xs px-2.5 bg-[#244f3d] text-white hover:bg-[#1b3b2e] rounded-lg shrink-0 font-semibold"
+                  className="h-7 text-xs px-2.5 bg-[#808068] text-white hover:bg-[#6c6c57] rounded-lg shrink-0 font-semibold"
                 >
                   Apply
                 </Button>
               </div>
 
               {appliedPromoCode && (
-                <div className="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200">
+                <div className="flex items-center justify-between text-[11px] text-[#808068] bg-white px-2 py-1 rounded-md border border-[#EAB8B5]">
                   <span className="font-semibold">Code applied: {appliedPromoCode}</span>
-                  <Badge className="bg-emerald-700 text-white text-[9px] h-4 px-1.5">Applied</Badge>
+                  <Badge className="bg-[#D67B6B] text-white text-[9px] h-4 px-1.5">Applied</Badge>
                 </div>
               )}
             </div>
 
             {/* Total Due Pill Card */}
-            <div className="rounded-xl bg-gradient-to-r from-[#244f3d] to-[#1a382b] p-3 text-white shadow-sm flex items-center justify-between">
+            <div className="rounded-xl bg-gradient-to-r from-[#808068] to-[#5c5c49] p-3 text-white shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-200/90">Total Payable</p>
-                <p className="text-xs text-stone-300">Incl. 10% Service Charge</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#EAB8B5]">Total Payable</p>
+                <p className="text-xs text-[#F4EBE4]/80">Incl. 10% Service Charge</p>
               </div>
               <div className="text-right">
                 <p className="font-mono text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-sm">
@@ -5315,10 +5315,10 @@ function POSView({
                   onClick={onPrintBill}
                   variant="outline"
                   size="sm"
-                  className="h-9 px-2 text-xs font-semibold border-emerald-300 text-emerald-950 bg-emerald-50/40 hover:bg-emerald-100/60 hover:border-emerald-400 rounded-xl gap-1.5 transition-colors"
+                  className="h-9 px-2 text-xs font-semibold border-[#808068]/30 text-[#808068] bg-white hover:bg-[#FAF5F1] rounded-xl gap-1.5 transition-colors"
                   title="Print Guest Dining Bill Check (80mm)"
                 >
-                  <Printer className="size-3.5 text-[#244f3d] shrink-0" />
+                  <Printer className="size-3.5 text-[#808068] shrink-0" />
                   <span className="truncate font-bold">Guest Bill</span>
                 </Button>
 
@@ -5337,7 +5337,7 @@ function POSView({
               {/* Primary Checkout Button */}
               <Button
                 onClick={onPay}
-                className="w-full h-11 bg-[#244f3d] hover:bg-[#1a382b] text-white font-bold text-sm shadow-md rounded-xl flex items-center justify-center gap-2 transition-all hover:shadow-lg active:scale-[0.99]"
+                className="w-full h-11 bg-[#D67B6B] hover:bg-[#c26555] text-white font-bold text-sm shadow-md rounded-xl flex items-center justify-center gap-2 transition-all hover:shadow-lg active:scale-[0.99]"
               >
                 <CreditCard className="size-4" />
                 <span>Pay & Settle (Rs. {total.toLocaleString("en-US", { minimumFractionDigits: 2 })})</span>
@@ -5532,14 +5532,14 @@ function ManagementView({
             <Button
               onClick={() => onAdd("category")}
               variant="outline"
-              className="border-[#244f3d] text-[#244f3d] hover:bg-[#e9f1e4] gap-1.5 rounded-xl h-10 text-xs sm:text-sm shadow-sm"
+              className="border-[#808068] text-[#808068] hover:bg-[#FAF5F1] gap-1.5 rounded-xl h-10 text-xs sm:text-sm shadow-sm"
             >
               <Plus className="size-4" />
               Add Category
             </Button>
             <Button
               onClick={() => onAdd("product")}
-              className="bg-[#244f3d] text-white gap-1.5 rounded-xl h-10 text-xs sm:text-sm shadow-sm"
+              className="bg-[#D67B6B] hover:bg-[#c26555] text-white gap-1.5 rounded-xl h-10 text-xs sm:text-sm shadow-sm"
             >
               <Plus className="size-4" />
               Add Product
@@ -5550,7 +5550,7 @@ function ManagementView({
         {role === "admin" && view === "Tables" && (
           <Button
             onClick={() => onAdd("table")}
-            className="bg-[#244f3d] text-white gap-2 rounded-xl h-10 text-xs sm:text-sm self-start sm:self-auto shadow-sm"
+            className="bg-[#D67B6B] hover:bg-[#c26555] text-white gap-2 rounded-xl h-10 text-xs sm:text-sm self-start sm:self-auto shadow-sm"
           >
             <Plus className="size-4" />
             Add Table
@@ -5558,13 +5558,13 @@ function ManagementView({
         )}
 
         {(view === "Kitchen" || view === "Bar") && (
-          <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl self-start sm:self-auto">
+          <div className="flex items-center gap-1.5 bg-[#FAF5F1] p-1 rounded-xl self-start sm:self-auto border border-[#E5D8CF]">
             <Button
               size="sm"
               variant={ticketFilter === "active" ? "default" : "ghost"}
               onClick={() => setTicketFilter("active")}
               className={`h-8 rounded-lg text-xs font-semibold ${
-                ticketFilter === "active" ? "bg-[#244f3d] text-white" : "text-gray-600 hover:text-gray-900"
+                ticketFilter === "active" ? "bg-[#D67B6B] text-white shadow-xs" : "text-[#808068] hover:text-[#343428]"
               }`}
             >
               Active Tickets ({activeTicketCount})
@@ -5574,7 +5574,7 @@ function ManagementView({
               variant={ticketFilter === "all" ? "default" : "ghost"}
               onClick={() => setTicketFilter("all")}
               className={`h-8 rounded-lg text-xs font-semibold ${
-                ticketFilter === "all" ? "bg-[#244f3d] text-white" : "text-gray-600 hover:text-gray-900"
+                ticketFilter === "all" ? "bg-[#D67B6B] text-white shadow-xs" : "text-[#808068] hover:text-[#343428]"
               }`}
             >
               All Tickets ({stationOrders.length})
@@ -5590,20 +5590,20 @@ function ManagementView({
         <div className="space-y-5">
           {/* KPI Stat Cards (2 cols mobile, 4 cols desktop) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            <Card className="rounded-2xl border-[#e2e6dc] bg-white p-3.5 sm:p-4">
+            <Card className="rounded-2xl border-[#E5D8CF] bg-white p-3.5 sm:p-4">
               <div className="flex items-center justify-between text-gray-500">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Gross Sales</span>
-                <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
+                <span className="p-1.5 rounded-lg bg-[#FAF5F1] text-[#D67B6B]">
                   <DollarSign className="size-4" />
                 </span>
               </div>
-              <p className="mt-2 font-mono text-lg sm:text-2xl font-bold text-[#244f3d]">
+              <p className="mt-2 font-mono text-lg sm:text-2xl font-bold text-[#D67B6B]">
                 Rs. {totalSalesToday.toLocaleString()}
               </p>
               <p className="mt-1 text-[10px] text-gray-400">{allUnifiedOrders.length} completed transactions</p>
             </Card>
 
-            <Card className="rounded-2xl border-[#e2e6dc] bg-white p-3.5 sm:p-4">
+            <Card className="rounded-2xl border-[#E5D8CF] bg-white p-3.5 sm:p-4">
               <div className="flex items-center justify-between text-gray-500">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Tables Active</span>
                 <span className="p-1.5 rounded-lg bg-amber-50 text-amber-700">
@@ -5616,14 +5616,14 @@ function ManagementView({
               <p className="mt-1 text-[10px] text-gray-400">Dine-in floor occupancy</p>
             </Card>
 
-            <Card className="rounded-2xl border-[#e2e6dc] bg-white p-3.5 sm:p-4">
+            <Card className="rounded-2xl border-[#E5D8CF] bg-white p-3.5 sm:p-4">
               <div className="flex items-center justify-between text-gray-500">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Service Charge</span>
-                <span className="p-1.5 rounded-lg bg-blue-50 text-blue-700">
+                <span className="p-1.5 rounded-lg bg-[#FAF5F1] text-[#808068]">
                   <TrendingUp className="size-4" />
                 </span>
               </div>
-              <p className="mt-2 font-mono text-lg sm:text-2xl font-bold text-blue-900">
+              <p className="mt-2 font-mono text-lg sm:text-2xl font-bold text-[#808068]">
                 Rs. {totalServiceCharge.toLocaleString()}
               </p>
               <p className="mt-1 text-[10px] text-gray-400">10% staff service charge</p>
@@ -5714,7 +5714,7 @@ function ManagementView({
                     </p>
                   </div>
                   <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0 border-t sm:border-0 border-gray-50">
-                    <span className="font-mono font-bold text-sm text-[#244f3d]">Rs. {o.total.toLocaleString()}</span>
+                    <span className="font-mono font-bold text-sm text-[#D67B6B]">Rs. {o.total.toLocaleString()}</span>
                     <Button size="sm" variant="outline" onClick={() => onPrintReceipt(o)} className="h-7 text-xs gap-1 rounded-lg">
                       <Printer className="size-3" />
                       Receipt
@@ -5741,12 +5741,12 @@ function ManagementView({
               const ticketItems = getStationItems(o, station)
 
               return (
-              <Card key={o.id} className="rounded-2xl border-[#e2e6dc] overflow-hidden bg-white shadow-sm flex flex-col justify-between">
+              <Card key={o.id} className="rounded-2xl border-[#E5D8CF] overflow-hidden bg-white shadow-sm flex flex-col justify-between">
                 <div>
-                  <div className="p-3.5 bg-[#f5f8f3] border-b border-[#e2e6dc] flex items-center justify-between">
+                  <div className="p-3.5 bg-[#FAF5F1] border-b border-[#E5D8CF] flex items-center justify-between">
                     <div>
                       <span className="font-mono font-bold text-xs text-gray-900">{o.order_number}</span>
-                      <p className="font-serif font-bold text-sm text-[#244f3d]">{o.table_name}</p>
+                      <p className="font-serif font-bold text-sm text-[#808068]">{o.table_name}</p>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Button
@@ -5766,7 +5766,7 @@ function ManagementView({
                             ? "bg-amber-600 text-white"
                             : ticketStatus === "served"
                             ? "bg-gray-400 text-white"
-                            : "bg-blue-600 text-white"
+                            : "bg-[#808068] text-white"
                         }`}
                       >
                         {ticketStatus}
@@ -5800,7 +5800,7 @@ function ManagementView({
                   </div>
                 </div>
 
-                <div className="p-3 bg-gray-50 border-t border-[#e2e6dc] flex items-center justify-between gap-2">
+                <div className="p-3 bg-gray-50 border-t border-[#E5D8CF] flex items-center justify-between gap-2">
                   <span className="text-[10px] text-gray-400 flex items-center gap-1 font-mono">
                     <Clock className="size-3" />
                     {new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -5867,9 +5867,9 @@ function ManagementView({
       {/* 3. ORDERS HISTORY VIEW                                    */}
       {/* ========================================================= */}
       {view === "Orders" && (
-        <Card className="rounded-2xl border-[#e2e6dc] overflow-hidden bg-white shadow-xs">
+        <Card className="rounded-2xl border-[#E5D8CF] overflow-hidden bg-white shadow-xs">
           <CardContent className="p-0">
-            <div className="p-3.5 sm:p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#fbfbf8]">
+            <div className="p-3.5 sm:p-4 border-b border-[#E5D8CF] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FAF5F1]">
               <div>
                 <h3 className="font-serif text-base sm:text-lg font-bold text-gray-900">Orders Management ({filteredOrders.length})</h3>
                 <p className="text-xs text-gray-500">Track active orders, completed orders, open tabs, and receipts in real time.</p>
@@ -5880,21 +5880,21 @@ function ManagementView({
                   value={orderSearch}
                   onChange={(e) => setOrderSearch(e.target.value)}
                   placeholder="Search order #, table, or receipt..."
-                  className="pl-9 h-9 text-xs rounded-xl bg-white border-[#dcded6]"
+                  className="pl-9 h-9 text-xs rounded-xl bg-white border-[#E5D8CF] focus:ring-[#D67B6B]"
                 />
               </div>
             </div>
 
             {/* Status Filter Tabs */}
-            <div className="flex items-center gap-1.5 p-2 sm:px-4 border-b bg-gray-50/70 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-1.5 p-2 sm:px-4 border-b border-[#E5D8CF] bg-[#FAF5F1]/50 overflow-x-auto scrollbar-none">
               <Button
                 size="sm"
                 variant={orderStatusFilter === "all" ? "default" : "ghost"}
                 onClick={() => setOrderStatusFilter("all")}
                 className={`h-7 px-3 text-xs rounded-lg font-medium transition-all ${
                   orderStatusFilter === "all"
-                    ? "bg-[#244f3d] text-white hover:bg-[#1a3b2e]"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/60"
+                    ? "bg-[#D67B6B] text-white shadow-xs"
+                    : "text-[#808068] hover:text-[#343428] hover:bg-[#FAF5F1]"
                 }`}
               >
                 All Orders ({orders.length})
@@ -6044,7 +6044,7 @@ function ManagementView({
 
                       {/* Right side actions and total */}
                       <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 pt-2 sm:pt-0 border-t sm:border-0 border-gray-100 shrink-0">
-                        <p className="font-mono font-bold text-base sm:text-lg text-[#244f3d]">
+                        <p className="font-mono font-bold text-base sm:text-lg text-[#D67B6B]">
                           Rs. {o.total.toLocaleString()}
                         </p>
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
@@ -6052,7 +6052,7 @@ function ManagementView({
                             <Button
                               size="sm"
                               onClick={() => onPayOpenOrder(o)}
-                              className="bg-[#244f3d] hover:bg-[#1a3b2e] text-white text-xs h-7 px-2.5 rounded-lg font-semibold shadow-xs"
+                              className="bg-[#D67B6B] hover:bg-[#c26555] text-white text-xs h-7 px-2.5 rounded-lg font-semibold shadow-xs"
                             >
                               Pay Tab
                             </Button>
@@ -6130,8 +6130,8 @@ function ManagementView({
                 onClick={() => setCatalogCategoryFilter(catName)}
                 className={`h-8 shrink-0 rounded-xl px-3 text-xs font-semibold ${
                   catalogCategoryFilter === catName
-                    ? "bg-[#244f3d] text-white"
-                    : "border-[#dfe5d8] bg-white text-gray-700"
+                    ? "bg-[#D67B6B] text-white shadow-xs"
+                    : "border-[#E5D8CF] bg-white text-gray-700 hover:bg-[#FAF5F1]"
                 }`}
               >
                 {catName}
@@ -6139,7 +6139,7 @@ function ManagementView({
             ))}
           </div>
 
-          <Card className="rounded-2xl border-[#e2e6dc] overflow-hidden bg-white">
+          <Card className="rounded-2xl border-[#E5D8CF] overflow-hidden bg-white">
             <CardContent className="p-0">
               <div className="divide-y text-xs">
                 {(products && products.length > 0 ? products : SharedPosService.getProducts())
@@ -6268,7 +6268,7 @@ function ManagementView({
       {/* ========================================================= */}
       {view === "Settings" && (
         <div className="max-w-xl space-y-4">
-          <Card className="rounded-2xl border-[#e2e6dc] p-4 sm:p-6 bg-white space-y-4">
+          <Card className="rounded-2xl border-[#E5D8CF] p-4 sm:p-6 bg-white space-y-4">
             <div>
               <h3 className="font-serif text-lg font-bold">Restaurant Configuration</h3>
               <p className="text-xs text-gray-500">POS Terminal details &amp; local sync.</p>
@@ -6281,13 +6281,13 @@ function ManagementView({
               </div>
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-600">Active Branch:</span>
-                <span className="font-semibold text-emerald-800">
+                <span className="font-semibold text-[#808068]">
                   {SharedPosService.getActiveBranch()?.name || "Hiriketiya Main Beach"}
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-600">Service Charge Rate:</span>
-                <span className="font-semibold text-emerald-800">10% (Automated)</span>
+                <span className="font-semibold text-[#808068]">10% (Automated)</span>
               </div>
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-600">Currency:</span>
@@ -6296,15 +6296,15 @@ function ManagementView({
               <div className="flex justify-between py-2 border-b items-center">
                 <span className="text-gray-600">Active Terminal Role:</span>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-[#244f3d] text-white capitalize">{role}</Badge>
+                  <Badge className="bg-[#808068] text-white capitalize">{role}</Badge>
                 </div>
               </div>
             </div>
 
             {/* Cloud Backup & Restore Controls */}
-            <div className="p-3 bg-[#fafbf8] rounded-xl border border-[#dfe5d8] space-y-2">
+            <div className="p-3 bg-[#FAF5F1] rounded-xl border border-[#E5D8CF] space-y-2">
               <p className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                <Download className="size-3.5 text-[#244f3d]" />
+                <Download className="size-3.5 text-[#808068]" />
                 Cloud Backup &amp; Data Restore
               </p>
               <p className="text-[11px] text-gray-500">
@@ -6325,14 +6325,14 @@ function ManagementView({
                     URL.revokeObjectURL(url)
                     toast.success("Complete POS system backup exported!")
                   }}
-                  className="rounded-xl text-xs h-9 gap-1.5 flex-1 border-[#dfe5d8] hover:bg-[#edf2e8] text-emerald-900"
+                  className="rounded-xl text-xs h-9 gap-1.5 flex-1 border-[#E5D8CF] hover:bg-[#FAF5F1] text-[#808068]"
                 >
-                  <Download className="size-3.5 text-emerald-700" />
+                  <Download className="size-3.5 text-[#808068]" />
                   Export Backup (JSON)
                 </Button>
 
                 <label className="flex-1 cursor-pointer">
-                  <div className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl border border-[#dfe5d8] bg-white hover:bg-[#edf2e8] text-xs font-medium text-gray-800">
+                  <div className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl border border-[#E5D8CF] bg-white hover:bg-[#FAF5F1] text-xs font-medium text-gray-800">
                     <Upload className="size-3.5 text-gray-600" />
                     Restore Backup
                   </div>

@@ -383,7 +383,7 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
         </div>
 
         <div class="no-print" style="margin-top: 16px; text-align: center;">
-          <button onclick="window.print()" style="background: #244f3d; color: white; border: none; padding: 10px 22px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px;">Print Again</button>
+          <button onclick="window.print()" style="background: #D67B6B; color: white; border: none; padding: 10px 22px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px;">Print Again</button>
         </div>
 
         <script>
@@ -507,7 +507,7 @@ export function printTicketSlipDoc(
           <div>Total Station Items: ${order.items.reduce((s, i) => s + (i.quantity || 1), 0)}</div>
           <div style="margin-top: 5px; font-weight: 900; font-size: 12px; letter-spacing: 0.5px;">-- SENT TO ${station.toUpperCase()} --</div>
           <div class="no-print" style="margin-top: 16px; text-align: center;">
-            <button onclick="window.print()" style="background: #244f3d; color: white; border: none; padding: 8px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px;">Print Again</button>
+            <button onclick="window.print()" style="background: #D67B6B; color: white; border: none; padding: 8px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px;">Print Again</button>
           </div>
         </div>
         <script>

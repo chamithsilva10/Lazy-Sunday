@@ -271,17 +271,17 @@ export function UserManagementView() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#dfe5d8] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5D8CF] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-[.18em] text-[#8a958a]">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-[.18em] text-[#808068]">
               Administration
             </span>
-            <Badge className="bg-[#e9f1e4] text-[#244f3d] border-0 text-[11px]">
+            <Badge className="bg-[#F4EBE4] text-[#808068] border-0 text-[11px]">
               {users.length} Total Users
             </Badge>
           </div>
-          <h2 className="mt-1 font-serif text-2xl sm:text-3xl font-bold text-[#1e2e25]">
+          <h2 className="mt-1 font-serif text-2xl sm:text-3xl font-bold text-gray-900">
             User & Staff Accounts
           </h2>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -295,7 +295,7 @@ export function UserManagementView() {
             size="sm"
             onClick={() => void loadData()}
             disabled={loading}
-            className="h-10 rounded-xl border-[#dfe5d8] text-gray-700 hover:bg-gray-50"
+            className="h-10 rounded-xl border-[#E5D8CF] text-gray-700 hover:bg-gray-50"
             title="Refresh user list"
           >
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
@@ -313,7 +313,7 @@ export function UserManagementView() {
               })
               setCreateOpen(true)
             }}
-            className="bg-[#244f3d] hover:bg-[#1a3b2e] text-white font-semibold text-xs sm:text-sm h-10 px-4 rounded-xl gap-2 shadow-sm"
+            className="bg-[#D67B6B] hover:bg-[#c36859] text-white font-semibold text-xs sm:text-sm h-10 px-4 rounded-xl gap-2 shadow-sm"
           >
             <UserPlus className="size-4" />
             <span>Add User</span>
@@ -323,20 +323,20 @@ export function UserManagementView() {
 
       {/* Search Toolbar */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3.5 top-2.5 size-4 text-[#9aa69b]" />
+        <Search className="absolute left-3.5 top-2.5 size-4 text-[#808068]" />
         <Input
           placeholder="Search by name, username, or role..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-10 pl-10 rounded-xl border-[#dfe5d8] bg-white text-xs sm:text-sm"
+          className="h-10 pl-10 rounded-xl border-[#E5D8CF] bg-white text-xs sm:text-sm"
         />
       </div>
 
       {/* Users Table */}
-      <div className="rounded-2xl border border-[#dfe5d8] bg-white overflow-hidden shadow-sm">
+      <div className="rounded-2xl border border-[#E5D8CF] bg-white overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs sm:text-sm">
-            <thead className="border-b border-[#e2e6dc] bg-[#fbfbf8] text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <thead className="border-b border-[#E5D8CF] bg-[#FAF5F1] text-[11px] font-bold uppercase tracking-wider text-gray-500">
               <tr>
                 <th className="px-4 sm:px-6 py-3">Staff Member</th>
                 <th className="px-4 sm:px-6 py-3">Assigned Role</th>
@@ -354,7 +354,7 @@ export function UserManagementView() {
                     {/* User Identity */}
                     <td className="px-4 sm:px-6 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="size-9 rounded-xl bg-[#e9f1e4] text-[#244f3d] flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                        <div className="size-9 rounded-xl bg-[#F4EBE4] text-[#808068] flex items-center justify-center font-bold text-xs uppercase shrink-0">
                           {u.full_name.charAt(0) || u.username.charAt(0)}
                         </div>
                         <div className="min-w-0">
@@ -433,7 +433,7 @@ export function UserManagementView() {
                               is_active: u.is_active,
                             })
                           }}
-                          className="size-8 p-0 text-gray-600 hover:text-[#244f3d] hover:bg-[#e9f1e4] rounded-lg"
+                          className="size-8 p-0 text-gray-600 hover:text-[#D67B6B] hover:bg-[#FAF5F1] rounded-lg"
                           title="Edit user details"
                         >
                           <Edit2 className="size-3.5" />
@@ -490,7 +490,7 @@ export function UserManagementView() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md rounded-2xl bg-white p-6">
           <DialogHeader>
-            <DialogTitle className="font-serif text-xl font-bold text-[#1e2e25]">
+            <DialogTitle className="font-serif text-xl font-bold text-gray-900">
               Create Staff User
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
@@ -552,7 +552,7 @@ export function UserManagementView() {
               <select
                 value={formData.role_id}
                 onChange={(e) => setFormData({ ...formData, role_id: e.target.value })}
-                className="mt-1 w-full h-10 rounded-xl border border-gray-300 bg-white px-3 text-xs sm:text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-[#244f3d]"
+                className="mt-1 w-full h-10 rounded-xl border border-gray-300 bg-white px-3 text-xs sm:text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-[#D67B6B]"
               >
                 {roles.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -574,7 +574,7 @@ export function UserManagementView() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="bg-[#244f3d] hover:bg-[#1a3b2e] text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm"
+                className="bg-[#D67B6B] hover:bg-[#c36859] text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm"
               >
                 {submitting ? "Creating..." : "Create Account"}
               </Button>
@@ -587,7 +587,7 @@ export function UserManagementView() {
       <Dialog open={Boolean(editUser)} onOpenChange={(open) => !open && setEditUser(null)}>
         <DialogContent className="max-w-md rounded-2xl bg-white p-6">
           <DialogHeader>
-            <DialogTitle className="font-serif text-xl font-bold text-[#1e2e25]">
+            <DialogTitle className="font-serif text-xl font-bold text-gray-900">
               Edit Staff Member: @{editUser?.username}
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
@@ -622,7 +622,7 @@ export function UserManagementView() {
                 value={formData.role_id}
                 onChange={(e) => setFormData({ ...formData, role_id: e.target.value })}
                 disabled={editUser?.username === "admin"}
-                className="mt-1 w-full h-10 rounded-xl border border-gray-300 bg-white px-3 text-xs sm:text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-[#244f3d] disabled:bg-gray-100 disabled:text-gray-400"
+                className="mt-1 w-full h-10 rounded-xl border border-gray-300 bg-white px-3 text-xs sm:text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-[#D67B6B] disabled:bg-gray-100 disabled:text-gray-400"
               >
                 {roles.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -644,7 +644,7 @@ export function UserManagementView() {
                     name="is_active"
                     checked={formData.is_active === true}
                     onChange={() => setFormData({ ...formData, is_active: true })}
-                    className="accent-[#244f3d]"
+                    className="accent-[#D67B6B]"
                   />
                   Active
                 </label>
@@ -655,7 +655,7 @@ export function UserManagementView() {
                     checked={formData.is_active === false}
                     onChange={() => setFormData({ ...formData, is_active: false })}
                     disabled={editUser?.username === "admin"}
-                    className="accent-[#244f3d]"
+                    className="accent-[#D67B6B]"
                   />
                   Deactivated
                 </label>
@@ -664,7 +664,7 @@ export function UserManagementView() {
 
             <div className="pt-2 border-t">
               <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                <KeyRound className="size-3.5 text-[#244f3d]" />
+                <KeyRound className="size-3.5 text-[#808068]" />
                 Reset Password (Optional)
               </label>
               <Input
@@ -689,7 +689,7 @@ export function UserManagementView() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="bg-[#244f3d] hover:bg-[#1a3b2e] text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm"
+                className="bg-[#D67B6B] hover:bg-[#c36859] text-white font-bold text-xs h-10 px-5 rounded-xl shadow-sm"
               >
                 {submitting ? "Saving..." : "Save Changes"}
               </Button>

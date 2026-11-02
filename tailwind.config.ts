@@ -14,6 +14,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        brand: {
+          sage: '#808068',
+          'sage-dark': '#5c5c49',
+          'sage-light': '#eeeee7',
+          terracotta: '#D67B6B',
+          'terracotta-dark': '#be5e4d',
+          'terracotta-light': '#faecea',
+          dustypink: '#EAB8B5',
+          'dustypink-dark': '#d49b98',
+          'dustypink-light': '#fdf5f4',
+          cream: '#F4EBE4',
+          'cream-light': '#faf5f1',
+          'cream-dark': '#e6d9d0',
+        },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
