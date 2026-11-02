@@ -1,0 +1,42 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+dist
+
+# misc
+.DS_Store
+*.pem
+
+# debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# local env files (never commit real credentials)
+.env*.local
+.env.local
+
+# sqlite transient journal and wal files
+data/*.sqlite-shm
+data/*.sqlite-wal
+data/*.sqlite-journal
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

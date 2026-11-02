@@ -1,0 +1,84 @@
+name: CI/CD Pipeline & Vercel Deployment
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    name: Build & Verify Test Suites
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || '' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || '' }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || '' }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || '' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+      DEMO_MODE: "true"
+      NEXT_PUBLIC_DEMO_MODE: "true"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run POS Architectural Test Suite
+        run: node scripts/verify-pos-suite.mjs
+
+      - name: Run Multi-Station Inventory & Recipe Suite
+        run: node scripts/verify-inventory-suite.mjs
+
+      - name: Run Previous Orders Preservation Suite
+        run: node scripts/verify-all-orders-realtime.mjs
+
+      - name: Run Clean Inventory State Suite
+        run: node scripts/verify-realtime-inventory-clean.mjs
+
+      - name: Compile & Build Next.js Production App
+        run: npm run build
+
+  deploy-to-vercel:
+    name: Deploy to Vercel (https://charli-pos-sys.vercel.app)
+    needs: test-and-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Deploy to Vercel Production
+        if: env.VERCEL_TOKEN != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npx --yes vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+
+      - name: Deployment Notice
+        if: env.VERCEL_TOKEN == ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "All automated tests and Next.js production builds passed successfully!"
+          echo "If VERCEL_TOKEN is not configured in GitHub Secrets, Vercel deploys automatically via its native GitHub repository integration."
+          echo "Production URL: https://charli-pos-sys.vercel.app"
