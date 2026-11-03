@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeStaff, createStaffSupabaseClient, hasValidOrigin } from "@/lib/coffee/auth"
 import { determineItemStation } from "@/lib/station-routing"
+import { DemoDbService } from "@/lib/db/demo-sqlite"
+import { MOCK_PRODUCTS } from "@/lib/mock/pos-mock-data"
 
 export const dynamic = "force-dynamic"
 
@@ -103,10 +105,51 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      return NextResponse.json({ success: true, products })
+      if (products.length > 0) {
+        return NextResponse.json({ success: true, products })
+      }
     }
 
-    return NextResponse.json({ success: true, products: [] })
+    // SQLite / Demo Mode Fallback
+    const offlineList = DemoDbService.getProducts() || MOCK_PRODUCTS
+    let fallbackProducts = (offlineList && offlineList.length > 0 ? offlineList : MOCK_PRODUCTS).map((p: any) => ({
+      id: String(p.id),
+      name: p.name,
+      price: Number(p.price) || 0,
+      cost: Number(p.cost_price || p.cost || 0),
+      stock: Number(p.stock) || 0,
+      category: p.category || "General",
+      category_id: p.category_id,
+      image: p.image || "/placeholder.svg",
+      description: p.description || "",
+      temperature: p.temperature || "none",
+      dietary_tags: p.dietary_tags || [],
+      department: p.department || (p.station === "bar" ? "Coffee Bar" : "Juice & Food"),
+      station: p.station || "kitchen",
+      active: p.active !== false,
+      track_stock: true,
+      updated_at: new Date().toISOString(),
+    }))
+
+    if (category && category !== "All") {
+      fallbackProducts = fallbackProducts.filter((p) => p.category.toLowerCase() === category.toLowerCase())
+    }
+
+    if (station && station !== "all") {
+      fallbackProducts = fallbackProducts.filter((p) => p.station === station)
+    }
+
+    if (activeOnly) {
+      fallbackProducts = fallbackProducts.filter((p) => p.active)
+    }
+
+    if (search) {
+      fallbackProducts = fallbackProducts.filter(
+        (p) => p.name.toLowerCase().includes(search) || p.category.toLowerCase().includes(search)
+      )
+    }
+
+    return NextResponse.json({ success: true, products: fallbackProducts })
   } catch (error: any) {
     console.error("GET /api/products failed", error)
     return NextResponse.json({ success: false, error: "Unable to load products." }, { status: 500 })
