@@ -57,8 +57,8 @@ const orderCreateSchema = z.object({
   notes: z.string().max(1000).optional(),
 })
 
-// In-memory fallback for offline/development mode
-const memoryOrders: any[] = [...MOCK_HISTORICAL_ORDERS]
+// In-memory fallback for offline/development mode (Starts empty with 0 orders)
+const memoryOrders: any[] = []
 
 export async function GET(request: NextRequest) {
   const auth = await authorizeStaff(request, "cashier")
