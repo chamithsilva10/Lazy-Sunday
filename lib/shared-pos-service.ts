@@ -379,14 +379,20 @@ const ACTIVE_BRANCH_KEY = "pos_shared_active_branch"
 const POLL_MS = 20000
 
 export const DEFAULT_TABLES: SharedTable[] = [
-  { id: "1", name: "Table 01", capacity: 2, status: "available" },
-  { id: "2", name: "Table 02", capacity: 4, status: "available" },
-  { id: "3", name: "Table 03", capacity: 4, status: "available" },
-  { id: "4", name: "Table 04", capacity: 6, status: "available" },
-  { id: "5", name: "Table 05", capacity: 4, status: "available" },
-  { id: "6", name: "Table 06", capacity: 2, status: "available" },
-  { id: "7", name: "Table 07", capacity: 4, status: "available" },
-  { id: "8", name: "Table 08", capacity: 6, status: "available" },
+  { id: "tbl-1", name: "Table 1", capacity: 2, status: "available" },
+  { id: "tbl-2", name: "Table 2", capacity: 4, status: "available" },
+  { id: "tbl-3", name: "Table 3", capacity: 4, status: "available" },
+  { id: "tbl-4", name: "Table 4", capacity: 6, status: "available" },
+  { id: "tbl-5", name: "Table 5", capacity: 2, status: "available" },
+  { id: "tbl-6", name: "Table 6", capacity: 4, status: "available" },
+  { id: "tbl-7", name: "Terrace 1", capacity: 2, status: "available" },
+  { id: "tbl-8", name: "Terrace 2", capacity: 4, status: "available" },
+  { id: "tbl-9", name: "Terrace 3", capacity: 4, status: "available" },
+  { id: "tbl-10", name: "Terrace 4", capacity: 6, status: "available" },
+  { id: "tbl-11", name: "VIP Lounge", capacity: 8, status: "available" },
+  { id: "tbl-12", name: "Bar Counter 1", capacity: 1, status: "available" },
+  { id: "tbl-13", name: "Bar Counter 2", capacity: 1, status: "available" },
+  { id: "tbl-14", name: "Bar Counter 3", capacity: 1, status: "available" },
 ]
 
 export const DEFAULT_CATEGORIES: SharedCategory[] = [
@@ -604,11 +610,11 @@ const isTakeaway = (name?: string) => !name || name.trim().toLowerCase() === "ta
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
 
 export class SharedPosService {
-  private static tablesCache: SharedTable[] = []
+  private static tablesCache: SharedTable[] = DEFAULT_TABLES.map((t) => ({ ...t }))
   private static bookingsCache: SharedBooking[] = []
   private static sessionsCache: SharedSession[] = []
-  private static productsCache: SharedProduct[] = []
-  private static categoriesCache: SharedCategory[] = []
+  private static productsCache: SharedProduct[] = DEFAULT_PRODUCTS.map((p) => ({ ...p }))
+  private static categoriesCache: SharedCategory[] = DEFAULT_CATEGORIES.map((c) => ({ ...c }))
   private static ordersCache: SharedOrder[] = []
   private static ingredientsCache: SharedIngredient[] = []
   private static ingredientCategoriesCache: SharedIngredientCategory[] = []
@@ -788,10 +794,27 @@ export class SharedPosService {
     if (this.initialized || !this.isBrowser()) return
     this.initialized = true
 
+    // Clean-slate purge for Lazy Sunday tables & bookings to guarantee 0/14 active tables on fresh start
+    const LAZY_SUNDAY_TABLES_CLEAN_FLAG = "pos_lazy_sunday_clean_tables_zero_v4"
+    if (this.isBrowser() && localStorage.getItem(LAZY_SUNDAY_TABLES_CLEAN_FLAG) !== "true") {
+      try {
+        localStorage.removeItem(BOOKINGS_KEY)
+        localStorage.removeItem(SESSIONS_KEY)
+        localStorage.setItem(TABLES_KEY, JSON.stringify(DEFAULT_TABLES.map((t) => ({ ...t, status: "available" }))))
+        localStorage.setItem(LAZY_SUNDAY_TABLES_CLEAN_FLAG, "true")
+      } catch {}
+    }
+
     // Tables
     try {
       const rawTables = localStorage.getItem(TABLES_KEY)
       this.tablesCache = rawTables ? JSON.parse(rawTables) : DEFAULT_TABLES.map((t) => ({ ...t }))
+      if (!Array.isArray(this.tablesCache) || this.tablesCache.length !== 14 || this.tablesCache.some((t) => t.id === "1")) {
+        this.tablesCache = DEFAULT_TABLES.map((t) => ({ ...t, status: "available" }))
+        if (this.isBrowser()) {
+          try { localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache)) } catch {}
+        }
+      }
     } catch {
       this.tablesCache = DEFAULT_TABLES.map((t) => ({ ...t }))
     }
@@ -950,6 +973,30 @@ export class SharedPosService {
       } catch {}
     } catch {
       this.ordersCache = DEFAULT_INITIAL_ORDERS.map((o) => ({ ...o }))
+    }
+
+    // Reconcile table occupancy with actual active open orders and active table sessions
+    const activeOpenTables = new Set(
+      this.ordersCache
+        .filter((o) => o.status === "open" && o.table_name && !isTakeaway(o.table_name))
+        .map((o) => o.table_name.toLowerCase())
+    )
+    const activeSessionTableIds = new Set(
+      this.sessionsCache
+        .filter((s) => s.status === "open" || s.status === "bill_requested")
+        .map((s) => String(s.table_id))
+    )
+    let tablesNeedSync = false
+    this.tablesCache = this.tablesCache.map((tbl) => {
+      const isActuallyActive = activeOpenTables.has(tbl.name.toLowerCase()) || activeSessionTableIds.has(tbl.id)
+      if (tbl.status === "occupied" && !isActuallyActive) {
+        tablesNeedSync = true
+        return { ...tbl, status: "available", orderNumber: undefined, orderTotal: undefined, guestName: undefined, occupiedAt: undefined }
+      }
+      return tbl
+    })
+    if (tablesNeedSync && this.isBrowser()) {
+      try { localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache)) } catch {}
     }
 
     // Check if legacy bulk mock data across all modules needs to be purged
@@ -1635,7 +1682,10 @@ export class SharedPosService {
           } else if (row.status === "cleaning") {
             status = "cleaning"
           } else if (row.status === "occupied") {
-            status = "occupied"
+            const hasActiveOrder = this.ordersCache.some(
+              (o) => o.status === "open" && sameName(o.table_name, row.name)
+            )
+            status = hasActiveOrder ? "occupied" : "available"
           }
 
           return {

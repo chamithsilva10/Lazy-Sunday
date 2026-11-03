@@ -853,15 +853,15 @@ export const MOCK_CUSTOMERS: MockCustomer[] = [
 // ---------------------------------------------------------------------------
 export const MOCK_TABLES: MockTable[] = [
   { id: "tbl-1", name: "Table 1", capacity: 2, status: "available", section: "Indoor" },
-  { id: "tbl-2", name: "Table 2", capacity: 4, status: "occupied", section: "Indoor" },
+  { id: "tbl-2", name: "Table 2", capacity: 4, status: "available", section: "Indoor" },
   { id: "tbl-3", name: "Table 3", capacity: 4, status: "available", section: "Indoor" },
   { id: "tbl-4", name: "Table 4", capacity: 6, status: "available", section: "Indoor" },
   { id: "tbl-5", name: "Table 5", capacity: 2, status: "available", section: "Indoor" },
   { id: "tbl-6", name: "Table 6", capacity: 4, status: "available", section: "Indoor" },
   { id: "tbl-7", name: "Terrace 1", capacity: 2, status: "available", section: "Terrace" },
-  { id: "tbl-8", name: "Terrace 2", capacity: 4, status: "occupied", section: "Terrace" },
+  { id: "tbl-8", name: "Terrace 2", capacity: 4, status: "available", section: "Terrace" },
   { id: "tbl-9", name: "Terrace 3", capacity: 4, status: "available", section: "Terrace" },
-  { id: "tbl-10", name: "Terrace 4", capacity: 6, status: "reserved", section: "Terrace" },
+  { id: "tbl-10", name: "Terrace 4", capacity: 6, status: "available", section: "Terrace" },
   { id: "tbl-11", name: "VIP Lounge", capacity: 8, status: "available", section: "VIP Lounge" },
   { id: "tbl-12", name: "Bar Counter 1", capacity: 1, status: "available", section: "Bar" },
   { id: "tbl-13", name: "Bar Counter 2", capacity: 1, status: "available", section: "Bar" },

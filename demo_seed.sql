@@ -61,15 +61,15 @@ INSERT OR REPLACE INTO pos_products (id, name, sku, barcode, category_id, catego
 -- 5. Tables
 INSERT OR REPLACE INTO pos_tables (id, name, capacity, status, section) VALUES
 ('tbl-1', 'Table 1', 2, 'available', 'Indoor'),
-('tbl-2', 'Table 2', 4, 'occupied', 'Indoor'),
+('tbl-2', 'Table 2', 4, 'available', 'Indoor'),
 ('tbl-3', 'Table 3', 4, 'available', 'Indoor'),
 ('tbl-4', 'Table 4', 6, 'available', 'Indoor'),
 ('tbl-5', 'Table 5', 2, 'available', 'Indoor'),
 ('tbl-6', 'Table 6', 4, 'available', 'Indoor'),
 ('tbl-7', 'Terrace 1', 2, 'available', 'Terrace'),
-('tbl-8', 'Terrace 2', 4, 'occupied', 'Terrace'),
+('tbl-8', 'Terrace 2', 4, 'available', 'Terrace'),
 ('tbl-9', 'Terrace 3', 4, 'available', 'Terrace'),
-('tbl-10', 'Terrace 4', 6, 'reserved', 'Terrace'),
+('tbl-10', 'Terrace 4', 6, 'available', 'Terrace'),
 ('tbl-11', 'VIP Lounge', 8, 'available', 'VIP Lounge'),
 ('tbl-12', 'Bar Counter 1', 1, 'available', 'Bar'),
 ('tbl-13', 'Bar Counter 2', 1, 'available', 'Bar'),
