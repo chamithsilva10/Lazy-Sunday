@@ -227,6 +227,9 @@ export const DemoDbService = {
         status = "reserved"
       }
 
+      const orderMatch = session?.notes?.match(/Order\s*#?([A-Za-z0-9-]+)/i)
+      const sessionOrderNumber = orderMatch ? orderMatch[1] : undefined
+
       return {
         id: r.id,
         name: r.name,
@@ -236,6 +239,7 @@ export const DemoDbService = {
         guestName: session?.customer_name || heldBooking?.customer_name || nextBooking?.customer_name || undefined,
         occupiedAt: session?.seated_at || heldBooking?.reserved_for || undefined,
         bookingId: heldBooking?.id || undefined,
+        orderNumber: sessionOrderNumber,
         activeSession: session ? {
           id: session.id,
           customer_name: session.customer_name,
@@ -631,6 +635,48 @@ export const DemoDbService = {
       return { success: true, session }
     } catch (err: any) {
       return { success: false, error: err.message || "Failed to seat walk-in guests" }
+    }
+  },
+
+  occupyTable(tableIdOrName: string, info?: {
+    orderNumber?: string
+    orderTotal?: number
+    guestName?: string
+    department?: string
+  }): { success: boolean; session?: any; table?: any; error?: string } {
+    const db = getDemoSqliteDb()
+    if (!db) return { success: false, error: "Database not available" }
+    try {
+      const table = findTableInDb(db, tableIdOrName) as any
+      if (!table) return { success: false, error: `Table '${tableIdOrName}' not found` }
+
+      const existingSession = db.prepare(
+        "SELECT * FROM table_sessions WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested') ORDER BY seated_at DESC LIMIT 1"
+      ).get(table.id, table.name) as any
+
+      const customerName = info?.guestName?.trim() || "Dine-in Guest"
+      const noteText = info?.orderNumber ? `Order #${info.orderNumber}` : "Dine-in occupied"
+
+      let sessionId: string
+      if (existingSession) {
+        sessionId = existingSession.id
+        db.prepare(
+          "UPDATE table_sessions SET customer_name = COALESCE(?, customer_name), notes = ?, status = 'open' WHERE id = ?"
+        ).run(customerName, noteText, sessionId)
+      } else {
+        sessionId = `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+        db.prepare(`
+          INSERT INTO table_sessions (id, table_id, customer_name, guest_count, seated_at, status, notes)
+          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 'open', ?)
+        `).run(sessionId, table.id, customerName, table.capacity || 2, noteText)
+      }
+
+      db.prepare("UPDATE pos_tables SET status = 'occupied', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(table.id)
+
+      const session = db.prepare("SELECT * FROM table_sessions WHERE id = ?").get(sessionId)
+      return { success: true, session, table: { ...table, status: "occupied" } }
+    } catch (err: any) {
+      return { success: false, error: err.message || "Failed to occupy table" }
     }
   },
 

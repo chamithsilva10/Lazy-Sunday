@@ -557,7 +557,7 @@ export default function POSPage() {
   // Current POS Order State
   const [cart, setCart] = useState<CartItem[]>([])
   const [barcodeModalOpen, setBarcodeModalOpen] = useState(false)
-  const [selectedTable, setSelectedTable] = useState<string>("Table 05")
+  const [selectedTable, setSelectedTable] = useState<string>("Table 1")
   const [cashierName, setCashierName] = useState<string>("Cashier")
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState("All")
@@ -569,6 +569,20 @@ export default function POSPage() {
   const [orderType, setOrderType] = useState<"dine_in" | "takeaway" | "delivery">("dine_in")
   const [deliveryAddress, setDeliveryAddress] = useState<string>("")
   const [deliveryPhone, setDeliveryPhone] = useState<string>("")
+
+  // Auto-align selectedTable with free tables so staff never stays on an occupied table
+  useEffect(() => {
+    if (activeOpenOrder) return
+    if (orderType === "dine_in" && tables.length > 0) {
+      const cur = tables.find((t) => t.name.toLowerCase() === selectedTable?.toLowerCase())
+      if (!cur || cur.status !== "available") {
+        const firstAvail = tables.find((t) => t.status === "available")
+        if (firstAvail) {
+          setSelectedTable(firstAvail.name)
+        }
+      }
+    }
+  }, [tables, orderType, selectedTable, activeOpenOrder])
 
   // Bank Transfer and Customer Credit States
   const [bankRefNumber, setBankRefNumber] = useState<string>("")
@@ -1503,7 +1517,16 @@ export default function POSPage() {
       station: (i.station as "kitchen" | "bar") || determineItemStation(i),
     }))
 
-    // 0. Validate ingredient stock before allowing payment confirmation
+    // 0. Prevent assigning new dine-in order to occupied table
+    if (orderType === "dine_in" && selectedTable && selectedTable !== "Takeaway") {
+      const curTable = tables.find((t) => t.name.toLowerCase() === selectedTable.toLowerCase())
+      if (!isPayingExisting && curTable && curTable.status === "occupied") {
+        toast.error(`Table ${selectedTable} is currently OCCUPIED. Please select an available table.`)
+        return
+      }
+    }
+
+    // 1. Validate ingredient stock before allowing payment confirmation
     const stockValidation = SharedPosService.validateOrderStock(purchasedItems)
     if (!stockValidation.valid) {
       toast.error(stockValidation.warnings[0], { duration: 6000 })
@@ -1730,6 +1753,12 @@ export default function POSPage() {
     ])
     setPaymentModalOpen(false)
 
+    // Advance selectedTable to next available table
+    const nextAvail = tables.find((t) => t.status === "available" && t.name.toLowerCase() !== selectedTable.toLowerCase())
+    if (nextAvail) {
+      setSelectedTable(nextAvail.name)
+    }
+
     toast.success(`Payment Completed! Order #${orderNum} recorded. Table ${selectedTable} marked occupied.`)
   }
 
@@ -1754,7 +1783,16 @@ export default function POSPage() {
       station: (i.station as "kitchen" | "bar") || determineItemStation(i),
     }))
 
-    // 0. Validate ingredient stock before allowing payment confirmation
+    // 0. Prevent assigning new dine-in order to occupied table (handleSendToKitchenAndBar)
+    if (orderType === "dine_in" && selectedTable && selectedTable !== "Takeaway") {
+      const curTable = tables.find((t) => t.name.toLowerCase() === selectedTable.toLowerCase())
+      if (!isUpdatingOpen && curTable && curTable.status === "occupied") {
+        toast.error(`Table ${selectedTable} is currently OCCUPIED. Please select an available table.`)
+        return
+      }
+    }
+
+    // 1. Validate ingredient stock before allowing payment confirmation
     const stockValidation = SharedPosService.validateOrderStock(purchasedItems)
     if (!stockValidation.valid) {
       toast.error(stockValidation.warnings[0], { duration: 6000 })
@@ -1919,6 +1957,12 @@ export default function POSPage() {
     setActiveOpenOrder(null)
     setCart([])
     setMobileCartOpen(false)
+
+    // Advance selectedTable to next available table
+    const nextAvail = tables.find((t) => t.status === "available" && t.name.toLowerCase() !== selectedTable.toLowerCase())
+    if (nextAvail) {
+      setSelectedTable(nextAvail.name)
+    }
 
     toast.success(`Order #${orderNum} sent to Kitchen & Bar! Table ${selectedTable} marked occupied.`)
   }
@@ -4837,16 +4881,26 @@ function POSView({
                     onChange={(e) => setSelectedTable(e.target.value)}
                     className="h-7 rounded-lg border border-gray-300 bg-white px-2 text-xs font-bold text-gray-900 outline-none focus:ring-1 focus:ring-[#D67B6B]"
                   >
-                    {tables.map((t: TableInfo) => (
-                      <option key={t.id} value={t.name}>
-                        {t.name} ({t.status.toUpperCase()})
-                      </option>
-                    ))}
+                    {tables.map((t: TableInfo) => {
+                      const isAvail = t.status === "available"
+                      const isCur = t.name.toLowerCase() === selectedTable?.toLowerCase()
+                      const labelStatus = isAvail
+                        ? "AVAILABLE"
+                        : t.status === "reserved"
+                        ? "RESERVED"
+                        : "OCCUPIED"
+                      return (
+                        <option key={t.id} value={t.name} disabled={!isAvail && !isCur}>
+                          {t.name} ({labelStatus})
+                        </option>
+                      )
+                    })}
                   </select>
                 </div>
                 {(() => {
                   const cur = tables.find((t: TableInfo) => t.name.toLowerCase() === selectedTable?.toLowerCase())
-                  if (cur?.status === "reserved") {
+                  if (!cur) return null
+                  if (cur.status === "reserved") {
                     return (
                       <div className="flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg bg-violet-50 border border-violet-200 text-[10px] text-violet-800">
                         <div className="flex items-center gap-1 min-w-0">
@@ -4861,7 +4915,32 @@ function POSView({
                       </div>
                     )
                   }
-                  return null
+                  if (cur.status === "occupied") {
+                    return (
+                      <div className="flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg bg-amber-50 border border-amber-200 text-[10px] text-amber-800">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <Clock className="size-3 text-amber-600 shrink-0" />
+                          <span className="font-semibold truncate">
+                            Occupied{cur.guestName ? `: ${cur.guestName}` : " · Seated"}{cur.orderNumber ? ` (#${cur.orderNumber})` : ""}
+                          </span>
+                        </div>
+                        <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-[9px] px-1.5 py-0 uppercase font-extrabold shrink-0">
+                          Occupied
+                        </Badge>
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[10px] text-emerald-800">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <CheckCircle2 className="size-3 text-emerald-600 shrink-0" />
+                        <span className="font-semibold truncate">Available for Dine-in</span>
+                      </div>
+                      <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 text-[9px] px-1.5 py-0 uppercase font-extrabold shrink-0">
+                        Available
+                      </Badge>
+                    </div>
+                  )
                 })()}
               </div>
             )}
@@ -5141,16 +5220,26 @@ function POSView({
                   onChange={(e) => setSelectedTable(e.target.value)}
                   className="h-8 rounded-lg border border-gray-300 bg-white px-2.5 text-xs font-bold text-gray-900 outline-none focus:ring-1 focus:ring-[#D67B6B]"
                 >
-                  {tables.map((t: TableInfo) => (
-                    <option key={t.id} value={t.name}>
-                      {t.name} ({t.status.toUpperCase()})
-                    </option>
-                  ))}
+                  {tables.map((t: TableInfo) => {
+                    const isAvail = t.status === "available"
+                    const isCur = t.name.toLowerCase() === selectedTable?.toLowerCase()
+                    const labelStatus = isAvail
+                      ? "AVAILABLE"
+                      : t.status === "reserved"
+                      ? "RESERVED"
+                      : "OCCUPIED"
+                    return (
+                      <option key={t.id} value={t.name} disabled={!isAvail && !isCur}>
+                        {t.name} ({labelStatus})
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
               {(() => {
                 const cur = tables.find((t: TableInfo) => t.name.toLowerCase() === selectedTable?.toLowerCase())
-                if (cur?.status === "reserved") {
+                if (!cur) return null
+                if (cur.status === "reserved") {
                   return (
                     <div className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-lg bg-violet-50 border border-violet-200 text-[11px] text-violet-800">
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -5165,7 +5254,32 @@ function POSView({
                     </div>
                   )
                 }
-                return null
+                if (cur.status === "occupied") {
+                  return (
+                    <div className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Clock className="size-3.5 text-amber-600 shrink-0" />
+                        <span className="font-semibold truncate">
+                          Occupied{cur.guestName ? `: ${cur.guestName}` : " · Seated"}{cur.orderNumber ? ` (#${cur.orderNumber})` : ""}
+                        </span>
+                      </div>
+                      <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-[9px] px-1.5 py-0 uppercase font-extrabold shrink-0">
+                        Occupied
+                      </Badge>
+                    </div>
+                  )
+                }
+                return (
+                  <div className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <CheckCircle2 className="size-3.5 text-emerald-600 shrink-0" />
+                      <span className="font-semibold truncate">Table Available · Ready for Dine-in</span>
+                    </div>
+                    <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 text-[9px] px-1.5 py-0 uppercase font-extrabold shrink-0">
+                      Available
+                    </Badge>
+                  </div>
+                )
               })()}
             </div>
           )}

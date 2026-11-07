@@ -21,8 +21,24 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { action, tableId, tableName, status, guestInfo } = body
+    const { action, tableId, tableName, status, guestInfo, orderNumber, orderTotal, guestName, department } = body
     const targetId = tableId || tableName
+
+    if (action === "occupy") {
+      if (!targetId) {
+        return NextResponse.json({ success: false, error: "Table identifier is required" }, { status: 400 })
+      }
+      const res = DemoDbService.occupyTable(targetId, {
+        orderNumber,
+        orderTotal,
+        guestName,
+        department,
+      })
+      if (!res.success) {
+        return NextResponse.json({ success: false, error: res.error }, { status: 400 })
+      }
+      return NextResponse.json({ ...res })
+    }
 
     if (action === "seat" || action === "seat_walkin") {
       if (!targetId) {

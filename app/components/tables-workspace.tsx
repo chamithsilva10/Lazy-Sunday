@@ -353,6 +353,35 @@ export function TablesWorkspace({
     return "available"
   }
 
+  const getActiveOrderForTable = (table: Table | null | undefined) => {
+    if (!table) return undefined
+    const session = sessionFor(table)
+    const orderMatch = session?.notes?.match(/Order\s*#?([A-Za-z0-9-]+)/i)
+    const sessionOrderNum = orderMatch ? orderMatch[1] : (table as any).orderNumber
+
+    if (sessionOrderNum) {
+      const match = orders.find(
+        (o) => o.order_number?.toLowerCase() === sessionOrderNum.toLowerCase()
+      )
+      if (match) return match
+    }
+
+    const tStatus = statusFor(table)
+    if (tStatus === "occupied" || tStatus === "bill_requested") {
+      const sessionTime = session?.seated_at ? new Date(session.seated_at).getTime() : 0
+      return orders.find((o) => {
+        if (o.table_name.toLowerCase() !== table.name.toLowerCase()) return false
+        if (o.status !== "open" && o.status !== "paid") return false
+        if (sessionTime && o.created_at) {
+          const orderTime = new Date(o.created_at).getTime()
+          return orderTime >= sessionTime - 2 * 60 * 60 * 1000
+        }
+        return true
+      })
+    }
+    return undefined
+  }
+
   const visibleTables = tables.filter((table) => {
     const q = search.trim().toLowerCase()
     const st = statusFor(table)
@@ -639,14 +668,16 @@ export function TablesWorkspace({
 
   async function updateSession(status: "bill_requested" | "closed" | "available") {
     if (!selected) return
+    const curName = selected.name
     setSaving(true)
     try {
       if (status === "closed" || status === "available") {
-        const newStatus = await SharedPosService.releaseTable(selected.name)
-        toast.success(`${selected.name} released (now ${newStatus || "available"})`)
+        const newStatus = await SharedPosService.releaseTable(curName)
+        toast.success(`Table ${curName} closed (now ${newStatus || "available"})`)
+        setSelected(null)
       } else {
         await SharedPosService.setTableStatus(selected.id, "bill_requested")
-        toast.success(`Bill requested for ${selected.name}`)
+        toast.success(`Bill requested for ${curName}`)
       }
       await load()
     } catch (err: any) {
@@ -899,6 +930,7 @@ export function TablesWorkspace({
               const session = sessionFor(table)
               const heldBooking = heldBookingFor(table)
               const nextBooking = nextUpcomingBookingFor(table)
+              const cardOrder = getActiveOrderForTable(table)
               return (
                 <button
                   key={table.id}
@@ -925,14 +957,34 @@ export function TablesWorkspace({
                     </Badge>
                   </div>
                   {session ? (
-                    <div className="mt-5 space-y-0.5">
-                      <p className="font-bold text-base truncate">{session.customer_name}</p>
-                      <p className="text-xs opacity-80">
-                        {session.guest_count} guests · {minutesSince(session.seated_at)} min open
-                      </p>
+                    <div className="mt-4 space-y-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="font-bold text-base truncate">{session.customer_name}</p>
+                        {cardOrder && (
+                          <span
+                            className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shrink-0 uppercase ${
+                              cardOrder.status === "paid" || cardOrder.payment_status === "paid"
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                : "bg-amber-100 text-amber-800 border border-amber-300"
+                            }`}
+                          >
+                            {cardOrder.status === "paid" || cardOrder.payment_status === "paid" ? "PAID" : "UNPAID"}
+                          </span>
+                        )}
+                      </div>
+                      {cardOrder ? (
+                        <div className="flex items-center justify-between text-xs font-semibold text-gray-700 bg-white/70 px-2 py-1 rounded-lg border border-black/5">
+                          <span className="font-mono text-[11px] truncate">#{cardOrder.order_number}</span>
+                          <span className="font-bold">LKR {Number(cardOrder.total || 0).toLocaleString()}</span>
+                        </div>
+                      ) : (
+                        <p className="text-xs opacity-80">
+                          {session.guest_count} guests · {minutesSince(session.seated_at)} min open
+                        </p>
+                      )}
                       {nextBooking && (
                         <p className="text-[10px] text-amber-900/80 truncate mt-1">
-                          Later booking: {formatTime(nextBooking.reserved_for)} ({nextBooking.customer_name})
+                          Later: {formatTime(nextBooking.reserved_for)} ({nextBooking.customer_name})
                         </p>
                       )}
                     </div>
@@ -955,12 +1007,32 @@ export function TablesWorkspace({
                       )}
                     </div>
                   ) : status === "occupied" ? (
-                    <div className="mt-5 space-y-0.5">
-                      <p className="font-bold text-base">Occupied</p>
-                      <p className="text-xs opacity-80">Dine-in guests seated</p>
+                    <div className="mt-4 space-y-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="font-bold text-base">Occupied</p>
+                        {cardOrder && (
+                          <span
+                            className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shrink-0 uppercase ${
+                              cardOrder.status === "paid" || cardOrder.payment_status === "paid"
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                : "bg-amber-100 text-amber-800 border border-amber-300"
+                            }`}
+                          >
+                            {cardOrder.status === "paid" || cardOrder.payment_status === "paid" ? "PAID" : "UNPAID"}
+                          </span>
+                        )}
+                      </div>
+                      {cardOrder ? (
+                        <div className="flex items-center justify-between text-xs font-semibold text-gray-700 bg-white/70 px-2 py-1 rounded-lg border border-black/5">
+                          <span className="font-mono text-[11px] truncate">#{cardOrder.order_number}</span>
+                          <span className="font-bold">LKR {Number(cardOrder.total || 0).toLocaleString()}</span>
+                        </div>
+                      ) : (
+                        <p className="text-xs opacity-80">Dine-in guests seated</p>
+                      )}
                       {nextBooking && (
                         <p className="text-[10px] text-amber-900/80 truncate mt-1">
-                          Later booking: {formatTime(nextBooking.reserved_for)} ({nextBooking.customer_name})
+                          Later: {formatTime(nextBooking.reserved_for)} ({nextBooking.customer_name})
                         </p>
                       )}
                     </div>
@@ -1455,28 +1527,48 @@ export function TablesWorkspace({
                 </div>
 
                 {(() => {
-                  const activeOrder = orders.find(
-                    (o) =>
-                      o.table_name.toLowerCase() === selected.name.toLowerCase() &&
-                      (o.status === "open" || o.status === "paid"),
-                  )
+                  const activeOrder = getActiveOrderForTable(selected)
                   if (!activeOrder) return null
+                  const isPaid = activeOrder.status === "paid" || activeOrder.payment_status === "paid"
                   return (
-                    <div className="rounded-2xl border border-[#E5D8CF] bg-white p-3.5 space-y-2 text-xs">
+                    <div className="rounded-2xl border border-[#E5D8CF] bg-white p-3.5 space-y-2.5 text-xs shadow-xs">
                       <div className="flex items-center justify-between font-bold text-gray-900">
-                        <span className="font-mono">{activeOrder.order_number}</span>
-                        <Badge className="bg-[#808068] text-white">LKR {activeOrder.total.toLocaleString()}</Badge>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-bold text-[#808068]">
+                            #{activeOrder.order_number}
+                          </span>
+                          <span
+                            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                              isPaid
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                : "bg-amber-100 text-amber-800 border border-amber-300"
+                            }`}
+                          >
+                            {isPaid ? "Paid Order" : "Unpaid Order"}
+                          </span>
+                        </div>
+                        <span className="text-sm font-bold text-gray-900">
+                          LKR {Number(activeOrder.total || 0).toLocaleString()}
+                        </span>
                       </div>
-                      <div className="divide-y divide-gray-100 max-h-36 overflow-y-auto">
-                        {activeOrder.items.map((it, idx) => (
+                      <div className="divide-y divide-gray-100 max-h-40 overflow-y-auto pr-1">
+                        {activeOrder.items?.map((it, idx) => (
                           <div key={idx} className="flex justify-between py-1 text-gray-600">
                             <span>
                               {it.quantity}x {it.name}
                             </span>
-                            <span>LKR {(it.price * it.quantity).toLocaleString()}</span>
+                            <span className="font-medium">
+                              LKR {(Number(it.price) * Number(it.quantity)).toLocaleString()}
+                            </span>
                           </div>
                         ))}
                       </div>
+                      {isPaid && (
+                        <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-2 text-[11px] text-emerald-800 flex items-center gap-1.5">
+                          <Check className="size-3.5 text-emerald-600 shrink-0" />
+                          <span>Payment completed. Table stays occupied until guests leave and staff closes the table.</span>
+                        </div>
+                      )}
                     </div>
                   )
                 })()}
@@ -1494,7 +1586,7 @@ export function TablesWorkspace({
                         {nb.customer_name} ({nb.party_size} guests) · {nb.duration_minutes} min hold
                       </p>
                       <p className="text-[10px] text-violet-600">
-                        Releasing this table leaves this upcoming reservation intact.
+                        Closing this table leaves this upcoming reservation intact.
                       </p>
                     </div>
                   )
@@ -1506,7 +1598,7 @@ export function TablesWorkspace({
                   onClick={() => void updateSession("closed")}
                   disabled={saving}
                 >
-                  <Check className="size-4" /> Release Table (Guests Left · Mark Available)
+                  <Check className="size-4" /> Close Table (Customers Left · Mark Available)
                 </Button>
 
                 <div className="grid grid-cols-2 gap-2">

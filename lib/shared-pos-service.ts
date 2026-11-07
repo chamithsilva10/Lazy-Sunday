@@ -110,6 +110,7 @@ export interface SharedOrder {
   cash_received?: number
   change_amount?: number
   status: "open" | "paid" | "completed" | "refunded" | "cancelled" | string
+  payment_status?: "paid" | "unpaid" | "refunded" | string
   kitchen_status?: "pending" | "preparing" | "ready" | "served"
   bar_status?: "pending" | "preparing" | "ready" | "served"
   ticket_source?: "coffee_bill"
@@ -1975,20 +1976,29 @@ export class SharedPosService {
 
     try {
       if (this.isBrowser()) {
-        fetch("/api/tables", {
+        await fetch("/api/tables", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tableId: table.id, tableName: table.name, status: "occupied" }),
+          body: JSON.stringify({
+            action: "occupy",
+            tableId: table.id,
+            tableName: table.name,
+            orderNumber,
+            orderTotal,
+            guestName: guestName || "Dine-in Guest",
+            department,
+          }),
         }).catch(() => {})
       }
       const supabase = createClient()
       void supabase.from("pos_tables").update({ status: "occupied" }).eq("id", table.id)
       void supabase.from("table_sessions").upsert({
         table_id: table.id,
-        customer_name: guestName || "Walk-in Guest",
+        customer_name: guestName || "Dine-in Guest",
         guest_count: table.capacity,
         seated_at: nowIso,
         status: "open",
+        notes: orderNumber ? `Order #${orderNumber}` : "",
       })
     } catch {}
   }
@@ -1999,6 +2009,7 @@ export class SharedPosService {
     const table = this.tablesCache.find((t) => sameName(t.name, tableName))
     if (!table) return
 
+    let serverStatus = "available"
     if (this.isBrowser()) {
       try {
         const res = await fetch("/api/tables", {
@@ -2007,10 +2018,11 @@ export class SharedPosService {
           body: JSON.stringify({ action: "release", tableId: table.id, tableName: table.name }),
         })
         const data = await res.json()
-        await this.refreshFromApi()
+        if (data.status) serverStatus = data.status
+        await this.refreshFromApi(true)
         this.broadcast("tables")
         this.broadcast("sessions")
-        return data.status || "available"
+        return serverStatus
       } catch {}
     }
 
