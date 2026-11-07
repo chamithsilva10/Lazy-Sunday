@@ -1695,9 +1695,9 @@ export default function POSPage() {
     }))
     setMovements((prev) => [...newMovements, ...prev])
 
-    // 3. Release/Update Table Status to AVAILABLE after payment (via SharedPosService for cross-department sync)
-    if (orderType === "dine_in") {
-      void SharedPosService.releaseTable(selectedTable)
+    // 3. Mark Table Status as OCCUPIED for dine-in tables (freed from Tables workspace when guests leave)
+    if (orderType === "dine_in" && selectedTable && selectedTable !== "Takeaway") {
+      void SharedPosService.occupyTable(selectedTable, "Juice & Food", orderNum, total)
     }
 
     // Save order in SharedPosService and state (instantly updates Orders and Reports across tabs)
@@ -1727,7 +1727,7 @@ export default function POSPage() {
     ])
     setPaymentModalOpen(false)
 
-    toast.success(`Payment Completed! Order #${orderNum} recorded & Table released.`)
+    toast.success(`Payment Completed! Order #${orderNum} recorded. Table ${selectedTable} marked occupied.`)
   }
 
   // Send open order to Kitchen & Bar (for dine-in tables paying later)

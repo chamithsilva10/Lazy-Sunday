@@ -632,6 +632,7 @@ export class SharedPosService {
 
   private static tableListeners = new Set<Listener<SharedTable[]>>()
   private static bookingListeners = new Set<Listener<SharedBooking[]>>()
+  private static sessionListeners = new Set<Listener<SharedSession[]>>()
   private static productListeners = new Set<Listener<SharedProduct[]>>()
   private static categoryListeners = new Set<Listener<SharedCategory[]>>()
   private static orderListeners = new Set<Listener<SharedOrder[]>>()
@@ -981,14 +982,20 @@ export class SharedPosService {
         .filter((o) => o.status === "open" && o.table_name && !isTakeaway(o.table_name))
         .map((o) => o.table_name.toLowerCase())
     )
-    const activeSessionTableIds = new Set(
-      this.sessionsCache
-        .filter((s) => s.status === "open" || s.status === "bill_requested")
-        .map((s) => String(s.table_id))
-    )
+    const activeSessionTableKeys = new Set<string>()
+    this.sessionsCache
+      .filter((s) => s.status === "open" || s.status === "bill_requested")
+      .forEach((s) => {
+        if (s.table_id) activeSessionTableKeys.add(String(s.table_id).toLowerCase())
+        if (s.table_name) activeSessionTableKeys.add(String(s.table_name).toLowerCase())
+      })
+
     let tablesNeedSync = false
     this.tablesCache = this.tablesCache.map((tbl) => {
-      const isActuallyActive = activeOpenTables.has(tbl.name.toLowerCase()) || activeSessionTableIds.has(tbl.id)
+      const isActuallyActive =
+        activeOpenTables.has(tbl.name.toLowerCase()) ||
+        activeSessionTableKeys.has(tbl.id.toLowerCase()) ||
+        activeSessionTableKeys.has(tbl.name.toLowerCase())
       if (tbl.status === "occupied" && !isActuallyActive) {
         tablesNeedSync = true
         return { ...tbl, status: "available", orderNumber: undefined, orderTotal: undefined, guestName: undefined, occupiedAt: undefined }
@@ -1399,6 +1406,7 @@ export class SharedPosService {
       if (s) this.sessionsCache = JSON.parse(s)
       this.emitTables()
       this.emitBookings()
+      this.emitSessions()
     } catch {}
   }
 
@@ -1557,6 +1565,15 @@ export class SharedPosService {
     }
   }
 
+  static subscribeSessions(listener: Listener<SharedSession[]>): () => void {
+    this.init()
+    this.sessionListeners.add(listener)
+    listener(this.sessionsCache)
+    return () => {
+      this.sessionListeners.delete(listener)
+    }
+  }
+
   static subscribeProducts(listener: Listener<SharedProduct[]>): () => void {
     this.init()
     this.productListeners.add(listener)
@@ -1600,6 +1617,16 @@ export class SharedPosService {
     if (this.isBrowser()) {
       window.dispatchEvent(new CustomEvent("pos_bookings_updated", { detail: data }))
       window.dispatchEvent(new CustomEvent("pos_realtime_bookings", { detail: data }))
+    }
+  }
+
+  private static emitSessions() {
+    const data = [...this.sessionsCache]
+    this.sessionListeners.forEach((l) => l(data))
+    if (this.isBrowser()) {
+      window.dispatchEvent(new CustomEvent("pos_sessions_updated", { detail: data }))
+      window.dispatchEvent(new CustomEvent("pos_realtime_sessions", { detail: data }))
+      window.dispatchEvent(new CustomEvent("pos_realtime_sync", { detail: { type: "sessions", data } }))
     }
   }
 
@@ -1682,9 +1709,11 @@ export class SharedPosService {
           } else if (row.status === "cleaning") {
             status = "cleaning"
           } else if (row.status === "occupied") {
-            const hasActiveOrder = this.ordersCache.some(
-              (o) => o.status === "open" && sameName(o.table_name, row.name)
-            )
+            const hasActiveOrder =
+              this.ordersCache.some((o) => o.status === "open" && sameName(o.table_name, row.name)) ||
+              this.sessionsCache.some(
+                (s) => (s.table_id === String(row.id) || sameName(s.table_name, row.name)) && s.status !== "closed"
+              )
             status = hasActiveOrder ? "occupied" : "available"
           }
 
@@ -1770,8 +1799,10 @@ export class SharedPosService {
         : t,
     )
 
-    // Save session
-    const existingSession = this.sessionsCache.find((s) => s.table_id === table.id && s.status !== "closed")
+    // Save or update active session
+    const existingSession = this.sessionsCache.find(
+      (s) => (s.table_id === table.id || sameName(s.table_name, table.name)) && s.status !== "closed"
+    )
     if (!existingSession) {
       const newSession: SharedSession = {
         id: "ses-" + Date.now(),
@@ -1784,19 +1815,48 @@ export class SharedPosService {
         notes: orderNumber ? `Order #${orderNumber}` : "",
       }
       this.sessionsCache = [newSession, ...this.sessionsCache]
-      localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache))
+    } else {
+      this.sessionsCache = this.sessionsCache.map((s) =>
+        s.id === existingSession.id
+          ? {
+              ...s,
+              status: "open",
+              customer_name: guestName || s.customer_name,
+              notes: orderNumber ? `Order #${orderNumber}` : s.notes,
+            }
+          : s
+      )
     }
 
-    localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
-    this.emitTables()
-    this.broadcast("tables")
-
-    if (isSupabaseConfigured()) {
+    if (this.isBrowser()) {
       try {
-        const supabase = createClient()
-        await supabase.from("pos_tables").update({ status: "occupied" }).eq("id", table.id)
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache))
+        localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
       } catch {}
     }
+    this.emitTables()
+    this.emitSessions()
+    this.broadcast("tables")
+    this.broadcast("sessions")
+
+    try {
+      if (this.isBrowser()) {
+        fetch("/api/tables", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tableId: table.id, tableName: table.name, status: "occupied" }),
+        }).catch(() => {})
+      }
+      const supabase = createClient()
+      void supabase.from("pos_tables").update({ status: "occupied" }).eq("id", table.id)
+      void supabase.from("table_sessions").upsert({
+        table_id: table.id,
+        customer_name: guestName || "Walk-in Guest",
+        guest_count: table.capacity,
+        seated_at: nowIso,
+        status: "open",
+      })
+    } catch {}
   }
 
   static async releaseTable(tableName: string) {
@@ -1821,43 +1881,81 @@ export class SharedPosService {
     )
 
     this.sessionsCache = this.sessionsCache.map((s) =>
-      s.table_id === table.id && s.status !== "closed" ? { ...s, status: "closed" as const } : s,
+      (s.table_id === table.id || sameName(s.table_name, table.name)) && s.status !== "closed"
+        ? { ...s, status: "closed" as const }
+        : s,
     )
 
-    localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
-    localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache))
-    this.emitTables()
-    this.broadcast("tables")
-
-    if (isSupabaseConfigured()) {
+    if (this.isBrowser()) {
       try {
-        const supabase = createClient()
-        await supabase.from("pos_tables").update({ status: "available" }).eq("id", table.id)
-        await supabase
-          .from("table_sessions")
-          .update({ status: "closed", closed_at: new Date().toISOString() })
-          .eq("table_id", table.id)
-          .in("status", ["open", "bill_requested"])
+        localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache))
       } catch {}
     }
+    this.emitTables()
+    this.emitSessions()
+    this.broadcast("tables")
+    this.broadcast("sessions")
+
+    try {
+      if (this.isBrowser()) {
+        fetch("/api/tables", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tableId: table.id, tableName: table.name, status: "available" }),
+        }).catch(() => {})
+      }
+      const supabase = createClient()
+      void supabase.from("pos_tables").update({ status: "available" }).eq("id", table.id)
+      void supabase
+        .from("table_sessions")
+        .update({ status: "closed", closed_at: new Date().toISOString() })
+        .eq("table_id", table.id)
+        .in("status", ["open", "bill_requested"])
+    } catch {}
   }
 
-  static async setTableStatus(tableId: string, status: SharedTable["status"]) {
+  static async setTableStatus(tableIdOrName: string, status: SharedTable["status"]) {
     this.init()
-    const table = this.tablesCache.find((t) => t.id === tableId)
+    const table = this.tablesCache.find((t) => t.id === tableIdOrName || sameName(t.name, tableIdOrName))
     if (!table) return
     if (status === "available") return this.releaseTable(table.name)
+    if (status === "occupied") return this.occupyTable(table.name)
 
-    this.tablesCache = this.tablesCache.map((t) => (t.id === tableId ? { ...t, status } : t))
-    localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
+    this.tablesCache = this.tablesCache.map((t) =>
+      t.id === table.id ? { ...t, status } : t
+    )
+
+    if (status === "bill_requested") {
+      this.sessionsCache = this.sessionsCache.map((s) =>
+        (s.table_id === table.id || sameName(s.table_name, table.name)) && s.status !== "closed"
+          ? { ...s, status: "bill_requested" as const }
+          : s
+      )
+      if (this.isBrowser()) {
+        try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache)) } catch {}
+      }
+      this.emitSessions()
+      this.broadcast("sessions")
+    }
+
+    if (this.isBrowser()) {
+      try { localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache)) } catch {}
+    }
     this.emitTables()
     this.broadcast("tables")
 
-    if (isSupabaseConfigured()) {
-      try {
-        await createClient().from("pos_tables").update({ status }).eq("id", tableId)
-      } catch {}
-    }
+    try {
+      if (this.isBrowser()) {
+        fetch("/api/tables", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tableId: table.id, tableName: table.name, status }),
+        }).catch(() => {})
+      }
+      const supabase = createClient()
+      void supabase.from("pos_tables").update({ status }).eq("id", table.id)
+    } catch {}
   }
 
   static async addTable(name: string, capacity: number) {
@@ -2422,19 +2520,17 @@ export class SharedPosService {
     this.emitProducts()
     this.broadcast("products")
 
-    // Update table occupation/release
+    // Update table occupation:
+    // When someone is at the table (open order or paid dine-in), mark table occupied!
+    // When customers leave, staff updates/frees the table from the Table section.
     if (!isTakeaway(normalizedOrder.table_name)) {
-      if (normalizedOrder.status === "open") {
-        void this.occupyTable(
-          normalizedOrder.table_name,
-          normalizedOrder.department === "Coffee Bar" ? "Coffee Bar" : "Juice & Food",
-          normalizedOrder.order_number,
-          normalizedOrder.total,
-          normalizedOrder.cashier_name
-        )
-      } else if (normalizedOrder.status === "paid" || normalizedOrder.status === "completed") {
-        void this.releaseTable(normalizedOrder.table_name)
-      }
+      void this.occupyTable(
+        normalizedOrder.table_name,
+        normalizedOrder.department === "Coffee Bar" ? "Coffee Bar" : "Juice & Food",
+        normalizedOrder.order_number,
+        normalizedOrder.total,
+        normalizedOrder.customer_name || normalizedOrder.cashier_name
+      )
     }
 
     // Customer credit ledger & loyalty points update
@@ -3890,8 +3986,10 @@ export class SharedPosService {
       } catch {}
     }
     this.emitTables()
+    this.emitSessions()
     this.emitOrders()
     this.broadcast("tables")
+    this.broadcast("sessions")
     this.broadcast("orders")
     return true
   }

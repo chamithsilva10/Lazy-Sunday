@@ -93,6 +93,12 @@ export function TablesWorkspace({
   }, [])
 
   const load = useCallback(async () => {
+    // 1. Get ground truth from SharedPosService
+    const sharedTables = SharedPosService.getTables()
+    const sharedBookings = SharedPosService.getBookings()
+    const sharedSessions = SharedPosService.getSessions()
+
+    // 2. Query Supabase / remote if configured
     try {
       const [tableRes, reservationRes, sessionRes] = await Promise.all([
         supabase.from("pos_tables").select("id,name,capacity,status").order("name"),
@@ -107,20 +113,73 @@ export function TablesWorkspace({
           .in("status", ["open", "bill_requested"]),
       ])
 
-      const hasTables = tableRes.data && Array.isArray(tableRes.data) && tableRes.data.length > 0
-      if (hasTables) {
-        setTables(tableRes.data as Table[])
-        setReservations((reservationRes.data as Reservation[]) || [])
-        setSessions((sessionRes.data as Session[]) || [])
-        setLoadError(null)
-        return
+      const mergedSessions = [...sharedSessions]
+      if (sessionRes.data && Array.isArray(sessionRes.data)) {
+        for (const s of sessionRes.data as any[]) {
+          const idx = mergedSessions.findIndex((ms) => ms.id === s.id || ms.table_id === s.table_id)
+          if (idx >= 0) {
+            mergedSessions[idx] = { ...mergedSessions[idx], ...s }
+          } else {
+            mergedSessions.push(s)
+          }
+        }
       }
-    } catch {}
 
-    // Fall back to shared realtime floor service (works offline and across all open terminals)
-    const sharedTables = SharedPosService.getTables()
-    const sharedBookings = SharedPosService.getBookings()
-    const sharedSessions = SharedPosService.getSessions()
+      const mergedBookings = [...sharedBookings]
+      if (reservationRes.data && Array.isArray(reservationRes.data)) {
+        for (const b of reservationRes.data as any[]) {
+          const idx = mergedBookings.findIndex((mb) => mb.id === b.id)
+          if (idx >= 0) {
+            mergedBookings[idx] = { ...mergedBookings[idx], ...b }
+          } else {
+            mergedBookings.push(b)
+          }
+        }
+      }
+
+      // Synchronize tables from shared floor state
+      const remoteTables = (tableRes.data && Array.isArray(tableRes.data) && tableRes.data.length > 0)
+        ? (tableRes.data as Table[]).map((rt) => {
+            const local = sharedTables.find((st) => st.id === rt.id || st.name.toLowerCase() === rt.name.toLowerCase())
+            return local ? { ...rt, status: local.status } : rt
+          })
+        : sharedTables.map((t) => ({ id: t.id, name: t.name, capacity: t.capacity, status: t.status }))
+
+      setTables(remoteTables)
+      setReservations(
+        mergedBookings
+          .filter((b) => ACTIVE_BOOKING.includes(b.status))
+          .map((b) => ({
+            id: b.id,
+            customer_name: b.customer_name,
+            phone: b.phone,
+            party_size: b.party_size,
+            reserved_for: b.reserved_for,
+            duration_minutes: b.duration_minutes,
+            table_id: b.table_id,
+            status: b.status,
+            source: b.source || "staff",
+            special_requests: b.special_requests || "",
+          })),
+      )
+      setSessions(
+        mergedSessions
+          .filter((s) => s.status !== "closed")
+          .map((s) => ({
+            id: s.id,
+            table_id: s.table_id,
+            table_name: s.table_name,
+            customer_name: s.customer_name,
+            phone: s.phone || null,
+            guest_count: s.guest_count,
+            seated_at: s.seated_at,
+            status: s.status,
+            notes: s.notes || "",
+          })),
+      )
+      setLoadError(null)
+      return
+    } catch {}
 
     setTables(sharedTables.map((t) => ({ id: t.id, name: t.name, capacity: t.capacity, status: t.status })))
     setReservations(
@@ -145,6 +204,7 @@ export function TablesWorkspace({
         .map((s) => ({
           id: s.id,
           table_id: s.table_id,
+          table_name: s.table_name,
           customer_name: s.customer_name,
           phone: s.phone || null,
           guest_count: s.guest_count,
@@ -161,6 +221,7 @@ export function TablesWorkspace({
 
     const unsubTables = SharedPosService.subscribeTables(() => void load())
     const unsubBookings = SharedPosService.subscribeBookings(() => void load())
+    const unsubSessions = SharedPosService.subscribeSessions(() => void load())
 
     let syncTimer: any = null
     const onRealtimeSync = () => {
@@ -190,6 +251,7 @@ export function TablesWorkspace({
     return () => {
       unsubTables()
       unsubBookings()
+      unsubSessions()
       if (syncTimer) clearTimeout(syncTimer)
       window.removeEventListener("pos_realtime_sync", onRealtimeSync)
       window.removeEventListener("pos_tables_updated", onRealtimeSync)
@@ -201,7 +263,12 @@ export function TablesWorkspace({
     }
   }, [load, supabase])
 
-  const sessionFor = (table: Table) => sessions.find((item) => item.table_id === table.id)
+  const sessionFor = (table: Table) =>
+    sessions.find(
+      (item) =>
+        (item.table_id === table.id || item.table_name?.toLowerCase() === table.name.toLowerCase()) &&
+        item.status !== "closed"
+    )
   const bookingsFor = (table: Table) => reservations.filter((item) => item.table_id === table.id)
   /** The booking that currently holds the table (starting soon or in progress). */
   const heldBookingFor = (table: Table) => {
@@ -211,11 +278,16 @@ export function TablesWorkspace({
       return item.status === "arrived" || (now >= window.start && now <= window.end)
     })
   }
-  const statusFor = (table: Table) => {
+  const statusFor = (table: Table): "available" | "occupied" | "reserved" | "cleaning" | "bill_requested" => {
     const session = sessionFor(table)
-    if (session) return session.status === "bill_requested" ? "bill_requested" : "occupied"
+    if (session && session.status !== "closed") {
+      return session.status === "bill_requested" ? "bill_requested" : "occupied"
+    }
     if (heldBookingFor(table)) return "reserved"
-    return table.status === "cleaning" ? "cleaning" : "available"
+    if (table.status === "occupied" || table.status === "bill_requested" || table.status === "cleaning" || table.status === "reserved") {
+      return table.status
+    }
+    return "available"
   }
 
   const visibleTables = tables.filter((table) => {
@@ -413,16 +485,17 @@ export function TablesWorkspace({
     }
   }
 
-  async function updateSession(status: "bill_requested" | "closed") {
-    if (!selectedSession || !selected) return
+  async function updateSession(status: "bill_requested" | "closed" | "available") {
+    if (!selected) return
     setSaving(true)
     try {
-      if (status === "closed") {
+      if (status === "closed" || status === "available") {
         await SharedPosService.releaseTable(selected.name)
+        toast.success(`${selected.name} is free & marked available`)
       } else {
         await SharedPosService.setTableStatus(selected.id, "bill_requested")
+        toast.success(`Bill requested for ${selected.name}`)
       }
-      toast.success(status === "closed" ? `${selected.name} is free again` : "Bill requested")
       await load()
     } catch (err: any) {
       fail(`Could not update session: ${err.message || err}`)
@@ -431,10 +504,18 @@ export function TablesWorkspace({
     }
   }
 
-  async function setTableState(table: Table, status: "available" | "cleaning") {
+  async function setTableState(table: Table, status: "available" | "occupied" | "cleaning" | "bill_requested") {
     try {
-      await SharedPosService.setTableStatus(table.id, status)
-      toast.success(`${table.name} marked ${status}`)
+      if (status === "available") {
+        await SharedPosService.releaseTable(table.name)
+        toast.success(`${table.name} marked available`)
+      } else if (status === "occupied") {
+        await SharedPosService.occupyTable(table.name)
+        toast.success(`${table.name} marked occupied`)
+      } else {
+        await SharedPosService.setTableStatus(table.id, status)
+        toast.success(`${table.name} marked ${status.replace("_", " ")}`)
+      }
       await load()
     } catch (err: any) {
       fail(err.message || "Failed to update table")
@@ -568,6 +649,11 @@ export function TablesWorkspace({
                   <p className="font-semibold">Booked {formatTime(booking.reserved_for)}</p>
                   <p className="text-xs">{booking.customer_name} · {booking.party_size} guests</p>
                 </div>
+              ) : status === "occupied" ? (
+                <div className="mt-6">
+                  <p className="font-semibold">Occupied</p>
+                  <p className="text-xs">Dine-in guests seated</p>
+                </div>
               ) : (
                 <p className="mt-8 text-sm font-medium">{status === "cleaning" ? "Being cleaned" : "Ready for guests"}</p>
               )}
@@ -611,21 +697,75 @@ export function TablesWorkspace({
               <div>
                 <p className="text-xs uppercase tracking-widest text-[#808068]">Table panel</p>
                 <CardTitle className="text-2xl text-[#343428]">{selected.name}</CardTitle>
+                <p className="text-xs text-gray-500 mt-0.5">Capacity: {selected.capacity} guests</p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelected(null)} aria-label="Close table panel"><X className="size-5" /></Button>
             </div>
-            <Badge className={`${statusStyles[statusFor(selected)]} w-fit capitalize`}>{statusFor(selected).replace("_", " ")}</Badge>
+            <div className="flex items-center gap-2 pt-1">
+              <Badge className={`${statusStyles[statusFor(selected)]} w-fit capitalize font-semibold`}>
+                {statusFor(selected).replace("_", " ")}
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {selectedSession ? (
+            {/* Quick Status Selector: Staff can directly update table status with 1 click */}
+            <div className="rounded-2xl border border-[#E5D8CF] bg-white p-3 space-y-2">
+              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Update Table Status</p>
+              <div className="grid grid-cols-4 gap-1.5">
+                <Button
+                  size="sm"
+                  type="button"
+                  variant={statusFor(selected) === "available" ? "default" : "outline"}
+                  className={statusFor(selected) === "available" ? "bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8" : "text-xs h-8"}
+                  onClick={() => void setTableState(selected, "available")}
+                >
+                  Available
+                </Button>
+                <Button
+                  size="sm"
+                  type="button"
+                  variant={statusFor(selected) === "occupied" ? "default" : "outline"}
+                  className={statusFor(selected) === "occupied" ? "bg-amber-600 hover:bg-amber-700 text-white text-xs h-8" : "text-xs h-8"}
+                  onClick={() => void setTableState(selected, "occupied")}
+                >
+                  Occupied
+                </Button>
+                <Button
+                  size="sm"
+                  type="button"
+                  variant={statusFor(selected) === "cleaning" ? "default" : "outline"}
+                  className={statusFor(selected) === "cleaning" ? "bg-blue-600 hover:bg-blue-700 text-white text-xs h-8" : "text-xs h-8"}
+                  onClick={() => void setTableState(selected, "cleaning")}
+                >
+                  Cleaning
+                </Button>
+                <Button
+                  size="sm"
+                  type="button"
+                  variant={statusFor(selected) === "bill_requested" ? "default" : "outline"}
+                  className={statusFor(selected) === "bill_requested" ? "bg-purple-600 hover:bg-purple-700 text-white text-xs h-8" : "text-xs h-8"}
+                  onClick={() => void setTableState(selected, "bill_requested")}
+                >
+                  Bill Req.
+                </Button>
+              </div>
+            </div>
+
+            {(statusFor(selected) === "occupied" || statusFor(selected) === "bill_requested" || selectedSession) ? (
               <>
-                <div className="rounded-2xl bg-amber-50 p-4">
+                <div className="rounded-2xl bg-amber-50 p-4 border border-amber-200">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-gray-900">{selectedSession.customer_name}</p>
-                    <Badge className="bg-amber-200 text-amber-900 border-none text-[10px]">Active Tab</Badge>
+                    <p className="font-semibold text-gray-900">{selectedSession?.customer_name || "Dine-in Guests"}</p>
+                    <Badge className="bg-amber-200 text-amber-900 border-none text-[10px]">
+                      {statusFor(selected) === "bill_requested" ? "Bill Requested" : "Active Tab"}
+                    </Badge>
                   </div>
-                  <p className="text-sm text-gray-600 mt-0.5">{selectedSession.guest_count} guests · {minutesSince(selectedSession.seated_at)} minutes open</p>
-                  <p className="mt-2 text-xs text-amber-800">Orders added from the POS attach to this table.</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {selectedSession ? `${selectedSession.guest_count} guests · ${minutesSince(selectedSession.seated_at)} minutes open` : "Guests seated at table"}
+                  </p>
+                  <p className="mt-2 text-xs text-amber-800">
+                    When guests leave, click below to free this table for incoming guests.
+                  </p>
                 </div>
 
                 {(() => {
@@ -651,6 +791,43 @@ export function TablesWorkspace({
                   )
                 })()}
 
+                {/* Main Action to release when guests leave */}
+                <Button
+                  className="h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm gap-2"
+                  onClick={() => void updateSession("closed")}
+                  disabled={saving}
+                >
+                  <Check className="size-4" /> Guests Left · Mark Available
+                </Button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className="h-11 rounded-xl"
+                    onClick={() => void updateSession("bill_requested")}
+                    disabled={saving || statusFor(selected) === "bill_requested"}
+                  >
+                    <Receipt className="size-4 mr-1.5" /> Request bill
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-11 rounded-xl"
+                    onClick={() => void setTableState(selected, "cleaning")}
+                    disabled={saving}
+                  >
+                    Mark cleaning
+                  </Button>
+                </div>
+
+                {onStartOrder && (
+                  <Button
+                    className="h-11 w-full bg-[#D67B6B] hover:bg-[#c26555] text-white rounded-xl gap-2"
+                    onClick={() => onStartOrder(selected.name)}
+                  >
+                    <ShoppingBag className="size-4" /> Take / add items in POS
+                  </Button>
+                )}
+
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -672,16 +849,6 @@ export function TablesWorkspace({
                     </Button>
                   )}
                 </div>
-
-                {onStartOrder && (
-                  <Button className="h-11 w-full bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => onStartOrder(selected.name)}>
-                    <ShoppingBag className="size-4" /> Take / view order
-                  </Button>
-                )}
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" className="h-11" onClick={() => void updateSession("bill_requested")} disabled={saving || selectedSession.status === "bill_requested"}>Request bill</Button>
-                  <Button className="h-11 bg-[#808068] hover:bg-[#6c6c57] text-white" onClick={() => void updateSession("closed")} disabled={saving}>Close session</Button>
-                </div>
               </>
             ) : (
               <>
@@ -699,12 +866,25 @@ export function TablesWorkspace({
                   </div>
                 ))}
                 <p className="rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900">
-                  {selectedBookings.length ? "Walk-ins can still be seated before the next booking." : "No active session. Seat walk-in guests or create a booking for this table."}
+                  {selected.status === "cleaning"
+                    ? "Table is currently marked for cleaning."
+                    : selectedBookings.length
+                    ? "Walk-ins can still be seated before the next booking."
+                    : "No active session. Seat walk-in guests or take an order."}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button className="h-11 bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(selected)}>Seat guests</Button>
-                  <Button variant="outline" className="h-11" onClick={() => { setForm({ ...emptyBooking, table_id: selected.id }); setShowBooking(true) }}>New booking</Button>
+                  <Button className="h-11 bg-[#D67B6B] hover:bg-[#c26555] text-white rounded-xl" onClick={() => openSeat(selected)}>Seat guests</Button>
+                  <Button variant="outline" className="h-11 rounded-xl" onClick={() => { setForm({ ...emptyBooking, table_id: selected.id }); setShowBooking(true) }}>New booking</Button>
                 </div>
+                {onStartOrder && (
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full border-[#D67B6B] text-[#D67B6B] hover:bg-[#FAF5F1] rounded-xl gap-2"
+                    onClick={() => onStartOrder(selected.name)}
+                  >
+                    <ShoppingBag className="size-4" /> Start POS Order
+                  </Button>
+                )}
                 <Button variant="ghost" className="w-full" onClick={() => void setTableState(selected, selected.status === "cleaning" ? "available" : "cleaning")}>
                   {selected.status === "cleaning" ? "Mark clean & available" : "Mark as cleaning"}
                 </Button>

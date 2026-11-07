@@ -22,6 +22,8 @@ let localProducts: MockProduct[] = [...MOCK_PRODUCTS]
 let localCategories: MockCategory[] = [...MOCK_CATEGORIES]
 let localTables: MockTable[] = [...MOCK_TABLES]
 let localOrders: MockOrder[] = [...MOCK_HISTORICAL_ORDERS]
+let localSessions: any[] = []
+let localReservations: any[] = []
 const realtimeListeners = new Map<string, Set<(payload: any) => void>>()
 
 function emitMockRealtime(event: string, payload: any) {
@@ -132,6 +134,16 @@ class MockQueryBuilder {
       for (const r of arr) {
         localTables.push(r)
       }
+    } else if (this.tableName === "table_sessions") {
+      for (const r of arr) {
+        localSessions.unshift(r)
+      }
+      emitMockRealtime("table_sessions", { eventType: "INSERT", new: arr[0] })
+    } else if (this.tableName === "reservations") {
+      for (const r of arr) {
+        localReservations.unshift(r)
+      }
+      emitMockRealtime("reservations", { eventType: "INSERT", new: arr[0] })
     }
     return { data: Array.isArray(records) ? arr : arr[0], error: null }
   }
@@ -167,6 +179,26 @@ class MockQueryBuilder {
           localTables.push(r)
         }
       }
+    } else if (this.tableName === "table_sessions") {
+      for (const r of arr) {
+        const idx = localSessions.findIndex((s) => s.id === r.id || (s.table_id === r.table_id && s.status !== "closed"))
+        if (idx >= 0) {
+          localSessions[idx] = { ...localSessions[idx], ...r }
+        } else {
+          localSessions.unshift(r)
+        }
+      }
+      emitMockRealtime("table_sessions", { eventType: "UPDATE", new: arr[0] })
+    } else if (this.tableName === "reservations") {
+      for (const r of arr) {
+        const idx = localReservations.findIndex((b) => b.id === r.id)
+        if (idx >= 0) {
+          localReservations[idx] = { ...localReservations[idx], ...r }
+        } else {
+          localReservations.unshift(r)
+        }
+      }
+      emitMockRealtime("reservations", { eventType: "UPDATE", new: arr[0] })
     }
     return { data: Array.isArray(records) ? arr : arr[0], error: null }
   }
@@ -196,6 +228,22 @@ class MockQueryBuilder {
         return o
       })
       emitMockRealtime("pos_orders", { eventType: "UPDATE", new: updates })
+    } else if (this.tableName === "table_sessions") {
+      localSessions = localSessions.map((s) => {
+        if (this.filters.every((f) => f(s))) {
+          return { ...s, ...updates }
+        }
+        return s
+      })
+      emitMockRealtime("table_sessions", { eventType: "UPDATE", new: updates })
+    } else if (this.tableName === "reservations") {
+      localReservations = localReservations.map((b) => {
+        if (this.filters.every((f) => f(b))) {
+          return { ...b, ...updates }
+        }
+        return b
+      })
+      emitMockRealtime("reservations", { eventType: "UPDATE", new: updates })
     }
     return { data: updates, error: null }
   }
@@ -205,6 +253,10 @@ class MockQueryBuilder {
       localProducts = localProducts.filter((p) => !this.filters.every((f) => f(p)))
     } else if (this.tableName === "pos_tables") {
       localTables = localTables.filter((t) => !this.filters.every((f) => f(t)))
+    } else if (this.tableName === "table_sessions") {
+      localSessions = localSessions.filter((s) => !this.filters.every((f) => f(s)))
+    } else if (this.tableName === "reservations") {
+      localReservations = localReservations.filter((b) => !this.filters.every((f) => f(b)))
     }
     return { data: null, error: null }
   }
@@ -219,6 +271,10 @@ class MockQueryBuilder {
       source = [...localTables]
     } else if (this.tableName === "pos_orders") {
       source = [...localOrders]
+    } else if (this.tableName === "table_sessions") {
+      source = [...localSessions]
+    } else if (this.tableName === "reservations") {
+      source = [...localReservations]
     } else if (this.tableName === "customers") {
       source = [...MOCK_CUSTOMERS]
     } else if (this.tableName === "coffee_bills") {

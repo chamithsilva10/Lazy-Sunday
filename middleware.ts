@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { refreshSessionMarker, setSessionCookie, SESSION_COOKIE_NAME } from "@/lib/coffee/session"
 import { isDemoMode } from "@/lib/config/demo"
 
-const publicPaths = new Set(["/auth/login", "/api/auth/login", "/api/auth/demo", "/api/auth/session", "/menu"])
-const publicGetPrefixes = ["/api/coffee/products", "/api/coffee/bills", "/api/products"]
+const publicPaths = new Set(["/auth/login", "/api/auth/login", "/api/auth/demo", "/api/auth/session", "/menu", "/api/tables"])
+const publicGetPrefixes = ["/api/coffee/products", "/api/coffee/bills", "/api/products", "/api/tables"]
 
 function withSecurityHeaders(response: NextResponse) {
   response.headers.set("X-Content-Type-Options", "nosniff")

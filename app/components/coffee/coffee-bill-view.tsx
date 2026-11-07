@@ -215,9 +215,6 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
 
   // Reset bill
   async function handleResetBill() {
-    if (selectedTable && selectedTable !== "Takeaway") {
-      SharedPosService.releaseTable(selectedTable)
-    }
     setSelectedTable("Takeaway")
     setEditingBillId(null)
     setBillItems([])
@@ -276,7 +273,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
         toast.success(`Bill #${billNumber} updated successfully`)
 
         if (selectedTable && selectedTable !== "Takeaway") {
-          SharedPosService.releaseTable(selectedTable)
+          SharedPosService.occupyTable(selectedTable, "Coffee Bar", billNumber, grandTotal, customerName)
         }
 
         if (shouldPrint && updated) {
@@ -317,7 +314,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
 
         // Free table after settlement
         if (selectedTable && selectedTable !== "Takeaway") {
-          SharedPosService.releaseTable(selectedTable)
+          SharedPosService.occupyTable(selectedTable, "Coffee Bar", billNumber, grandTotal, customerName)
         }
 
         // Deduct inventory movement for each coffee product
