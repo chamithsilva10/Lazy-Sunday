@@ -1,10 +1,30 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { CalendarDays, Check, Loader2, Plus, RefreshCw, Search, ShoppingBag, Users, X, ArrowRightLeft, GitMerge, Split, Receipt } from "lucide-react"
+import {
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Edit2,
+  Loader2,
+  Phone,
+  Plus,
+  Receipt,
+  RefreshCw,
+  Search,
+  ShoppingBag,
+  Split,
+  Table2,
+  Users,
+  X,
+  ArrowRightLeft,
+  GitMerge,
+} from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
-import { SharedPosService, type SharedOrder } from "@/lib/shared-pos-service"
+import { SharedPosService, type SharedOrder, type SharedBooking, type SharedTable } from "@/lib/shared-pos-service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -12,12 +32,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 type Table = { id: string; name: string; capacity: number; status: string }
 type Reservation = {
-  id: string; customer_name: string; phone: string; party_size: number; reserved_for: string
-  duration_minutes: number; table_id: string | null; table_name?: string; status: string; source: string; special_requests: string
+  id: string
+  customer_name: string
+  phone: string
+  party_size: number
+  reserved_for: string
+  duration_minutes: number
+  table_id: string | null
+  table_name?: string
+  status: string
+  source: string
+  special_requests: string
 }
 type Session = {
-  id: string; table_id: string; table_name?: string; customer_name: string; phone: string | null; guest_count: number
-  seated_at: string; status: string; notes: string
+  id: string
+  table_id: string
+  table_name?: string
+  customer_name: string
+  phone: string | null
+  guest_count: number
+  seated_at: string
+  status: string
+  notes: string
 }
 
 const ACTIVE_BOOKING = ["pending", "confirmed", "arrived"]
@@ -32,23 +68,65 @@ const statusStyles: Record<string, string> = {
   bill_requested: "border-rose-200 bg-rose-50 text-rose-800",
 }
 
-const emptyBooking = { customer_name: "", phone: "", party_size: "2", reserved_for: "", duration_minutes: "90", table_id: "", special_requests: "" }
-const emptySeat = { customer_name: "Walk-in", phone: "", guest_count: "2", notes: "" }
+const emptyBooking = {
+  customer_name: "",
+  phone: "",
+  party_size: "2",
+  reserved_for: "",
+  duration_minutes: "90",
+  table_id: "",
+  special_requests: "",
+}
+const emptySeat = {
+  customer_name: "Walk-in",
+  phone: "",
+  guest_count: "2",
+  notes: "",
+}
 
 function formatTime(value: string) {
-  return new Intl.DateTimeFormat("en-LK", { weekday: "short", hour: "numeric", minute: "2-digit" }).format(new Date(value))
+  try {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return value
+    return new Intl.DateTimeFormat("en-LK", {
+      weekday: "short",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(d)
+  } catch {
+    return value
+  }
 }
+
+function formatDateTime(iso: string) {
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return iso
+    return new Intl.DateTimeFormat("en-LK", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(d)
+  } catch {
+    return iso
+  }
+}
+
 function minutesSince(value: string) {
   return Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000))
 }
-function bookingWindow(booking: Reservation) {
+
+function bookingWindow(booking: { reserved_for: string; duration_minutes: number }) {
   const start = new Date(booking.reserved_for).getTime()
   return { start: start - HOLD_BEFORE_MIN * 60000, end: start + booking.duration_minutes * 60000 }
 }
+
 function overlaps(a: { start: number; end: number }, b: { start: number; end: number }) {
   return a.start < b.end && b.start < a.end
 }
-/** `datetime-local` has no timezone; convert using the browser's zone so Postgres stores the right instant. */
+
 function toIso(local: string) {
   const date = new Date(local)
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
@@ -56,20 +134,31 @@ function toIso(local: string) {
 
 export function TablesWorkspace({
   role = "cashier",
+  initialTab = "floor",
   onStartOrder,
   onNavigateToBooked,
 }: {
   role?: "admin" | "cashier"
+  initialTab?: "floor" | "bookings"
   onStartOrder?: (tableName: string) => void
   onNavigateToBooked?: () => void
 }) {
   const supabase = useMemo(() => createClient(), [])
+
+  // Primary workspace view: "floor" (floor plan) or "bookings" (reservations list)
+  const [activeTab, setActiveTab] = useState<"floor" | "bookings">(initialTab)
+
   const [tables, setTables] = useState<Table[]>([])
+  const [allBookings, setAllBookings] = useState<SharedBooking[]>([])
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [selected, setSelected] = useState<Table | null>(null)
   const [search, setSearch] = useState("")
+  const [bookingSearch, setBookingSearch] = useState("")
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<string>("all")
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  // Modals
   const [showBooking, setShowBooking] = useState(false)
   const [showSeat, setShowSeat] = useState(false)
   const [showAddTable, setShowAddTable] = useState(false)
@@ -83,10 +172,24 @@ export function TablesWorkspace({
   // Reschedule / Move modal state
   const [showReschedule, setShowReschedule] = useState(false)
   const [rescheduleData, setRescheduleData] = useState<{
-    booking: Reservation | null
+    booking: Reservation | SharedBooking | null
     table_id: string
     reserved_for: string
-  }>({ booking: null, table_id: "", reserved_for: "" })
+    duration_minutes: string
+    party_size: string
+    customer_name: string
+    phone: string
+    special_requests: string
+  }>({
+    booking: null,
+    table_id: "",
+    reserved_for: "",
+    duration_minutes: "90",
+    party_size: "2",
+    customer_name: "",
+    phone: "",
+    special_requests: "",
+  })
 
   const [orders, setOrders] = useState<SharedOrder[]>(() => SharedPosService.getOrders())
   const [showTransfer, setShowTransfer] = useState(false)
@@ -113,6 +216,7 @@ export function TablesWorkspace({
     const sharedSessions = SharedPosService.getSessions()
 
     setTables(sharedTables.map((t) => ({ id: t.id, name: t.name, capacity: t.capacity, status: t.status })))
+    setAllBookings(sharedBookings)
     setReservations(
       sharedBookings
         .filter((b) => ACTIVE_BOOKING.includes(b.status))
@@ -172,7 +276,6 @@ export function TablesWorkspace({
       .on("postgres_changes", { event: "*", schema: "public", table: "table_sessions" }, onRealtimeSync)
       .subscribe()
 
-    // Polling + focus refresh cover dropped websockets so the floor never goes stale.
     const timer = window.setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return
       void load()
@@ -201,6 +304,7 @@ export function TablesWorkspace({
         (item.table_id === table.id || item.table_name?.toLowerCase() === table.name.toLowerCase()) &&
         item.status !== "closed"
     )
+
   const bookingsFor = (table: Table) =>
     reservations.filter((item) => {
       if (item.table_id && (item.table_id === table.id || String(item.table_id) === String(table.id))) {
@@ -247,7 +351,7 @@ export function TablesWorkspace({
     if (held) return "reserved"
 
     if (table.status === "occupied" || table.status === "bill_requested" || table.status === "cleaning") {
-      return table.status
+      return table.status as any
     }
     return "available"
   }
@@ -264,11 +368,43 @@ export function TablesWorkspace({
       bookingsFor(table).some((b) => b.customer_name.toLowerCase().includes(q))
     if (!matchesSearch) return false
 
-    if (zoneFilter === "indoor") return !table.name.toLowerCase().includes("patio") && !table.name.toLowerCase().includes("bar") && !table.name.toLowerCase().includes("terrace")
-    if (zoneFilter === "patio") return table.name.toLowerCase().includes("patio") || table.name.toLowerCase().includes("terrace") || table.name.toLowerCase().includes("garden") || Number(table.name.replace(/\D/g, "")) >= 7
-    if (zoneFilter === "bar") return table.name.toLowerCase().includes("bar") || table.name.toLowerCase().includes("counter")
+    if (zoneFilter === "indoor")
+      return !table.name.toLowerCase().includes("patio") && !table.name.toLowerCase().includes("bar") && !table.name.toLowerCase().includes("terrace")
+    if (zoneFilter === "patio")
+      return table.name.toLowerCase().includes("patio") || table.name.toLowerCase().includes("terrace") || table.name.toLowerCase().includes("garden") || Number(table.name.replace(/\D/g, "")) >= 7
+    if (zoneFilter === "bar")
+      return table.name.toLowerCase().includes("bar") || table.name.toLowerCase().includes("counter")
     return true
   })
+
+  // Filtered reservations for the Reservations tab
+  const filteredBookings = useMemo(() => {
+    return allBookings.filter((b) => {
+      if (bookingStatusFilter !== "all") {
+        if (bookingStatusFilter === "active" && !["pending", "confirmed", "arrived"].includes(b.status)) return false
+        if (bookingStatusFilter === "seated" && b.status !== "seated" && b.status !== "completed") return false
+        if (bookingStatusFilter === "cancelled" && b.status !== "cancelled" && b.status !== "no_show") return false
+      }
+      if (!bookingSearch.trim()) return true
+      const q = bookingSearch.toLowerCase()
+      return (
+        b.customer_name.toLowerCase().includes(q) ||
+        b.phone.toLowerCase().includes(q) ||
+        (b.table_name && b.table_name.toLowerCase().includes(q))
+      )
+    })
+  }, [allBookings, bookingStatusFilter, bookingSearch])
+
+  // KPI Metrics for Reservations
+  const bookingMetrics = useMemo(() => {
+    const total = allBookings.length
+    const confirmed = allBookings.filter((b) => b.status === "confirmed" || b.status === "pending").length
+    const arrived = allBookings.filter((b) => b.status === "arrived").length
+    const seated = allBookings.filter((b) => b.status === "seated" || b.status === "completed").length
+    const availableTables = tables.filter((t) => statusFor(t) === "available").length
+    return { total, confirmed, arrived, seated, availableTables }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allBookings, tables, sessions, reservations])
 
   const counts = useMemo(() => {
     const tally = { available: 0, reserved: 0, occupied: 0, cleaning: 0, bill_requested: 0 } as Record<string, number>
@@ -290,7 +426,10 @@ export function TablesWorkspace({
 
   /** Smallest free table that fits the party and has no clashing booking. */
   function pickTable(partySize: number, startIso: string, duration: number, ignoreBookingId?: string) {
-    const window = { start: new Date(startIso).getTime() - HOLD_BEFORE_MIN * 60000, end: new Date(startIso).getTime() + duration * 60000 }
+    const window = {
+      start: new Date(startIso).getTime() - HOLD_BEFORE_MIN * 60000,
+      end: new Date(startIso).getTime() + duration * 60000,
+    }
     const candidates = tables
       .filter((table) => table.capacity >= partySize)
       .filter((table) => !bookingsFor(table).some((b) => b.id !== ignoreBookingId && overlaps(window, bookingWindow(b))))
@@ -309,13 +448,15 @@ export function TablesWorkspace({
 
     let tableId = form.table_id
     if (tableId) {
-      const table = tables.find((item) => item.id === tableId)
+      const table = tables.find((item) => item.id === tableId || item.name === tableId)
       if (!table) return fail("Selected table no longer exists")
       if (table.capacity < partySize) return fail(`${table.name} seats ${table.capacity}`)
-      const clash = bookingsFor(table).find((b) => overlaps(
-        { start: new Date(startIso).getTime() - HOLD_BEFORE_MIN * 60000, end: new Date(startIso).getTime() + duration * 60000 },
-        bookingWindow(b),
-      ))
+      const clash = bookingsFor(table).find((b) =>
+        overlaps(
+          { start: new Date(startIso).getTime() - HOLD_BEFORE_MIN * 60000, end: new Date(startIso).getTime() + duration * 60000 },
+          bookingWindow(b),
+        ),
+      )
       if (clash) return fail(`${table.name} is already booked at ${formatTime(clash.reserved_for)} for ${clash.customer_name}`)
     } else {
       const auto = pickTable(partySize, startIso, duration)
@@ -325,14 +466,14 @@ export function TablesWorkspace({
 
     setSaving(true)
     try {
-      const targetTable = tables.find((t) => t.id === tableId)
+      const targetTable = tables.find((t) => t.id === tableId || t.name === tableId)
       await SharedPosService.addBooking({
         customer_name: form.customer_name.trim(),
         phone: form.phone.trim(),
         party_size: partySize,
         reserved_for: startIso,
         duration_minutes: duration,
-        table_id: tableId,
+        table_id: targetTable?.id || tableId,
         table_name: targetTable?.name || "Table",
         special_requests: form.special_requests.trim(),
         status: "confirmed",
@@ -408,22 +549,33 @@ export function TablesWorkspace({
     }
   }
 
-  function openSeat(table: Table | null, booking?: Reservation) {
+  function openSeat(table: Table | null, booking?: Reservation | SharedBooking) {
     setSeatTableId(table?.id || "")
     setSeatBookingId(booking?.id || null)
     setSeatForm(
       booking
-        ? { customer_name: booking.customer_name, phone: booking.phone, guest_count: String(booking.party_size), notes: booking.special_requests || "" }
+        ? {
+            customer_name: booking.customer_name,
+            phone: booking.phone,
+            guest_count: String(booking.party_size),
+            notes: booking.special_requests || "",
+          }
         : { ...emptySeat, guest_count: String(Math.min(2, table?.capacity || 2)) },
     )
     setShowSeat(true)
   }
 
-  function openReschedule(booking: Reservation) {
+  function openReschedule(booking: Reservation | SharedBooking) {
+    const localDateTime = booking.reserved_for ? new Date(booking.reserved_for).toISOString().slice(0, 16) : ""
     setRescheduleData({
       booking,
       table_id: booking.table_id || "",
-      reserved_for: booking.reserved_for ? new Date(booking.reserved_for).toISOString().slice(0, 16) : "",
+      reserved_for: localDateTime,
+      duration_minutes: String(booking.duration_minutes || 90),
+      party_size: String(booking.party_size || 2),
+      customer_name: booking.customer_name,
+      phone: booking.phone,
+      special_requests: booking.special_requests || "",
     })
     setShowReschedule(true)
   }
@@ -434,13 +586,18 @@ export function TablesWorkspace({
     if (!target) return fail("Target table not found")
     setSaving(true)
     try {
-      await SharedPosService.rescheduleBooking(
-        rescheduleData.booking.id,
-        target.id,
-        target.name,
-        rescheduleData.reserved_for ? new Date(rescheduleData.reserved_for).toISOString() : rescheduleData.booking.reserved_for,
-        rescheduleData.booking.duration_minutes,
-      )
+      await SharedPosService.updateBooking(rescheduleData.booking.id, {
+        customer_name: rescheduleData.customer_name.trim(),
+        phone: rescheduleData.phone.trim(),
+        party_size: Number(rescheduleData.party_size) || 2,
+        duration_minutes: Number(rescheduleData.duration_minutes) || 90,
+        reserved_for: rescheduleData.reserved_for
+          ? new Date(rescheduleData.reserved_for).toISOString()
+          : rescheduleData.booking.reserved_for,
+        table_id: target.id,
+        table_name: target.name,
+        special_requests: rescheduleData.special_requests.trim(),
+      })
       toast.success(`Rescheduled booking to ${target.name}`)
       setShowReschedule(false)
       await load()
@@ -502,7 +659,10 @@ export function TablesWorkspace({
     }
   }
 
-  async function setTableState(table: Table, status: "available" | "occupied" | "cleaning" | "reserved" | "bill_requested") {
+  async function setTableState(
+    table: Table,
+    status: "available" | "occupied" | "cleaning" | "reserved" | "bill_requested",
+  ) {
     try {
       if (status === "available") {
         const newStatus = await SharedPosService.releaseTable(table.name)
@@ -520,10 +680,21 @@ export function TablesWorkspace({
     }
   }
 
-  async function updateBooking(booking: Reservation, status: "arrived" | "cancelled" | "no_show") {
+  async function updateBooking(
+    booking: Reservation | SharedBooking,
+    status: "arrived" | "cancelled" | "no_show" | "confirmed",
+  ) {
     try {
       await SharedPosService.updateBookingStatus(booking.id, status)
-      toast.success(status === "arrived" ? "Marked arrived" : status === "no_show" ? "Marked no-show" : "Booking cancelled")
+      toast.success(
+        status === "arrived"
+          ? "Marked arrived · table held"
+          : status === "no_show"
+          ? "Marked no-show"
+          : status === "confirmed"
+          ? "Booking confirmed"
+          : "Booking cancelled",
+      )
       await load()
     } catch (err: any) {
       fail(`Could not update booking: ${err.message || err}`)
@@ -548,223 +719,628 @@ export function TablesWorkspace({
   }
 
   const availableForSeating = tables.filter((table) => !sessionFor(table))
-  const tableName = (id: string | null, name?: string | null) => name || tables.find((t) => t.id === id || t.name === id)?.name || "Unassigned"
+  const tableName = (id: string | null, name?: string | null) =>
+    name || tables.find((t) => t.id === id || t.name === id)?.name || "Unassigned"
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-2xl border border-[#dce6d9] bg-white/80 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      {/* Top Banner & Unified Actions */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-[#dce6d9] bg-white/90 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.18em] text-[#808068]">Live floor</p>
-          <h3 className="font-serif text-2xl font-bold text-[#343428]">Tables &amp; bookings</h3>
-          <p className="text-sm text-[#808068]">Seat guests, track tabs and keep the floor moving.</p>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex size-2 rounded-full bg-[#808068] animate-pulse" />
+            <p className="text-xs font-bold uppercase tracking-[.18em] text-[#808068]">Table Management</p>
+          </div>
+          <h2 className="font-serif text-2xl font-bold text-[#343428]">Tables &amp; Bookings</h2>
+          <p className="text-sm text-[#808068]">
+            Manage dining floor tables, seat walk-ins, and schedule reservations in one synchronized place.
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {onNavigateToBooked && (
+
+        {/* View Switcher Tabs & Quick Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Floor / Bookings Sub-navigation */}
+          <div className="flex items-center rounded-xl bg-[#FAF5F1] p-1 border border-[#E5D8CF]">
+            <button
+              type="button"
+              onClick={() => setActiveTab("floor")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTab === "floor"
+                  ? "bg-[#D67B6B] text-white shadow-xs"
+                  : "text-[#808068] hover:text-[#343428]"
+              }`}
+            >
+              <Table2 className="size-3.5" /> Floor Plan ({tables.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("bookings")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTab === "bookings"
+                  ? "bg-violet-700 text-white shadow-xs"
+                  : "text-[#808068] hover:text-[#343428]"
+              }`}
+            >
+              <CalendarDays className="size-3.5" /> Bookings ({reservations.length})
+            </button>
+          </div>
+
+          <Button
+            className="h-10 rounded-xl bg-[#D67B6B] hover:bg-[#c26555] text-white text-xs font-semibold gap-1.5"
+            onClick={() => {
+              setForm({ ...emptyBooking, table_id: selected?.id || "" })
+              setShowBooking(true)
+            }}
+          >
+            <Plus className="size-3.5" /> New Booking
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-10 rounded-xl text-xs font-semibold border-amber-300 text-amber-900 hover:bg-amber-50 gap-1.5"
+            onClick={() => openSeat(selected && !sessionFor(selected) ? selected : null)}
+          >
+            <Users className="size-3.5 text-amber-700" /> Seat Walk-in
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-10 rounded-xl text-xs gap-1.5 border-[#808068]/30 text-[#808068] hover:bg-[#FAF5F1]"
+            onClick={() => setShowTransfer(true)}
+          >
+            <ArrowRightLeft className="size-3.5" /> Transfer
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-10 rounded-xl text-xs gap-1.5 border-[#808068]/30 text-[#808068] hover:bg-[#FAF5F1]"
+            onClick={() => setShowMerge(true)}
+          >
+            <GitMerge className="size-3.5" /> Merge
+          </Button>
+
+          {role === "admin" && (
             <Button
               variant="outline"
-              className="h-11 rounded-xl border-violet-300 text-violet-800 hover:bg-violet-50 font-semibold gap-1.5"
-              onClick={onNavigateToBooked}
+              className="h-10 rounded-xl text-xs gap-1"
+              onClick={() => setShowAddTable(true)}
             >
-              <CalendarDays className="size-4 text-violet-600" /> Table Booked
+              <Plus className="size-3.5" /> Add Table
             </Button>
           )}
-          <Button className="h-11 rounded-xl bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(selected && !sessionFor(selected) ? selected : null)}>
-            <Users className="size-4" /> Seat guests
-          </Button>
-          <Button variant="outline" className="h-11 rounded-xl" onClick={() => { setForm({ ...emptyBooking, table_id: selected?.id || "" }); setShowBooking(true) }}>
-            <Plus className="size-4" /> New booking
-          </Button>
-          <Button variant="outline" className="h-11 rounded-xl gap-1.5" onClick={() => setShowTransfer(true)}>
-            <ArrowRightLeft className="size-4" /> Transfer Table
-          </Button>
-          <Button variant="outline" className="h-11 rounded-xl gap-1.5" onClick={() => setShowMerge(true)}>
-            <GitMerge className="size-4" /> Merge Tables
-          </Button>
-          {role === "admin" && (
-            <Button variant="outline" className="h-11 rounded-xl" onClick={() => setShowAddTable(true)}>
-              <Plus className="size-4" /> Add table
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" onClick={() => void load()} aria-label="Refresh tables">
-            <RefreshCw className="size-4" />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 rounded-xl"
+            onClick={() => void load()}
+            aria-label="Refresh floor and bookings"
+          >
+            <RefreshCw className="size-4 text-[#808068]" />
           </Button>
         </div>
       </div>
 
       {loadError && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          Could not load the floor: {loadError}. Apply the latest Supabase migrations and make sure you are signed in.
+          Could not load the floor: {loadError}. Make sure you are signed in and SQLite database is accessible.
         </div>
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
-          <Input className="h-11 rounded-xl pl-9" placeholder="Search table or guest" value={search} onChange={(event) => setSearch(event.target.value)} />
-        </div>
-        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#E5D8CF]">
-          {[
-            { key: "all", label: "All Floor" },
-            { key: "indoor", label: "Indoor AC" },
-            { key: "patio", label: "Garden Patio" },
-            { key: "bar", label: "Bar Counter" },
-          ].map((z) => (
-            <button
-              key={z.key}
-              onClick={() => setZoneFilter(z.key as any)}
-              className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors ${
-                zoneFilter === z.key ? "bg-[#D67B6B] text-white shadow-xs" : "text-[#808068] hover:text-[#343428]"
-              }`}
-            >
-              {z.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1.5 text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => setStatusFilter("all")}
-            className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-              statusFilter === "all"
-                ? "bg-[#343428] text-white border-[#343428] shadow-xs font-bold"
-                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            All ({tables.length})
-          </button>
-          {(["available", "occupied", "reserved", "cleaning"] as const).map((key) => {
-            const active = statusFilter === key
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setStatusFilter(active ? "all" : key)}
-                className={`rounded-full border px-3 py-1.5 text-xs capitalize transition-all ${
-                  statusStyles[key]
-                } ${active ? "ring-2 ring-[#D67B6B] font-bold shadow-xs scale-105" : "hover:opacity-90"}`}
-              >
-                {counts[key] || 0} {key}
-              </button>
-            )
-          })}
-          <Badge className="rounded-full bg-[#FAF5F1] px-3 py-1.5 text-[#808068] border border-[#EAB8B5]">Live sync</Badge>
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {visibleTables.map((table) => {
-          const status = statusFor(table)
-          const session = sessionFor(table)
-          const heldBooking = heldBookingFor(table)
-          const nextBooking = nextUpcomingBookingFor(table)
-          return (
-            <button
-              key={table.id}
-              onClick={() => setSelected(table)}
-              className={`min-h-[168px] rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-                statusStyles[status] || statusStyles.available
-              } ${selected?.id === table.id ? "ring-2 ring-[#D67B6B]" : ""}`}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-lg font-bold">{table.name}</p>
-                  <p className="text-xs opacity-70">Seats {table.capacity}</p>
-                </div>
-                <Badge
-                  className={`capitalize font-semibold text-xs border ${
-                    status === "reserved"
-                      ? "bg-violet-100 text-violet-900 border-violet-300"
-                      : "bg-white/80 text-current border-transparent"
+      {/* ========================================================================= */}
+      {/* 1. FLOOR PLAN VIEW TAB                                                    */}
+      {/* ========================================================================= */}
+      {activeTab === "floor" && (
+        <div className="space-y-4">
+          {/* Floor Search & Zone / Status Filters */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
+              <Input
+                className="h-11 rounded-xl pl-9 bg-white"
+                placeholder="Search table, seated diner, or booking guest..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#E5D8CF]">
+              {[
+                { key: "all", label: "All Floor" },
+                { key: "indoor", label: "Indoor AC" },
+                { key: "patio", label: "Garden Patio" },
+                { key: "bar", label: "Bar Counter" },
+              ].map((z) => (
+                <button
+                  key={z.key}
+                  type="button"
+                  onClick={() => setZoneFilter(z.key as any)}
+                  className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                    zoneFilter === z.key ? "bg-[#D67B6B] text-white shadow-xs" : "text-[#808068] hover:text-[#343428]"
                   }`}
                 >
-                  {status === "reserved" && heldBooking
-                    ? `Booked ${formatTime(heldBooking.reserved_for)}`
-                    : status.replace("_", " ")}
-                </Badge>
-              </div>
-              {session ? (
-                <div className="mt-5 space-y-0.5">
-                  <p className="font-bold text-base truncate">{session.customer_name}</p>
-                  <p className="text-xs opacity-80">{session.guest_count} guests · {minutesSince(session.seated_at)} min open</p>
-                  {nextBooking && (
-                    <p className="text-[10px] text-amber-900/80 truncate mt-1">
-                      Later booking: {formatTime(nextBooking.reserved_for)} ({nextBooking.customer_name})
-                    </p>
-                  )}
-                </div>
-              ) : heldBooking ? (
-                <div className="mt-5 space-y-1">
-                  <div className="flex items-center gap-1.5 font-bold text-violet-950 truncate">
-                    <CalendarDays className="size-4 shrink-0 text-violet-600" />
-                    <span>{heldBooking.customer_name}</span>
+                  {z.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-1.5 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                  statusFilter === "all"
+                    ? "bg-[#343428] text-white border-[#343428] shadow-xs font-bold"
+                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                All ({tables.length})
+              </button>
+              {(["available", "occupied", "reserved", "cleaning"] as const).map((key) => {
+                const active = statusFilter === key
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setStatusFilter(active ? "all" : key)}
+                    className={`rounded-full border px-3 py-1.5 text-xs capitalize transition-all ${
+                      statusStyles[key]
+                    } ${active ? "ring-2 ring-[#D67B6B] font-bold shadow-xs scale-105" : "hover:opacity-90"}`}
+                  >
+                    {counts[key] || 0} {key}
+                  </button>
+                )
+              })}
+              <Badge className="rounded-full bg-[#FAF5F1] px-3 py-1.5 text-[#808068] border border-[#EAB8B5]">
+                Live sync
+              </Badge>
+            </div>
+          </div>
+
+          {/* Floor Tables Grid */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {visibleTables.map((table) => {
+              const status = statusFor(table)
+              const session = sessionFor(table)
+              const heldBooking = heldBookingFor(table)
+              const nextBooking = nextUpcomingBookingFor(table)
+              return (
+                <button
+                  key={table.id}
+                  onClick={() => setSelected(table)}
+                  className={`min-h-[168px] rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                    statusStyles[status] || statusStyles.available
+                  } ${selected?.id === table.id ? "ring-2 ring-[#D67B6B]" : ""}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-lg font-bold">{table.name}</p>
+                      <p className="text-xs opacity-70">Seats {table.capacity}</p>
+                    </div>
+                    <Badge
+                      className={`capitalize font-semibold text-xs border ${
+                        status === "reserved"
+                          ? "bg-violet-100 text-violet-900 border-violet-300"
+                          : "bg-white/80 text-current border-transparent"
+                      }`}
+                    >
+                      {status === "reserved" && heldBooking
+                        ? `Booked ${formatTime(heldBooking.reserved_for)}`
+                        : status.replace("_", " ")}
+                    </Badge>
                   </div>
-                  <p className="text-xs text-violet-800 font-medium">
-                    {heldBooking.party_size} guests · {heldBooking.phone}
-                  </p>
-                  <p className="text-[11px] text-violet-600 font-medium">
-                    Booked for {formatTime(heldBooking.reserved_for)} ({heldBooking.duration_minutes} min)
-                  </p>
-                  {heldBooking.special_requests && (
-                    <p className="text-[11px] text-violet-700/80 italic truncate">
-                      “{heldBooking.special_requests}”
-                    </p>
-                  )}
-                </div>
-              ) : status === "occupied" ? (
-                <div className="mt-5 space-y-0.5">
-                  <p className="font-bold text-base">Occupied</p>
-                  <p className="text-xs opacity-80">Dine-in guests seated</p>
-                  {nextBooking && (
-                    <p className="text-[10px] text-amber-900/80 truncate mt-1">
-                      Later booking: {formatTime(nextBooking.reserved_for)} ({nextBooking.customer_name})
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="mt-5 space-y-1">
-                  <p className="text-sm font-medium">{status === "cleaning" ? "Being cleaned" : "Ready for guests"}</p>
-                  {nextBooking && (
-                    <div className="flex items-center gap-1 text-[11px] text-violet-800 bg-violet-100/70 px-2 py-1 rounded-lg truncate">
-                      <CalendarDays className="size-3 shrink-0 text-violet-600" />
-                      <span className="truncate">Next: {formatTime(nextBooking.reserved_for)} · {nextBooking.customer_name}</span>
+                  {session ? (
+                    <div className="mt-5 space-y-0.5">
+                      <p className="font-bold text-base truncate">{session.customer_name}</p>
+                      <p className="text-xs opacity-80">
+                        {session.guest_count} guests · {minutesSince(session.seated_at)} min open
+                      </p>
+                      {nextBooking && (
+                        <p className="text-[10px] text-amber-900/80 truncate mt-1">
+                          Later booking: {formatTime(nextBooking.reserved_for)} ({nextBooking.customer_name})
+                        </p>
+                      )}
+                    </div>
+                  ) : heldBooking ? (
+                    <div className="mt-5 space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-violet-950 truncate">
+                        <CalendarDays className="size-4 shrink-0 text-violet-600" />
+                        <span>{heldBooking.customer_name}</span>
+                      </div>
+                      <p className="text-xs text-violet-800 font-medium">
+                        {heldBooking.party_size} guests · {heldBooking.phone}
+                      </p>
+                      <p className="text-[11px] text-violet-600 font-medium">
+                        Booked for {formatTime(heldBooking.reserved_for)} ({heldBooking.duration_minutes} min)
+                      </p>
+                      {heldBooking.special_requests && (
+                        <p className="text-[11px] text-violet-700/80 italic truncate">
+                          “{heldBooking.special_requests}”
+                        </p>
+                      )}
+                    </div>
+                  ) : status === "occupied" ? (
+                    <div className="mt-5 space-y-0.5">
+                      <p className="font-bold text-base">Occupied</p>
+                      <p className="text-xs opacity-80">Dine-in guests seated</p>
+                      {nextBooking && (
+                        <p className="text-[10px] text-amber-900/80 truncate mt-1">
+                          Later booking: {formatTime(nextBooking.reserved_for)} ({nextBooking.customer_name})
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-5 space-y-1">
+                      <p className="text-sm font-medium">{status === "cleaning" ? "Being cleaned" : "Ready for guests"}</p>
+                      {nextBooking && (
+                        <div className="flex items-center gap-1 text-[11px] text-violet-800 bg-violet-100/70 px-2 py-1 rounded-lg truncate">
+                          <CalendarDays className="size-3 shrink-0 text-violet-600" />
+                          <span className="truncate">
+                            Next: {formatTime(nextBooking.reserved_for)} · {nextBooking.customer_name}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
+                </button>
+              )
+            })}
+            {!visibleTables.length && !loadError && (
+              <p className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+                {tables.length ? "No tables match your search." : "No tables yet. An admin can add tables with “Add table”."}
+              </p>
+            )}
+          </div>
+
+          {/* Upcoming Bookings Quick Tray */}
+          <Card className="rounded-2xl border-[#dce6d9] bg-white/95">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <CalendarDays className="size-4 text-violet-600" /> Upcoming bookings ({reservations.length})
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-violet-800 hover:text-violet-950 font-semibold gap-1"
+                  onClick={() => setActiveTab("bookings")}
+                >
+                  View Full Bookings Workspace <ChevronRight className="size-3.5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {upcoming.map((booking) => (
+                <div
+                  key={booking.id}
+                  className="flex flex-col gap-2 rounded-xl border border-violet-100 bg-violet-50/40 p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="text-sm">
+                    <p className="font-semibold text-gray-900">
+                      {booking.customer_name} · {booking.party_size} guests
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatTime(booking.reserved_for)} · {booking.duration_minutes} min ·{" "}
+                      {tableName(booking.table_id, booking.table_name)} · {booking.phone}
+                    </p>
+                    {booking.special_requests && (
+                      <p className="text-xs text-violet-800 italic">“{booking.special_requests}”</p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-[#D67B6B] hover:bg-[#c26555] text-white"
+                      onClick={() =>
+                        openSeat(
+                          tables.find((t) => t.id === booking.table_id || t.name === booking.table_name) || null,
+                          booking,
+                        )
+                      }
+                    >
+                      Seat now
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => openReschedule(booking)}>
+                      Move
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => void updateBooking(booking, "no_show")}>
+                      No-show
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => void updateBooking(booking, "cancelled")}>
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
+              ))}
+              {!upcoming.length && (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No upcoming reservations. Click “New Booking” above to hold a table.
+                </p>
               )}
-            </button>
-          )
-        })}
-        {!visibleTables.length && !loadError && (
-          <p className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-            {tables.length ? "No tables match your search." : "No tables yet. An admin can add tables with “Add table”."}
-          </p>
-        )}
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-      <Card className="rounded-2xl border-[#dce6d9]">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-lg"><CalendarDays className="size-4" /> Upcoming bookings ({reservations.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {upcoming.map((booking) => (
-            <div key={booking.id} className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm">
-                <p className="font-semibold">{booking.customer_name} · {booking.party_size} guests</p>
-                <p className="text-xs text-muted-foreground">{formatTime(booking.reserved_for)} · {booking.duration_minutes} min · {tableName(booking.table_id, booking.table_name)} · {booking.phone}</p>
-                {booking.special_requests && <p className="text-xs text-muted-foreground">“{booking.special_requests}”</p>}
-              </div>
-              <div className="flex shrink-0 gap-2">
-                <Button size="sm" className="bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(tables.find((t) => t.id === booking.table_id || t.name === booking.table_name) || null, booking)}>Seat now</Button>
-                <Button size="sm" variant="outline" onClick={() => openReschedule(booking)}>Move</Button>
-                <Button size="sm" variant="outline" onClick={() => void updateBooking(booking, "no_show")}>No-show</Button>
-                <Button size="sm" variant="ghost" onClick={() => void updateBooking(booking, "cancelled")}>Cancel</Button>
-              </div>
+      {/* ========================================================================= */}
+      {/* 2. DEDICATED RESERVATIONS & BOOKINGS TAB                                  */}
+      {/* ========================================================================= */}
+      {activeTab === "bookings" && (
+        <div className="space-y-4">
+          {/* Booking KPI Cards */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-2xl border border-[#E5D8CF] bg-white p-3.5 shadow-2xs">
+              <p className="text-xs font-semibold text-[#808068]">Active / Confirmed</p>
+              <p className="font-serif text-2xl font-bold text-[#343428] mt-0.5">{bookingMetrics.confirmed}</p>
+              <span className="text-[11px] text-violet-700 font-medium">Upcoming bookings</span>
             </div>
-          ))}
-          {!upcoming.length && <p className="py-4 text-center text-sm text-muted-foreground">No upcoming bookings.</p>}
-        </CardContent>
-      </Card>
+            <div className="rounded-2xl border border-[#E5D8CF] bg-white p-3.5 shadow-2xs">
+              <p className="text-xs font-semibold text-[#808068]">Arrived Guests</p>
+              <p className="font-serif text-2xl font-bold text-amber-900 mt-0.5">{bookingMetrics.arrived}</p>
+              <span className="text-[11px] text-amber-700 font-medium">Ready to be seated</span>
+            </div>
+            <div className="rounded-2xl border border-[#E5D8CF] bg-white p-3.5 shadow-2xs">
+              <p className="text-xs font-semibold text-[#808068]">Seated Today</p>
+              <p className="font-serif text-2xl font-bold text-emerald-800 mt-0.5">{bookingMetrics.seated}</p>
+              <span className="text-[11px] text-emerald-700 font-medium">Currently dining / finished</span>
+            </div>
+            <div className="rounded-2xl border border-[#E5D8CF] bg-white p-3.5 shadow-2xs">
+              <p className="text-xs font-semibold text-[#808068]">Available Tables</p>
+              <p className="font-serif text-2xl font-bold text-[#808068] mt-0.5">
+                {bookingMetrics.availableTables} / {tables.length}
+              </p>
+              <span className="text-[11px] text-[#808068] font-medium">Ready for walk-in or booking</span>
+            </div>
+          </div>
 
+          {/* Search & Status Filters */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
+              <Input
+                className="h-11 rounded-xl pl-9 bg-white"
+                placeholder="Search by customer name, phone, or table..."
+                value={bookingSearch}
+                onChange={(e) => setBookingSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#E5D8CF] overflow-x-auto">
+              {[
+                { key: "all", label: "All Bookings" },
+                { key: "active", label: "Upcoming / Arrived" },
+                { key: "seated", label: "Seated" },
+                { key: "cancelled", label: "Cancelled / No-show" },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setBookingStatusFilter(tab.key)}
+                  className={`text-xs px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-colors ${
+                    bookingStatusFilter === tab.key
+                      ? "bg-[#D67B6B] text-white shadow-xs"
+                      : "text-[#808068] hover:text-[#343428]"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bookings Grid */}
+          {filteredBookings.length === 0 ? (
+            <Card className="rounded-2xl border border-dashed border-[#E5D8CF] p-8 text-center bg-white/60">
+              <CalendarDays className="size-10 text-[#808068]/50 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-800">No reservations found</h4>
+              <p className="text-xs text-gray-500 mt-1">
+                {bookingSearch ? "Try adjusting your search query." : "Hold tables in advance by creating a new reservation."}
+              </p>
+              <Button
+                className="mt-4 h-9 bg-[#D67B6B] hover:bg-[#c26555] text-white rounded-xl text-xs"
+                onClick={() => {
+                  setForm(emptyBooking)
+                  setShowBooking(true)
+                }}
+              >
+                <Plus className="size-3.5 mr-1" /> New Reservation
+              </Button>
+            </Card>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredBookings.map((b) => {
+                const table = tables.find((t) => t.id === b.table_id || t.name === b.table_name)
+                const currentStatus = table ? statusFor(table) : "available"
+
+                return (
+                  <Card
+                    key={b.id}
+                    className="rounded-2xl border border-[#E5D8CF] bg-white shadow-xs transition hover:shadow-sm"
+                  >
+                    <CardHeader className="p-4 pb-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-gray-900 text-base">{b.customer_name}</span>
+                            {b.party_size && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-gray-300">
+                                {b.party_size} Guests
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Phone className="size-3 text-gray-400" /> {b.phone || "No phone"}
+                          </p>
+                        </div>
+
+                        <Badge
+                          className={`capitalize text-[10px] font-bold px-2 py-0.5 border-none ${
+                            b.status === "confirmed"
+                              ? "bg-violet-100 text-violet-800"
+                              : b.status === "arrived"
+                              ? "bg-amber-100 text-amber-800"
+                              : b.status === "seated" || b.status === "completed"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {b.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="p-4 pt-1 space-y-3">
+                      {/* Reservation Timing & Table Info */}
+                      <div className="rounded-xl bg-[#FAF5F1] p-2.5 text-xs space-y-1.5 border border-[#E5D8CF]/60">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500 flex items-center gap-1">
+                            <Clock className="size-3.5 text-[#808068]" /> Scheduled:
+                          </span>
+                          <span className="font-bold text-gray-800">{formatDateTime(b.reserved_for)}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500 flex items-center gap-1">
+                            <Table2 className="size-3.5 text-[#808068]" /> Table:
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-gray-900">{b.table_name || "Unassigned"}</span>
+                            {table && (
+                              <Badge
+                                className={`text-[9px] px-1.5 py-0 border-none ${
+                                  currentStatus === "occupied"
+                                    ? "bg-amber-200 text-amber-900"
+                                    : currentStatus === "reserved"
+                                    ? "bg-violet-200 text-violet-900"
+                                    : "bg-emerald-100 text-emerald-800"
+                                }`}
+                              >
+                                {currentStatus.toUpperCase()}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {b.duration_minutes && (
+                          <div className="flex items-center justify-between text-[11px] text-gray-500">
+                            <span>Duration:</span>
+                            <span>{b.duration_minutes} min hold</span>
+                          </div>
+                        )}
+
+                        {b.special_requests && (
+                          <div className="pt-1 border-t border-[#E5D8CF]/80 text-[11px] text-[#808068] italic truncate">
+                            “{b.special_requests}”
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions according to status */}
+                      {b.status === "confirmed" && (
+                        <div className="space-y-1.5">
+                          <Button
+                            className="h-10 w-full bg-[#D67B6B] hover:bg-[#c26555] text-white rounded-xl text-xs font-semibold gap-1.5"
+                            onClick={() => openSeat(table || null, b)}
+                            disabled={saving}
+                          >
+                            <Users className="size-3.5" /> Seat Guests Now
+                          </Button>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 rounded-lg text-[11px] font-medium border-violet-200 text-violet-800 hover:bg-violet-50"
+                              onClick={() => void updateBooking(b, "arrived")}
+                              disabled={saving}
+                            >
+                              Arrived
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 rounded-lg text-[11px] font-medium border-gray-200 text-gray-700 hover:bg-gray-50"
+                              onClick={() => openReschedule(b)}
+                              disabled={saving}
+                            >
+                              <Edit2 className="size-3 mr-1" /> Move
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 rounded-lg text-[11px] font-medium border-rose-200 text-rose-700 hover:bg-rose-50"
+                              onClick={() => void updateBooking(b, "cancelled")}
+                              disabled={saving}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {b.status === "arrived" && (
+                        <div className="space-y-1.5">
+                          <Button
+                            className="h-10 w-full bg-[#D67B6B] hover:bg-[#c26555] text-white rounded-xl text-xs font-semibold gap-1.5"
+                            onClick={() => openSeat(table || null, b)}
+                            disabled={saving}
+                          >
+                            <Users className="size-3.5" /> Seat Arrived Guests
+                          </Button>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 rounded-lg text-[11px] font-medium border-gray-200"
+                              onClick={() => openReschedule(b)}
+                              disabled={saving}
+                            >
+                              <Edit2 className="size-3 mr-1" /> Reschedule / Move
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 rounded-lg text-[11px] font-medium border-amber-200 text-amber-800 hover:bg-amber-50"
+                              onClick={() => void updateBooking(b, "no_show")}
+                              disabled={saving}
+                            >
+                              No-show
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {(b.status === "seated" || b.status === "completed") && (
+                        <div className="flex items-center justify-between text-xs text-emerald-800 bg-emerald-50 px-3 py-2 rounded-xl">
+                          <span className="flex items-center gap-1 font-semibold">
+                            <CheckCircle2 className="size-3.5 text-emerald-600" /> Guests Seated
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (table) setSelected(table)
+                              setActiveTab("floor")
+                            }}
+                            className="text-[11px] font-bold underline hover:text-emerald-950 flex items-center"
+                          >
+                            View on Floor <ChevronRight className="size-3" />
+                          </button>
+                        </div>
+                      )}
+
+                      {(b.status === "cancelled" || b.status === "no_show") && (
+                        <div className="text-center text-xs text-gray-500 py-1 bg-gray-50 rounded-xl">
+                          Booking {b.status.replace("_", " ")}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. TABLE DETAILS SLIDE-OVER DRAWER (Available in both tabs)              */}
+      {/* ========================================================================= */}
       {selected && (
         <Card className="fixed inset-x-0 bottom-0 z-40 max-h-[88vh] overflow-auto rounded-t-3xl border-[#E5D8CF] bg-[#FAF5F1] shadow-2xl sm:inset-y-4 sm:left-auto sm:right-4 sm:w-[420px] sm:rounded-3xl">
           <CardHeader>
@@ -774,7 +1350,14 @@ export function TablesWorkspace({
                 <CardTitle className="text-2xl text-[#343428]">{selected.name}</CardTitle>
                 <p className="text-xs text-gray-500 mt-0.5">Capacity: {selected.capacity} guests</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setSelected(null)} aria-label="Close table panel"><X className="size-5" /></Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSelected(null)}
+                aria-label="Close table panel"
+              >
+                <X className="size-5" />
+              </Button>
             </div>
             <div className="flex items-center gap-2 pt-1">
               <Badge className={`${statusStyles[statusFor(selected)]} w-fit capitalize font-semibold`}>
@@ -791,7 +1374,11 @@ export function TablesWorkspace({
                   size="sm"
                   type="button"
                   variant={statusFor(selected) === "available" ? "default" : "outline"}
-                  className={statusFor(selected) === "available" ? "bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] h-8 px-1" : "text-[11px] h-8 px-1"}
+                  className={
+                    statusFor(selected) === "available"
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] h-8 px-1"
+                      : "text-[11px] h-8 px-1"
+                  }
                   onClick={() => void setTableState(selected, "available")}
                 >
                   Available
@@ -800,7 +1387,11 @@ export function TablesWorkspace({
                   size="sm"
                   type="button"
                   variant={statusFor(selected) === "occupied" ? "default" : "outline"}
-                  className={statusFor(selected) === "occupied" ? "bg-amber-600 hover:bg-amber-700 text-white text-[11px] h-8 px-1" : "text-[11px] h-8 px-1"}
+                  className={
+                    statusFor(selected) === "occupied"
+                      ? "bg-amber-600 hover:bg-amber-700 text-white text-[11px] h-8 px-1"
+                      : "text-[11px] h-8 px-1"
+                  }
                   onClick={() => void setTableState(selected, "occupied")}
                 >
                   Occupied
@@ -809,7 +1400,11 @@ export function TablesWorkspace({
                   size="sm"
                   type="button"
                   variant={statusFor(selected) === "reserved" ? "default" : "outline"}
-                  className={statusFor(selected) === "reserved" ? "bg-violet-600 hover:bg-violet-700 text-white text-[11px] h-8 px-1" : "text-[11px] h-8 px-1"}
+                  className={
+                    statusFor(selected) === "reserved"
+                      ? "bg-violet-600 hover:bg-violet-700 text-white text-[11px] h-8 px-1"
+                      : "text-[11px] h-8 px-1"
+                  }
                   onClick={() => void setTableState(selected, "reserved")}
                 >
                   Reserved
@@ -818,7 +1413,11 @@ export function TablesWorkspace({
                   size="sm"
                   type="button"
                   variant={statusFor(selected) === "cleaning" ? "default" : "outline"}
-                  className={statusFor(selected) === "cleaning" ? "bg-blue-600 hover:bg-blue-700 text-white text-[11px] h-8 px-1" : "text-[11px] h-8 px-1"}
+                  className={
+                    statusFor(selected) === "cleaning"
+                      ? "bg-blue-600 hover:bg-blue-700 text-white text-[11px] h-8 px-1"
+                      : "text-[11px] h-8 px-1"
+                  }
                   onClick={() => void setTableState(selected, "cleaning")}
                 >
                   Cleaning
@@ -827,7 +1426,11 @@ export function TablesWorkspace({
                   size="sm"
                   type="button"
                   variant={statusFor(selected) === "bill_requested" ? "default" : "outline"}
-                  className={statusFor(selected) === "bill_requested" ? "bg-purple-600 hover:bg-purple-700 text-white text-[11px] h-8 px-1" : "text-[11px] h-8 px-1"}
+                  className={
+                    statusFor(selected) === "bill_requested"
+                      ? "bg-purple-600 hover:bg-purple-700 text-white text-[11px] h-8 px-1"
+                      : "text-[11px] h-8 px-1"
+                  }
                   onClick={() => void setTableState(selected, "bill_requested")}
                 >
                   Bill Req.
@@ -835,7 +1438,7 @@ export function TablesWorkspace({
               </div>
             </div>
 
-            {(statusFor(selected) === "occupied" || statusFor(selected) === "bill_requested" || selectedSession) ? (
+            {statusFor(selected) === "occupied" || statusFor(selected) === "bill_requested" || selectedSession ? (
               <>
                 <div className="rounded-2xl bg-amber-50 p-4 border border-amber-200">
                   <div className="flex items-center justify-between">
@@ -845,7 +1448,9 @@ export function TablesWorkspace({
                     </Badge>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
-                    {selectedSession ? `${selectedSession.guest_count} guests · ${minutesSince(selectedSession.seated_at)} minutes open` : "Guests seated at table"}
+                    {selectedSession
+                      ? `${selectedSession.guest_count} guests · ${minutesSince(selectedSession.seated_at)} minutes open`
+                      : "Guests seated at table"}
                   </p>
                   <p className="mt-2 text-xs text-amber-800">
                     When guests leave, click below to free this table for incoming guests.
@@ -854,7 +1459,9 @@ export function TablesWorkspace({
 
                 {(() => {
                   const activeOrder = orders.find(
-                    (o) => o.table_name.toLowerCase() === selected.name.toLowerCase() && (o.status === "open" || o.status === "paid")
+                    (o) =>
+                      o.table_name.toLowerCase() === selected.name.toLowerCase() &&
+                      (o.status === "open" || o.status === "paid"),
                   )
                   if (!activeOrder) return null
                   return (
@@ -866,7 +1473,9 @@ export function TablesWorkspace({
                       <div className="divide-y divide-gray-100 max-h-36 overflow-y-auto">
                         {activeOrder.items.map((it, idx) => (
                           <div key={idx} className="flex justify-between py-1 text-gray-600">
-                            <span>{it.quantity}x {it.name}</span>
+                            <span>
+                              {it.quantity}x {it.name}
+                            </span>
                             <span>LKR {(it.price * it.quantity).toLocaleString()}</span>
                           </div>
                         ))}
@@ -979,11 +1588,15 @@ export function TablesWorkspace({
                       {b && (
                         <div className="grid grid-cols-2 gap-2 text-xs bg-white/90 p-3 rounded-xl border border-violet-200 text-violet-950">
                           <div>
-                            <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Party Size</span>
+                            <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">
+                              Party Size
+                            </span>
                             <span className="font-bold text-sm">{b.party_size} Guests</span>
                           </div>
                           <div>
-                            <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Reserved Time</span>
+                            <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">
+                              Reserved Time
+                            </span>
                             <span className="font-bold text-sm">{formatTime(b.reserved_for)}</span>
                           </div>
                           <div className="col-span-2 pt-1.5 border-t border-violet-100 flex items-center justify-between text-[11px] text-gray-600">
@@ -1082,14 +1695,31 @@ export function TablesWorkspace({
                 {selectedBookings.map((booking) => (
                   <div key={booking.id} className="space-y-2 rounded-2xl bg-violet-50 p-4">
                     <p className="font-semibold">{booking.customer_name}</p>
-                    <p className="text-sm">{booking.party_size} guests · {formatTime(booking.reserved_for)} · {booking.duration_minutes} min</p>
+                    <p className="text-sm">
+                      {booking.party_size} guests · {formatTime(booking.reserved_for)} · {booking.duration_minutes} min
+                    </p>
                     <p className="text-sm">{booking.phone}</p>
                     {booking.special_requests && <p className="text-xs">{booking.special_requests}</p>}
                     <div className="grid grid-cols-2 gap-2 pt-1">
-                      <Button size="sm" variant="outline" onClick={() => void updateBooking(booking, "arrived")}>Mark arrived</Button>
-                      <Button size="sm" className="bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(selected, booking)}>Seat now</Button>
+                      <Button size="sm" variant="outline" onClick={() => void updateBooking(booking, "arrived")}>
+                        Mark arrived
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-[#D67B6B] hover:bg-[#c26555] text-white"
+                        onClick={() => openSeat(selected, booking)}
+                      >
+                        Seat now
+                      </Button>
                     </div>
-                    <Button size="sm" variant="ghost" className="w-full" onClick={() => void updateBooking(booking, "cancelled")}>Cancel booking</Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => void updateBooking(booking, "cancelled")}
+                    >
+                      Cancel booking
+                    </Button>
                   </div>
                 ))}
                 <p className="rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900">
@@ -1100,8 +1730,22 @@ export function TablesWorkspace({
                     : "No active session. Seat walk-in guests or take an order."}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button className="h-11 bg-[#D67B6B] hover:bg-[#c26555] text-white rounded-xl" onClick={() => openSeat(selected)}>Seat guests</Button>
-                  <Button variant="outline" className="h-11 rounded-xl" onClick={() => { setForm({ ...emptyBooking, table_id: selected.id }); setShowBooking(true) }}>New booking</Button>
+                  <Button
+                    className="h-11 bg-[#D67B6B] hover:bg-[#c26555] text-white rounded-xl"
+                    onClick={() => openSeat(selected)}
+                  >
+                    Seat guests
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-11 rounded-xl"
+                    onClick={() => {
+                      setForm({ ...emptyBooking, table_id: selected.id })
+                      setShowBooking(true)
+                    }}
+                  >
+                    New booking
+                  </Button>
                 </div>
                 {onStartOrder && (
                   <Button
@@ -1112,7 +1756,11 @@ export function TablesWorkspace({
                     <ShoppingBag className="size-4" /> Start POS Order
                   </Button>
                 )}
-                <Button variant="ghost" className="w-full" onClick={() => void setTableState(selected, selected.status === "cleaning" ? "available" : "cleaning")}>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => void setTableState(selected, selected.status === "cleaning" ? "available" : "cleaning")}
+                >
                   {selected.status === "cleaning" ? "Mark clean & available" : "Mark as cleaning"}
                 </Button>
               </>
@@ -1121,31 +1769,116 @@ export function TablesWorkspace({
         </Card>
       )}
 
+      {/* ========================================================================= */}
+      {/* 4. MODALS (BOOKING, SEATING, RESCHEDULE, TRANSFER, MERGE, ADD TABLE)      */}
+      {/* ========================================================================= */}
+
+      {/* MODAL: NEW RESERVATION */}
       {showBooking && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-          <Card className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-3xl">
-            <CardHeader><CardTitle>New booking</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <Input placeholder="Customer name" value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
-              <Input placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <Card className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-3xl bg-white shadow-2xl">
+            <CardHeader className="pb-3 border-b border-[#E5D8CF]">
+              <CardTitle className="font-serif text-xl font-bold text-[#343428]">New Table Reservation</CardTitle>
+              <p className="text-xs text-[#808068]">
+                Book a table in advance. The table will be held and displayed across Tables and POS floor views.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-4">
               <div className="grid grid-cols-2 gap-2">
-                <Input type="number" min="1" placeholder="Guests" value={form.party_size} onChange={(e) => setForm({ ...form, party_size: e.target.value })} />
-                <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Table" value={form.table_id} onChange={(e) => setForm({ ...form, table_id: e.target.value })}>
-                  <option value="">Auto assign table</option>
-                  {tables.filter((t) => t.capacity >= Number(form.party_size || 1)).map((t) => <option key={t.id} value={t.id}>{t.name} · {t.capacity} seats</option>)}
-                </select>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Guest Name *</label>
+                  <Input
+                    placeholder="e.g. Maya Silva"
+                    value={form.customer_name}
+                    onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Phone *</label>
+                  <Input
+                    placeholder="+94 77 123 4567"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  />
+                </div>
               </div>
-              <Input type="datetime-local" value={form.reserved_for} onChange={(e) => setForm({ ...form, reserved_for: e.target.value })} />
-              <div className="flex gap-2">
-                {[60, 90, 120].map((value) => (
-                  <Button key={value} type="button" variant={form.duration_minutes === String(value) ? "default" : "outline"} onClick={() => setForm({ ...form, duration_minutes: String(value) })}>{value} min</Button>
-                ))}
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Party Size</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Guests"
+                    value={form.party_size}
+                    onChange={(e) => setForm({ ...form, party_size: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Table Assignment</label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-xs"
+                    aria-label="Table"
+                    value={form.table_id}
+                    onChange={(e) => setForm({ ...form, table_id: e.target.value })}
+                  >
+                    <option value="">Auto-assign best table</option>
+                    {tables.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} · {t.capacity} seats ({t.status.toUpperCase()})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <Input placeholder="Special requests" value={form.special_requests} onChange={(e) => setForm({ ...form, special_requests: e.target.value })} />
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="ghost" onClick={() => setShowBooking(false)}>Cancel</Button>
-                <Button className="bg-[#D67B6B] hover:bg-[#c26555] text-white" disabled={saving || !form.customer_name || !form.phone || !form.reserved_for} onClick={() => void createBooking()}>
-                  {saving ? <Loader2 className="size-4 animate-spin" /> : <CalendarDays className="size-4" />} Confirm booking
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">Reservation Date &amp; Time *</label>
+                <Input
+                  type="datetime-local"
+                  value={form.reserved_for}
+                  onChange={(e) => setForm({ ...form, reserved_for: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">Hold Duration</label>
+                <div className="flex gap-2">
+                  {[60, 90, 120].map((value) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      variant={form.duration_minutes === String(value) ? "default" : "outline"}
+                      className={`flex-1 h-9 text-xs rounded-xl ${
+                        form.duration_minutes === String(value) ? "bg-[#808068] text-white" : ""
+                      }`}
+                      onClick={() => setForm({ ...form, duration_minutes: String(value) })}
+                    >
+                      {value} min
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">Special Requests / Notes</label>
+                <Input
+                  placeholder="e.g. Window seat, anniversary dinner"
+                  value={form.special_requests}
+                  onChange={(e) => setForm({ ...form, special_requests: e.target.value })}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#E5D8CF]">
+                <Button variant="ghost" onClick={() => setShowBooking(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-[#D67B6B] hover:bg-[#c26555] text-white"
+                  disabled={saving || !form.customer_name || !form.phone || !form.reserved_for}
+                  onClick={() => void createBooking()}
+                >
+                  {saving ? <Loader2 className="size-4 animate-spin" /> : <CalendarDays className="size-4" />} Confirm Booking
                 </Button>
               </div>
             </CardContent>
@@ -1153,23 +1886,92 @@ export function TablesWorkspace({
         </div>
       )}
 
+      {/* MODAL: SEAT GUESTS */}
       {showSeat && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-          <Card className="w-full max-w-lg rounded-3xl">
-            <CardHeader><CardTitle>Seat guests</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" aria-label="Table to seat" value={seatTableId} onChange={(e) => setSeatTableId(e.target.value)}>
-                <option value="">Choose a table…</option>
-                {availableForSeating.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.capacity} seats</option>)}
-              </select>
-              <Input placeholder="Customer name" value={seatForm.customer_name} onChange={(e) => setSeatForm({ ...seatForm, customer_name: e.target.value })} />
-              <Input placeholder="Phone (optional)" value={seatForm.phone} onChange={(e) => setSeatForm({ ...seatForm, phone: e.target.value })} />
-              <Input type="number" min="1" placeholder="Guests" value={seatForm.guest_count} onChange={(e) => setSeatForm({ ...seatForm, guest_count: e.target.value })} />
-              <Input placeholder="Notes" value={seatForm.notes} onChange={(e) => setSeatForm({ ...seatForm, notes: e.target.value })} />
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => { setShowSeat(false); setSeatBookingId(null) }}>Cancel</Button>
-                <Button className="bg-[#D67B6B] hover:bg-[#c26555] text-white" disabled={saving || !seatTableId} onClick={() => void seatGuests()}>
-                  {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Seat guests
+          <Card className="w-full max-w-lg rounded-3xl bg-white shadow-2xl">
+            <CardHeader className="pb-3 border-b border-[#E5D8CF]">
+              <CardTitle className="font-serif text-xl font-bold text-[#343428]">
+                {seatBookingId ? "Seat Booked Party" : "Seat Walk-in Guests"}
+              </CardTitle>
+              <p className="text-xs text-[#808068]">
+                Assigns the table to these guests and opens a new dine-in session.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">Table *</label>
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-xs"
+                  aria-label="Table to seat"
+                  value={seatTableId}
+                  onChange={(e) => setSeatTableId(e.target.value)}
+                >
+                  <option value="">Choose a table…</option>
+                  {availableForSeating.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} · {t.capacity} seats ({t.status.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Guest / Party Name</label>
+                  <Input
+                    placeholder="Customer name"
+                    value={seatForm.customer_name}
+                    onChange={(e) => setSeatForm({ ...seatForm, customer_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Phone (optional)</label>
+                  <Input
+                    placeholder="Phone"
+                    value={seatForm.phone}
+                    onChange={(e) => setSeatForm({ ...seatForm, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Number of Guests</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Guests"
+                    value={seatForm.guest_count}
+                    onChange={(e) => setSeatForm({ ...seatForm, guest_count: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Notes</label>
+                  <Input
+                    placeholder="Notes"
+                    value={seatForm.notes}
+                    onChange={(e) => setSeatForm({ ...seatForm, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#E5D8CF]">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setShowSeat(false)
+                    setSeatBookingId(null)
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-[#D67B6B] hover:bg-[#c26555] text-white"
+                  disabled={saving || !seatTableId}
+                  onClick={() => void seatGuests()}
+                >
+                  {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Seat Guests
                 </Button>
               </div>
             </CardContent>
@@ -1177,17 +1979,97 @@ export function TablesWorkspace({
         </div>
       )}
 
-      {showAddTable && (
+      {/* MODAL: RESCHEDULE / MOVE RESERVATION */}
+      {showReschedule && rescheduleData.booking && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-          <Card className="w-full max-w-sm rounded-3xl">
-            <CardHeader><CardTitle>Add table</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <Input placeholder="Table name (e.g. Table 09)" value={tableForm.name} onChange={(e) => setTableForm({ ...tableForm, name: e.target.value })} />
-              <Input type="number" min="1" placeholder="Seats" value={tableForm.capacity} onChange={(e) => setTableForm({ ...tableForm, capacity: e.target.value })} />
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setShowAddTable(false)}>Cancel</Button>
-                <Button className="bg-[#D67B6B] hover:bg-[#c26555] text-white" disabled={saving || !tableForm.name.trim()} onClick={() => void addTable()}>
-                  {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Add table
+          <Card className="w-full max-w-lg rounded-3xl bg-white shadow-2xl">
+            <CardHeader className="bg-[#808068] text-white rounded-t-3xl p-5">
+              <CardTitle className="text-lg font-serif">Move / Reschedule Reservation</CardTitle>
+              <p className="text-xs text-[#F4EBE4]/85">
+                Move {rescheduleData.customer_name} to another table or adjust booking schedule
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3 p-5">
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Select Table *</label>
+                <select
+                  value={rescheduleData.table_id}
+                  onChange={(e) => setRescheduleData({ ...rescheduleData, table_id: e.target.value })}
+                  className="w-full rounded-xl border border-gray-300 p-2.5 text-xs bg-white"
+                >
+                  {tables.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} · {t.capacity} seats ({t.status.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Reserved Date &amp; Time *</label>
+                <Input
+                  type="datetime-local"
+                  value={rescheduleData.reserved_for}
+                  onChange={(e) => setRescheduleData({ ...rescheduleData, reserved_for: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Party Size</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={rescheduleData.party_size}
+                    onChange={(e) => setRescheduleData({ ...rescheduleData, party_size: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Duration (minutes)</label>
+                  <Input
+                    type="number"
+                    value={rescheduleData.duration_minutes}
+                    onChange={(e) => setRescheduleData({ ...rescheduleData, duration_minutes: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Customer Name</label>
+                  <Input
+                    value={rescheduleData.customer_name}
+                    onChange={(e) => setRescheduleData({ ...rescheduleData, customer_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Phone</label>
+                  <Input
+                    value={rescheduleData.phone}
+                    onChange={(e) => setRescheduleData({ ...rescheduleData, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Special Requests</label>
+                <Input
+                  value={rescheduleData.special_requests}
+                  onChange={(e) => setRescheduleData({ ...rescheduleData, special_requests: e.target.value })}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="ghost" onClick={() => setShowReschedule(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-[#D67B6B] text-white hover:bg-[#c26555]"
+                  disabled={saving || !rescheduleData.table_id || !rescheduleData.reserved_for}
+                  onClick={() => void handleReschedule()}
+                >
+                  {saving ? <Loader2 className="size-4 animate-spin" /> : <ArrowRightLeft className="size-4" />}
+                  Confirm Move &amp; Update
                 </Button>
               </div>
             </CardContent>
@@ -1323,52 +2205,37 @@ export function TablesWorkspace({
         </div>
       )}
 
-      {/* MODAL: RESCHEDULE / MOVE RESERVATION */}
-      {showReschedule && rescheduleData.booking && (
+      {/* MODAL: ADD TABLE (Admin) */}
+      {showAddTable && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-          <Card className="w-full max-w-md rounded-3xl bg-white shadow-2xl">
-            <CardHeader className="bg-[#808068] text-white rounded-t-3xl p-5">
-              <CardTitle className="text-lg font-serif">Move / Reschedule Reservation</CardTitle>
-              <p className="text-xs text-[#F4EBE4]/85">
-                Move {rescheduleData.booking.customer_name} to another table or change booking time
-              </p>
+          <Card className="w-full max-w-sm rounded-3xl bg-white shadow-2xl">
+            <CardHeader className="pb-3 border-b border-[#E5D8CF]">
+              <CardTitle className="font-serif text-xl font-bold text-[#343428]">Add Table</CardTitle>
+              <p className="text-xs text-[#808068]">Create a new dining table on the live floor plan.</p>
             </CardHeader>
-            <CardContent className="space-y-4 p-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Select Table</label>
-                <select
-                  value={rescheduleData.table_id}
-                  onChange={(e) => setRescheduleData({ ...rescheduleData, table_id: e.target.value })}
-                  className="w-full rounded-xl border border-gray-300 p-2.5 text-sm bg-white"
-                >
-                  {tables.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} · {t.capacity} seats ({t.status.toUpperCase()})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Reserved Date &amp; Time</label>
-                <Input
-                  type="datetime-local"
-                  value={rescheduleData.reserved_for}
-                  onChange={(e) => setRescheduleData({ ...rescheduleData, reserved_for: e.target.value })}
-                />
-              </div>
-
+            <CardContent className="space-y-3 pt-4">
+              <Input
+                placeholder="Table name (e.g. Table 15)"
+                value={tableForm.name}
+                onChange={(e) => setTableForm({ ...tableForm, name: e.target.value })}
+              />
+              <Input
+                type="number"
+                min="1"
+                placeholder="Seats"
+                value={tableForm.capacity}
+                onChange={(e) => setTableForm({ ...tableForm, capacity: e.target.value })}
+              />
               <div className="flex justify-end gap-2 pt-2 border-t">
-                <Button variant="ghost" onClick={() => setShowReschedule(false)}>
+                <Button variant="ghost" onClick={() => setShowAddTable(false)}>
                   Cancel
                 </Button>
                 <Button
-                  className="bg-[#D67B6B] text-white hover:bg-[#c26555]"
-                  disabled={saving || !rescheduleData.table_id}
-                  onClick={() => void handleReschedule()}
+                  className="bg-[#D67B6B] hover:bg-[#c26555] text-white"
+                  disabled={saving || !tableForm.name.trim()}
+                  onClick={() => void addTable()}
                 >
-                  {saving ? <Loader2 className="size-4 animate-spin" /> : <ArrowRightLeft className="size-4" />}
-                  Confirm Move
+                  {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Add Table
                 </Button>
               </div>
             </CardContent>
