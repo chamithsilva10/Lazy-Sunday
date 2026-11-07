@@ -57,9 +57,11 @@ function toIso(local: string) {
 export function TablesWorkspace({
   role = "cashier",
   onStartOrder,
+  onNavigateToBooked,
 }: {
   role?: "admin" | "cashier"
   onStartOrder?: (tableName: string) => void
+  onNavigateToBooked?: () => void
 }) {
   const supabase = useMemo(() => createClient(), [])
   const [tables, setTables] = useState<Table[]>([])
@@ -78,6 +80,14 @@ export function TablesWorkspace({
   const [seatForm, setSeatForm] = useState(emptySeat)
   const [tableForm, setTableForm] = useState({ name: "", capacity: "4" })
 
+  // Reschedule / Move modal state
+  const [showReschedule, setShowReschedule] = useState(false)
+  const [rescheduleData, setRescheduleData] = useState<{
+    booking: Reservation | null
+    table_id: string
+    reserved_for: string
+  }>({ booking: null, table_id: "", reserved_for: "" })
+
   const [orders, setOrders] = useState<SharedOrder[]>(() => SharedPosService.getOrders())
   const [showTransfer, setShowTransfer] = useState(false)
   const [transferSource, setTransferSource] = useState("")
@@ -94,94 +104,13 @@ export function TablesWorkspace({
   }, [])
 
   const load = useCallback(async () => {
-    // 1. Get ground truth from SharedPosService
+    try {
+      await SharedPosService.refreshFromApi()
+    } catch {}
+
     const sharedTables = SharedPosService.getTables()
     const sharedBookings = SharedPosService.getBookings()
     const sharedSessions = SharedPosService.getSessions()
-
-    // 2. Query Supabase / remote if configured
-    try {
-      const [tableRes, reservationRes, sessionRes] = await Promise.all([
-        supabase.from("pos_tables").select("id,name,capacity,status").order("name"),
-        supabase
-          .from("reservations")
-          .select("id,customer_name,phone,party_size,reserved_for,duration_minutes,table_id,table_name,status,source,special_requests")
-          .in("status", ACTIVE_BOOKING)
-          .order("reserved_for"),
-        supabase
-          .from("table_sessions")
-          .select("id,table_id,customer_name,phone,guest_count,seated_at,status,notes")
-          .in("status", ["open", "bill_requested"]),
-      ])
-
-      const mergedSessions = [...sharedSessions]
-      if (sessionRes.data && Array.isArray(sessionRes.data)) {
-        for (const s of sessionRes.data as any[]) {
-          const idx = mergedSessions.findIndex((ms) => ms.id === s.id || ms.table_id === s.table_id)
-          if (idx >= 0) {
-            mergedSessions[idx] = { ...mergedSessions[idx], ...s }
-          } else {
-            mergedSessions.push(s)
-          }
-        }
-      }
-
-      const mergedBookings = [...sharedBookings]
-      if (reservationRes.data && Array.isArray(reservationRes.data)) {
-        for (const b of reservationRes.data as any[]) {
-          const idx = mergedBookings.findIndex((mb) => mb.id === b.id)
-          if (idx >= 0) {
-            mergedBookings[idx] = { ...mergedBookings[idx], ...b }
-          } else {
-            mergedBookings.push(b)
-          }
-        }
-      }
-
-      // Synchronize tables from shared floor state
-      const remoteTables = (tableRes.data && Array.isArray(tableRes.data) && tableRes.data.length > 0)
-        ? (tableRes.data as Table[]).map((rt) => {
-            const local = sharedTables.find((st) => st.id === rt.id || st.name.toLowerCase() === rt.name.toLowerCase())
-            return local ? { ...rt, status: local.status } : rt
-          })
-        : sharedTables.map((t) => ({ id: t.id, name: t.name, capacity: t.capacity, status: t.status }))
-
-      setTables(remoteTables)
-      setReservations(
-        mergedBookings
-          .filter((b) => ACTIVE_BOOKING.includes(b.status))
-          .map((b) => ({
-            id: b.id,
-            customer_name: b.customer_name,
-            phone: b.phone,
-            party_size: b.party_size,
-            reserved_for: b.reserved_for,
-            duration_minutes: b.duration_minutes,
-            table_id: b.table_id,
-            table_name: b.table_name || sharedTables.find((t) => t.id === b.table_id || t.name === b.table_id)?.name || "",
-            status: b.status,
-            source: b.source || "staff",
-            special_requests: b.special_requests || "",
-          })),
-      )
-      setSessions(
-        mergedSessions
-          .filter((s) => s.status !== "closed")
-          .map((s) => ({
-            id: s.id,
-            table_id: s.table_id,
-            table_name: s.table_name,
-            customer_name: s.customer_name,
-            phone: s.phone || null,
-            guest_count: s.guest_count,
-            seated_at: s.seated_at,
-            status: s.status,
-            notes: s.notes || "",
-          })),
-      )
-      setLoadError(null)
-      return
-    } catch {}
 
     setTables(sharedTables.map((t) => ({ id: t.id, name: t.name, capacity: t.capacity, status: t.status })))
     setReservations(
@@ -194,7 +123,7 @@ export function TablesWorkspace({
           party_size: b.party_size,
           reserved_for: b.reserved_for,
           duration_minutes: b.duration_minutes,
-          table_id: b.table_id,
+          table_id: b.table_id || null,
           table_name: b.table_name || sharedTables.find((t) => t.id === b.table_id || t.name === b.table_id)?.name || "",
           status: b.status,
           source: b.source || "staff",
@@ -217,7 +146,7 @@ export function TablesWorkspace({
         })),
     )
     setLoadError(null)
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     void load()
@@ -283,41 +212,41 @@ export function TablesWorkspace({
       return false
     })
 
-  /** Any active or upcoming booking that holds or reserves this table */
-  const activeBookingFor = (table: Table) => {
+  /** Active booking holding this table right now according to hold rules (arrived or in 30m window) */
+  const heldBookingFor = (table: Table) => {
     const tableBookings = bookingsFor(table).filter((b) => ACTIVE_BOOKING.includes(b.status))
     if (!tableBookings.length) return null
 
     const now = Date.now()
-    // 1. Arrived or within holding window (starts 30m before until duration ends)
-    const current = tableBookings.find((b) => {
-      const window = bookingWindow(b)
-      return b.status === "arrived" || (now >= window.start && now <= window.end)
-    })
-    if (current) return current
-
-    // 2. Nearest upcoming booking that has not ended yet
-    const upcoming = tableBookings
-      .filter((b) => {
+    return (
+      tableBookings.find((b) => {
         const window = bookingWindow(b)
-        return window.end > now
-      })
-      .sort((a, b) => new Date(a.reserved_for).getTime() - new Date(b.reserved_for).getTime())
-
-    return upcoming[0] || tableBookings[0] || null
+        return b.status === "arrived" || (now >= window.start && now <= window.end)
+      }) || null
+    )
   }
 
-  const heldBookingFor = (table: Table) => activeBookingFor(table)
+  /** Nearest upcoming booking scheduled for later */
+  const nextUpcomingBookingFor = (table: Table) => {
+    const tableBookings = bookingsFor(table).filter((b) => ACTIVE_BOOKING.includes(b.status))
+    const now = Date.now()
+    const future = tableBookings
+      .filter((b) => new Date(b.reserved_for).getTime() > now)
+      .sort((a, b) => new Date(a.reserved_for).getTime() - new Date(b.reserved_for).getTime())
+    return future[0] || null
+  }
+
+  const activeBookingFor = (table: Table) => heldBookingFor(table) || nextUpcomingBookingFor(table)
 
   const statusFor = (table: Table): "available" | "occupied" | "reserved" | "cleaning" | "bill_requested" => {
     const session = sessionFor(table)
     if (session && session.status !== "closed") {
       return session.status === "bill_requested" ? "bill_requested" : "occupied"
     }
-    const booking = activeBookingFor(table)
-    if (booking) return "reserved"
+    const held = heldBookingFor(table)
+    if (held) return "reserved"
 
-    if (table.status === "occupied" || table.status === "bill_requested" || table.status === "cleaning" || table.status === "reserved") {
+    if (table.status === "occupied" || table.status === "bill_requested" || table.status === "cleaning") {
       return table.status
     }
     return "available"
@@ -490,6 +419,38 @@ export function TablesWorkspace({
     setShowSeat(true)
   }
 
+  function openReschedule(booking: Reservation) {
+    setRescheduleData({
+      booking,
+      table_id: booking.table_id || "",
+      reserved_for: booking.reserved_for ? new Date(booking.reserved_for).toISOString().slice(0, 16) : "",
+    })
+    setShowReschedule(true)
+  }
+
+  async function handleReschedule() {
+    if (!rescheduleData.booking || !rescheduleData.table_id) return fail("Choose a table")
+    const target = tables.find((t) => t.id === rescheduleData.table_id || t.name === rescheduleData.table_id)
+    if (!target) return fail("Target table not found")
+    setSaving(true)
+    try {
+      await SharedPosService.rescheduleBooking(
+        rescheduleData.booking.id,
+        target.id,
+        target.name,
+        rescheduleData.reserved_for ? new Date(rescheduleData.reserved_for).toISOString() : rescheduleData.booking.reserved_for,
+        rescheduleData.booking.duration_minutes,
+      )
+      toast.success(`Rescheduled booking to ${target.name}`)
+      setShowReschedule(false)
+      await load()
+    } catch (err: any) {
+      fail(err.message || "Failed to reschedule booking")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function seatGuests() {
     const table = tables.find((item) => item.id === seatTableId)
     if (!table) return fail("Choose a table to seat the guests")
@@ -500,15 +461,15 @@ export function TablesWorkspace({
 
     setSaving(true)
     try {
-      await SharedPosService.occupyTable(
-        table.name,
-        "Juice & Food",
-        undefined,
-        undefined,
-        seatForm.customer_name.trim() || "Guests",
-      )
       if (seatBookingId) {
-        await SharedPosService.updateBookingStatus(seatBookingId, "completed")
+        await SharedPosService.seatBooking(seatBookingId, guests)
+      } else {
+        await SharedPosService.seatWalkIn(table.name, {
+          customer_name: seatForm.customer_name.trim() || "Walk-in Guest",
+          phone: seatForm.phone.trim() || undefined,
+          guest_count: guests,
+          notes: seatForm.notes.trim() || undefined,
+        })
       }
       toast.success(`${seatForm.customer_name.trim() || "Guests"} seated at ${table.name}`)
       setShowSeat(false)
@@ -527,8 +488,8 @@ export function TablesWorkspace({
     setSaving(true)
     try {
       if (status === "closed" || status === "available") {
-        await SharedPosService.releaseTable(selected.name)
-        toast.success(`${selected.name} is free & marked available`)
+        const newStatus = await SharedPosService.releaseTable(selected.name)
+        toast.success(`${selected.name} released (now ${newStatus || "available"})`)
       } else {
         await SharedPosService.setTableStatus(selected.id, "bill_requested")
         toast.success(`Bill requested for ${selected.name}`)
@@ -544,10 +505,10 @@ export function TablesWorkspace({
   async function setTableState(table: Table, status: "available" | "occupied" | "cleaning" | "reserved" | "bill_requested") {
     try {
       if (status === "available") {
-        await SharedPosService.releaseTable(table.name)
-        toast.success(`${table.name} marked available`)
+        const newStatus = await SharedPosService.releaseTable(table.name)
+        toast.success(`${table.name} released (now ${newStatus || "available"})`)
       } else if (status === "occupied") {
-        await SharedPosService.occupyTable(table.name)
+        await SharedPosService.seatWalkIn(table.name, { customer_name: "Walk-in" })
         toast.success(`${table.name} marked occupied`)
       } else {
         await SharedPosService.setTableStatus(table.id, status)
@@ -598,6 +559,15 @@ export function TablesWorkspace({
           <p className="text-sm text-[#808068]">Seat guests, track tabs and keep the floor moving.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {onNavigateToBooked && (
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl border-violet-300 text-violet-800 hover:bg-violet-50 font-semibold gap-1.5"
+              onClick={onNavigateToBooked}
+            >
+              <CalendarDays className="size-4 text-violet-600" /> Table Booked
+            </Button>
+          )}
           <Button className="h-11 rounded-xl bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(selected && !sessionFor(selected) ? selected : null)}>
             <Users className="size-4" /> Seat guests
           </Button>
@@ -685,7 +655,8 @@ export function TablesWorkspace({
         {visibleTables.map((table) => {
           const status = statusFor(table)
           const session = sessionFor(table)
-          const booking = activeBookingFor(table)
+          const heldBooking = heldBookingFor(table)
+          const nextBooking = nextUpcomingBookingFor(table)
           return (
             <button
               key={table.id}
@@ -706,8 +677,8 @@ export function TablesWorkspace({
                       : "bg-white/80 text-current border-transparent"
                   }`}
                 >
-                  {status === "reserved" && booking
-                    ? `Booked ${formatTime(booking.reserved_for)}`
+                  {status === "reserved" && heldBooking
+                    ? `Booked ${formatTime(heldBooking.reserved_for)}`
                     : status.replace("_", " ")}
                 </Badge>
               </div>
@@ -715,22 +686,27 @@ export function TablesWorkspace({
                 <div className="mt-5 space-y-0.5">
                   <p className="font-bold text-base truncate">{session.customer_name}</p>
                   <p className="text-xs opacity-80">{session.guest_count} guests · {minutesSince(session.seated_at)} min open</p>
+                  {nextBooking && (
+                    <p className="text-[10px] text-amber-900/80 truncate mt-1">
+                      Later booking: {formatTime(nextBooking.reserved_for)} ({nextBooking.customer_name})
+                    </p>
+                  )}
                 </div>
-              ) : booking ? (
+              ) : heldBooking ? (
                 <div className="mt-5 space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-violet-950 truncate">
                     <CalendarDays className="size-4 shrink-0 text-violet-600" />
-                    <span>{booking.customer_name}</span>
+                    <span>{heldBooking.customer_name}</span>
                   </div>
                   <p className="text-xs text-violet-800 font-medium">
-                    {booking.party_size} guests · {booking.phone}
+                    {heldBooking.party_size} guests · {heldBooking.phone}
                   </p>
                   <p className="text-[11px] text-violet-600 font-medium">
-                    Booked for {formatTime(booking.reserved_for)} ({booking.duration_minutes} min)
+                    Booked for {formatTime(heldBooking.reserved_for)} ({heldBooking.duration_minutes} min)
                   </p>
-                  {booking.special_requests && (
+                  {heldBooking.special_requests && (
                     <p className="text-[11px] text-violet-700/80 italic truncate">
-                      “{booking.special_requests}”
+                      “{heldBooking.special_requests}”
                     </p>
                   )}
                 </div>
@@ -738,9 +714,22 @@ export function TablesWorkspace({
                 <div className="mt-5 space-y-0.5">
                   <p className="font-bold text-base">Occupied</p>
                   <p className="text-xs opacity-80">Dine-in guests seated</p>
+                  {nextBooking && (
+                    <p className="text-[10px] text-amber-900/80 truncate mt-1">
+                      Later booking: {formatTime(nextBooking.reserved_for)} ({nextBooking.customer_name})
+                    </p>
+                  )}
                 </div>
               ) : (
-                <p className="mt-8 text-sm font-medium">{status === "cleaning" ? "Being cleaned" : "Ready for guests"}</p>
+                <div className="mt-5 space-y-1">
+                  <p className="text-sm font-medium">{status === "cleaning" ? "Being cleaned" : "Ready for guests"}</p>
+                  {nextBooking && (
+                    <div className="flex items-center gap-1 text-[11px] text-violet-800 bg-violet-100/70 px-2 py-1 rounded-lg truncate">
+                      <CalendarDays className="size-3 shrink-0 text-violet-600" />
+                      <span className="truncate">Next: {formatTime(nextBooking.reserved_for)} · {nextBooking.customer_name}</span>
+                    </div>
+                  )}
+                </div>
               )}
             </button>
           )
@@ -766,6 +755,7 @@ export function TablesWorkspace({
               </div>
               <div className="flex shrink-0 gap-2">
                 <Button size="sm" className="bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(tables.find((t) => t.id === booking.table_id || t.name === booking.table_name) || null, booking)}>Seat now</Button>
+                <Button size="sm" variant="outline" onClick={() => openReschedule(booking)}>Move</Button>
                 <Button size="sm" variant="outline" onClick={() => void updateBooking(booking, "no_show")}>No-show</Button>
                 <Button size="sm" variant="ghost" onClick={() => void updateBooking(booking, "cancelled")}>Cancel</Button>
               </div>
@@ -885,13 +875,32 @@ export function TablesWorkspace({
                   )
                 })()}
 
+                {(() => {
+                  const nb = nextUpcomingBookingFor(selected)
+                  if (!nb) return null
+                  return (
+                    <div className="rounded-xl border border-violet-200 bg-violet-50/80 p-3 text-xs space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-violet-900">
+                        <CalendarDays className="size-3.5 text-violet-600" />
+                        <span>Later Reservation: {formatTime(nb.reserved_for)}</span>
+                      </div>
+                      <p className="text-violet-800">
+                        {nb.customer_name} ({nb.party_size} guests) · {nb.duration_minutes} min hold
+                      </p>
+                      <p className="text-[10px] text-violet-600">
+                        Releasing this table leaves this upcoming reservation intact.
+                      </p>
+                    </div>
+                  )
+                })()}
+
                 {/* Main Action to release when guests leave */}
                 <Button
                   className="h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm gap-2"
                   onClick={() => void updateSession("closed")}
                   disabled={saving}
                 >
-                  <Check className="size-4" /> Guests Left · Mark Available
+                  <Check className="size-4" /> Release Table (Guests Left · Mark Available)
                 </Button>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -1017,9 +1026,19 @@ export function TablesWorkspace({
                             Mark No-show
                           </Button>
                         ) : null}
+                        {b && (
+                          <Button
+                            variant="outline"
+                            className="h-10 rounded-xl border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold text-xs"
+                            onClick={() => openReschedule(b)}
+                            disabled={saving}
+                          >
+                            <ArrowRightLeft className="size-3.5 mr-1" /> Move / Reschedule
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
-                          className="h-10 rounded-xl border-rose-200 text-rose-700 hover:bg-rose-50 font-semibold text-xs"
+                          className="h-10 rounded-xl border-rose-200 text-rose-700 hover:bg-rose-50 font-semibold text-xs col-span-2"
                           onClick={() => {
                             if (b) {
                               void updateBooking(b, "cancelled")
@@ -1297,6 +1316,59 @@ export function TablesWorkspace({
                 >
                   {saving ? <Loader2 className="size-4 animate-spin" /> : <GitMerge className="size-4" />}
                   Confirm Merge
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* MODAL: RESCHEDULE / MOVE RESERVATION */}
+      {showReschedule && rescheduleData.booking && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+          <Card className="w-full max-w-md rounded-3xl bg-white shadow-2xl">
+            <CardHeader className="bg-[#808068] text-white rounded-t-3xl p-5">
+              <CardTitle className="text-lg font-serif">Move / Reschedule Reservation</CardTitle>
+              <p className="text-xs text-[#F4EBE4]/85">
+                Move {rescheduleData.booking.customer_name} to another table or change booking time
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4 p-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700">Select Table</label>
+                <select
+                  value={rescheduleData.table_id}
+                  onChange={(e) => setRescheduleData({ ...rescheduleData, table_id: e.target.value })}
+                  className="w-full rounded-xl border border-gray-300 p-2.5 text-sm bg-white"
+                >
+                  {tables.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} · {t.capacity} seats ({t.status.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700">Reserved Date &amp; Time</label>
+                <Input
+                  type="datetime-local"
+                  value={rescheduleData.reserved_for}
+                  onChange={(e) => setRescheduleData({ ...rescheduleData, reserved_for: e.target.value })}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="ghost" onClick={() => setShowReschedule(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-[#D67B6B] text-white hover:bg-[#c26555]"
+                  disabled={saving || !rescheduleData.table_id}
+                  onClick={() => void handleReschedule()}
+                >
+                  {saving ? <Loader2 className="size-4 animate-spin" /> : <ArrowRightLeft className="size-4" />}
+                  Confirm Move
                 </Button>
               </div>
             </CardContent>

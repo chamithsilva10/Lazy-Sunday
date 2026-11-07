@@ -69,6 +69,7 @@ import { CoffeeProductsView } from "@/app/components/coffee/coffee-products-view
 import { CoffeeBillView } from "@/app/components/coffee/coffee-bill-view"
 import { CoffeeReportView } from "@/app/components/coffee/coffee-report-view"
 import { TablesWorkspace } from "@/app/components/tables-workspace"
+import { TableBookedWorkspace } from "@/app/components/table-booked-workspace"
 import { InventoryWorkspace } from "@/app/components/inventory-workspace"
 import { CustomerManagementView } from "@/app/components/customer-management-view"
 import { ReportsView, type ReportOrderRecord, type ReportProduct } from "@/app/components/reports-view"
@@ -89,6 +90,7 @@ type View =
   | "Kitchen"
   | "Bar"
   | "Orders"
+  | "TableBooked"
   | "Tables"
   | "Products"
   | "Inventory"
@@ -280,6 +282,7 @@ const coffeeNav: { label: View; title: string; icon: typeof Coffee; adminOnly?: 
 
 const managementNav: { label: View; title?: string; icon: typeof ClipboardList; requiredPermission?: string }[] = [
   { label: "Orders", icon: ClipboardList, requiredPermission: "orders.view" },
+  { label: "TableBooked", title: "Table Booked", icon: CalendarDays, requiredPermission: "orders.view" },
   { label: "Tables", icon: Table2, requiredPermission: "orders.view" },
   { label: "Products", icon: Package, requiredPermission: "products.view" },
   { label: "Inventory", icon: Package, requiredPermission: "inventory.view" },
@@ -6157,10 +6160,18 @@ function ManagementView({
       )}
 
       {/* ========================================================= */}
-      {/* 4. TABLES MANAGEMENT VIEW                                 */}
+      {/* 4. TABLES & BOOKINGS MANAGEMENT VIEW                      */}
       {/* ========================================================= */}
+      {view === "TableBooked" && (
+        <TableBookedWorkspace onNavigateToTables={() => setView("Tables")} />
+      )}
+
       {view === "Tables" && (
-        <TablesWorkspace role={role} onStartOrder={onSelectTableAndStartOrder} />
+        <TablesWorkspace
+          role={role}
+          onStartOrder={onSelectTableAndStartOrder}
+          onNavigateToBooked={() => setView("TableBooked")}
+        />
       )}
 
       {/* ========================================================= */}

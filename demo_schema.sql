@@ -99,6 +99,23 @@ CREATE TABLE IF NOT EXISTS table_sessions (
   FOREIGN KEY (table_id) REFERENCES pos_tables(id)
 );
 
+CREATE TABLE IF NOT EXISTS reservations (
+  id TEXT PRIMARY KEY,
+  customer_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  party_size INTEGER NOT NULL DEFAULT 2,
+  reserved_for TEXT NOT NULL,
+  duration_minutes INTEGER NOT NULL DEFAULT 90,
+  table_id TEXT,
+  table_name TEXT,
+  status TEXT NOT NULL DEFAULT 'confirmed', -- 'pending' | 'confirmed' | 'arrived' | 'seated' | 'completed' | 'cancelled' | 'no_show'
+  special_requests TEXT DEFAULT '',
+  source TEXT DEFAULT 'staff',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (table_id) REFERENCES pos_tables(id)
+);
+
 -- 5. Customers & CRM
 CREATE TABLE IF NOT EXISTS customers (
   id TEXT PRIMARY KEY,

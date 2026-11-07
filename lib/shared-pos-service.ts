@@ -24,9 +24,9 @@ export interface SharedBooking {
   party_size: number
   reserved_for: string
   duration_minutes: number
-  table_id: string
+  table_id?: string
   table_name: string
-  status: "confirmed" | "arrived" | "completed" | "cancelled" | "no_show"
+  status: "pending" | "confirmed" | "arrived" | "seated" | "completed" | "cancelled" | "no_show"
   special_requests?: string
   source?: string
   created_at?: string
@@ -1430,6 +1430,7 @@ export class SharedPosService {
       this.emitBookings()
       this.emitSessions()
     } catch {}
+    void this.refreshFromApi()
   }
 
   private static reloadProductsAndCategories() {
@@ -1688,9 +1689,75 @@ export class SharedPosService {
     return this.tablesCache
   }
 
+  static async refreshFromApi(): Promise<void> {
+    if (!this.isBrowser()) return
+    try {
+      const [tableRes, bookingRes] = await Promise.all([
+        fetch("/api/tables").then((r) => r.json()).catch(() => null),
+        fetch("/api/tables/bookings").then((r) => r.json()).catch(() => null),
+      ])
+
+      if (tableRes && tableRes.success && Array.isArray(tableRes.tables)) {
+        this.tablesCache = tableRes.tables.map((r: any) => ({
+          id: String(r.id),
+          name: r.name,
+          capacity: Number(r.capacity) || 2,
+          status: r.status,
+          guestName: r.guestName,
+          occupiedAt: r.occupiedAt,
+          bookingId: r.bookingId,
+          department: r.department,
+          orderNumber: r.orderNumber,
+          orderTotal: r.orderTotal,
+        }))
+        localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
+        this.emitTables()
+      }
+
+      if (bookingRes && bookingRes.success && Array.isArray(bookingRes.reservations)) {
+        this.bookingsCache = bookingRes.reservations.map((b: any) => ({
+          id: String(b.id),
+          customer_name: b.customer_name,
+          phone: b.phone,
+          party_size: Number(b.party_size) || 2,
+          reserved_for: b.reserved_for,
+          duration_minutes: Number(b.duration_minutes) || 90,
+          table_id: String(b.table_id || ""),
+          table_name: b.table_name || this.tablesCache.find((t) => t.id === String(b.table_id))?.name || "Table",
+          status: b.status,
+          special_requests: b.special_requests || "",
+          source: b.source || "staff",
+          created_at: b.created_at,
+        }))
+        localStorage.setItem(BOOKINGS_KEY, JSON.stringify(this.bookingsCache))
+        this.emitBookings()
+      }
+
+      if (tableRes && tableRes.sessions && Array.isArray(tableRes.sessions)) {
+        this.sessionsCache = tableRes.sessions.map((s: any) => ({
+          id: String(s.id),
+          table_id: String(s.table_id),
+          table_name: this.tablesCache.find((t) => t.id === String(s.table_id))?.name || "Table",
+          customer_name: s.customer_name,
+          phone: s.phone,
+          guest_count: Number(s.guest_count) || 2,
+          seated_at: s.seated_at,
+          status: s.status,
+          notes: s.notes || "",
+        }))
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache))
+        this.emitSessions()
+      }
+    } catch {}
+  }
+
   static async refresh(): Promise<void> {
     this.init()
-    if (!isSupabaseConfigured() || !this.isBrowser()) return
+    if (!this.isBrowser()) return
+    if (!isSupabaseConfigured()) {
+      await this.refreshFromApi()
+      return
+    }
     const now = Date.now()
     if (this.isRefreshing || now - this.lastRefreshTime < 2500) return
     this.isRefreshing = true
@@ -1890,6 +1957,21 @@ export class SharedPosService {
     const table = this.tablesCache.find((t) => sameName(t.name, tableName))
     if (!table) return
 
+    if (this.isBrowser()) {
+      try {
+        const res = await fetch("/api/tables", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "release", tableId: table.id, tableName: table.name }),
+        })
+        const data = await res.json()
+        await this.refreshFromApi()
+        this.broadcast("tables")
+        this.broadcast("sessions")
+        return data.status || "available"
+      } catch {}
+    }
+
     this.tablesCache = this.tablesCache.map((t) =>
       sameName(t.name, tableName)
         ? {
@@ -1923,13 +2005,6 @@ export class SharedPosService {
     this.broadcast("sessions")
 
     try {
-      if (this.isBrowser()) {
-        fetch("/api/tables", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tableId: table.id, tableName: table.name, status: "available" }),
-        }).catch(() => {})
-      }
       const supabase = createClient()
       void supabase.from("pos_tables").update({ status: "available" }).eq("id", table.id)
       void supabase
@@ -1938,6 +2013,7 @@ export class SharedPosService {
         .eq("table_id", table.id)
         .in("status", ["open", "bill_requested"])
     } catch {}
+    return "available"
   }
 
   static async setTableStatus(tableIdOrName: string, status: SharedTable["status"]) {
@@ -2021,73 +2097,117 @@ export class SharedPosService {
 
   static async addBooking(booking: Omit<SharedBooking, "id">) {
     this.init()
+    if (this.isBrowser()) {
+      const res = await fetch("/api/tables/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create", ...booking }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to create booking")
+      }
+      await this.refreshFromApi()
+      this.broadcast("bookings")
+      this.broadcast("tables")
+      return data.reservation
+    }
+
     const newBooking: SharedBooking = {
       ...booking,
       id: "res-" + Date.now(),
       created_at: new Date().toISOString(),
     }
     this.bookingsCache = [newBooking, ...this.bookingsCache]
-
-    // Mark table as reserved
-    const targetTable = this.tablesCache.find((t) => t.id === newBooking.table_id || sameName(t.name, newBooking.table_name))
-    if (targetTable) {
-      this.tablesCache = this.tablesCache.map((t) =>
-        t.id === targetTable.id
-          ? {
-              ...t,
-              status: t.status === "available" ? ("reserved" as const) : t.status,
-              guestName: newBooking.customer_name,
-              occupiedAt: newBooking.reserved_for,
-              bookingId: newBooking.id,
-            }
-          : t,
-      )
-      if (this.isBrowser() && targetTable.status !== "occupied" && targetTable.status !== "bill_requested") {
-        try {
-          void fetch("/api/tables", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              tableId: targetTable.id,
-              tableName: targetTable.name,
-              status: "reserved",
-            }),
-          })
-        } catch {}
-      }
-    }
-
-    localStorage.setItem(BOOKINGS_KEY, JSON.stringify(this.bookingsCache))
-    localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
-    this.emitBookings()
-    this.emitTables()
-    this.broadcast("bookings")
-    this.broadcast("tables")
-
-    if (isSupabaseConfigured()) {
-      try {
-        const supabase = createClient()
-        await supabase.from("reservations").insert({
-          id: newBooking.id,
-          customer_name: newBooking.customer_name,
-          phone: newBooking.phone,
-          party_size: newBooking.party_size,
-          reserved_for: newBooking.reserved_for,
-          duration_minutes: newBooking.duration_minutes,
-          table_id: newBooking.table_id,
-          table_name: newBooking.table_name,
-          special_requests: newBooking.special_requests || "",
-          status: newBooking.status,
-          source: newBooking.source || "staff",
-        })
-        await this.refresh()
-      } catch {}
-    }
     return newBooking
+  }
+
+  static async updateBooking(id: string, updates: Partial<SharedBooking>) {
+    this.init()
+    if (this.isBrowser()) {
+      const res = await fetch("/api/tables/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update", id, ...updates }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to update booking")
+      }
+      await this.refreshFromApi()
+      this.broadcast("bookings")
+      this.broadcast("tables")
+      return data.reservation
+    }
+  }
+
+  static async rescheduleBooking(id: string, tableId: string, tableName: string, reservedFor: string, durationMinutes?: number) {
+    return this.updateBooking(id, {
+      table_id: tableId,
+      table_name: tableName,
+      reserved_for: reservedFor,
+      duration_minutes: durationMinutes,
+    })
+  }
+
+  static async seatBooking(id: string, guestCount?: number) {
+    this.init()
+    if (this.isBrowser()) {
+      const res = await fetch("/api/tables/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "seat", id, guestCount }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to seat booking")
+      }
+      await this.refreshFromApi()
+      this.broadcast("bookings")
+      this.broadcast("tables")
+      this.broadcast("sessions")
+      return data.session
+    }
+  }
+
+  static async seatWalkIn(tableNameOrId: string, guestInfo?: { customer_name?: string; phone?: string; guest_count?: number; notes?: string }) {
+    this.init()
+    if (this.isBrowser()) {
+      const res = await fetch("/api/tables", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "seat", tableName: tableNameOrId, guestInfo }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to seat walk-in guests")
+      }
+      await this.refreshFromApi()
+      this.broadcast("tables")
+      this.broadcast("sessions")
+      return data.session
+    }
   }
 
   static async updateBookingStatus(id: string, status: SharedBooking["status"]) {
     this.init()
+    if (this.isBrowser()) {
+      const action = status === "cancelled" ? "cancel" : "status"
+      const res = await fetch("/api/tables/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, id, status }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to update booking status")
+      }
+      await this.refreshFromApi()
+      this.broadcast("bookings")
+      this.broadcast("tables")
+      return
+    }
+
     const targetBooking = this.bookingsCache.find((b) => b.id === id)
     this.bookingsCache = this.bookingsCache.map((b) => (b.id === id ? { ...b, status } : b))
     if (status === "cancelled" || status === "no_show" || status === "completed") {
@@ -2106,19 +2226,6 @@ export class SharedPosService {
         }
         return t
       })
-      if (targetBooking && this.isBrowser()) {
-        try {
-          void fetch("/api/tables", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              tableId: targetBooking.table_id,
-              tableName: targetBooking.table_name,
-              status: "available",
-            }),
-          })
-        } catch {}
-      }
     }
     localStorage.setItem(BOOKINGS_KEY, JSON.stringify(this.bookingsCache))
     localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))

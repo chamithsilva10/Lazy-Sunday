@@ -42,6 +42,26 @@ export function getDemoSqliteDb() {
     dbInstance.exec("PRAGMA journal_mode = WAL;")
     dbInstance.exec("PRAGMA foreign_keys = ON;")
 
+    // Ensure reservations table exists
+    dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS reservations (
+        id TEXT PRIMARY KEY,
+        customer_name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        party_size INTEGER NOT NULL DEFAULT 2,
+        reserved_for TEXT NOT NULL,
+        duration_minutes INTEGER NOT NULL DEFAULT 90,
+        table_id TEXT,
+        table_name TEXT,
+        status TEXT NOT NULL DEFAULT 'confirmed',
+        special_requests TEXT DEFAULT '',
+        source TEXT DEFAULT 'staff',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (table_id) REFERENCES pos_tables(id)
+      );
+    `)
+
     // Check if tables exist, otherwise run schema & seed
     const tableCheck = dbInstance
       .prepare("SELECT count(*) as cnt FROM sqlite_master WHERE type='table' AND name='pos_products'")
@@ -106,6 +126,19 @@ function initSchemaAndSeed(db: any) {
 // Typed Database Accessors
 // ---------------------------------------------------------------------------
 
+function normalizeTableName(name: string): string {
+  return (name || "").trim().toLowerCase().replace(/\btable\s*0+(\d+)\b/i, "table $1")
+}
+
+function findTableInDb(db: any, idOrName: string): any {
+  if (!idOrName) return null
+  const direct = db.prepare("SELECT * FROM pos_tables WHERE id = ? OR name = ? COLLATE NOCASE").get(idOrName, idOrName)
+  if (direct) return direct
+  const all = db.prepare("SELECT * FROM pos_tables").all() as any[]
+  const norm = normalizeTableName(idOrName)
+  return all.find((t: any) => normalizeTableName(t.name) === norm || t.id.toLowerCase() === norm) || null
+}
+
 export const DemoDbService = {
   getProducts(): MockProduct[] {
     const db = getDemoSqliteDb()
@@ -153,27 +186,469 @@ export const DemoDbService = {
     }))
   },
 
-  getTables(): MockTable[] {
+  getTables(): any[] {
     const db = getDemoSqliteDb()
     if (!db) return MOCK_TABLES
-    const rows = db.prepare("SELECT * FROM pos_tables ORDER BY name").all()
-    return rows.map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      capacity: Number(r.capacity),
-      status: r.status,
-      section: r.section,
-    }))
+    const rows = db.prepare("SELECT * FROM pos_tables ORDER BY name").all() as any[]
+    const now = Date.now()
+
+    return rows.map((r: any) => {
+      // Find active session
+      const session = db.prepare(
+        "SELECT * FROM table_sessions WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested') ORDER BY seated_at DESC LIMIT 1"
+      ).get(r.id, r.name) as any
+
+      // Find active or upcoming bookings
+      const bookings = db.prepare(
+        "SELECT * FROM reservations WHERE (table_id = ? OR table_name = ? COLLATE NOCASE) AND status IN ('pending', 'confirmed', 'arrived') ORDER BY reserved_for ASC"
+      ).all(r.id, r.name) as any[]
+
+      let heldBooking: any = null
+      let nextBooking: any = null
+
+      for (const b of bookings) {
+        const start = new Date(b.reserved_for).getTime() - 30 * 60000
+        const end = new Date(b.reserved_for).getTime() + (Number(b.duration_minutes) || 90) * 60000
+        if (b.status === "arrived" || (now >= start && now <= end)) {
+          if (!heldBooking) heldBooking = b
+        } else if (new Date(b.reserved_for).getTime() > now && !nextBooking) {
+          nextBooking = b
+        }
+      }
+
+      if (!nextBooking && bookings.length > 0) {
+        nextBooking = bookings.find((b) => new Date(b.reserved_for).getTime() > now) || null
+      }
+
+      let status = r.status
+      if (session) {
+        status = session.status === "bill_requested" ? "bill_requested" : "occupied"
+      } else if (heldBooking) {
+        status = "reserved"
+      }
+
+      return {
+        id: r.id,
+        name: r.name,
+        capacity: Number(r.capacity),
+        status,
+        section: r.section,
+        guestName: session?.customer_name || heldBooking?.customer_name || nextBooking?.customer_name || undefined,
+        occupiedAt: session?.seated_at || heldBooking?.reserved_for || undefined,
+        bookingId: heldBooking?.id || undefined,
+        activeSession: session ? {
+          id: session.id,
+          customer_name: session.customer_name,
+          phone: session.phone,
+          guest_count: session.guest_count,
+          seated_at: session.seated_at,
+          status: session.status,
+          notes: session.notes,
+        } : null,
+        heldBooking: heldBooking ? {
+          id: heldBooking.id,
+          customer_name: heldBooking.customer_name,
+          phone: heldBooking.phone,
+          party_size: heldBooking.party_size,
+          reserved_for: heldBooking.reserved_for,
+          duration_minutes: heldBooking.duration_minutes,
+          status: heldBooking.status,
+        } : null,
+        nextBooking: nextBooking ? {
+          id: nextBooking.id,
+          customer_name: nextBooking.customer_name,
+          phone: nextBooking.phone,
+          party_size: nextBooking.party_size,
+          reserved_for: nextBooking.reserved_for,
+          duration_minutes: nextBooking.duration_minutes,
+          status: nextBooking.status,
+        } : null,
+      }
+    })
   },
 
   updateTableStatus(tableId: string, status: string): boolean {
     const db = getDemoSqliteDb()
     if (!db) return false
     try {
-      db.prepare("UPDATE pos_tables SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? OR name = ?").run(status, tableId, tableId)
+      db.prepare("UPDATE pos_tables SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? OR name = ? COLLATE NOCASE").run(status, tableId, tableId)
       return true
     } catch {
       return false
+    }
+  },
+
+  checkBookingConflict(tableId: string, reservedFor: string, durationMinutes: number, excludeBookingId?: string): any | null {
+    const db = getDemoSqliteDb()
+    if (!db) return null
+    const start = new Date(reservedFor).getTime() - 30 * 60000
+    const end = new Date(reservedFor).getTime() + durationMinutes * 60000
+
+    const bookings = db.prepare(`
+      SELECT * FROM reservations
+      WHERE (table_id = ? OR table_name = (SELECT name FROM pos_tables WHERE id = ?))
+        AND status IN ('pending', 'confirmed', 'arrived')
+    `).all(tableId, tableId) as any[]
+
+    for (const b of bookings) {
+      if (excludeBookingId && b.id === excludeBookingId) continue
+      const bStart = new Date(b.reserved_for).getTime() - 30 * 60000
+      const bEnd = new Date(b.reserved_for).getTime() + (Number(b.duration_minutes) || 90) * 60000
+      if (start < bEnd && bStart < end) {
+        return b
+      }
+    }
+    return null
+  },
+
+  getReservations(statusFilter?: string[]): any[] {
+    const db = getDemoSqliteDb()
+    if (!db) return []
+    let query = "SELECT * FROM reservations"
+    const params: any[] = []
+    if (statusFilter && statusFilter.length > 0) {
+      const placeholders = statusFilter.map(() => "?").join(",")
+      query += ` WHERE status IN (${placeholders})`
+      params.push(...statusFilter)
+    }
+    query += " ORDER BY reserved_for ASC"
+    return db.prepare(query).all(...params) as any[]
+  },
+
+  getTableSessions(openOnly: boolean = true): any[] {
+    const db = getDemoSqliteDb()
+    if (!db) return []
+    let query = "SELECT * FROM table_sessions"
+    if (openOnly) {
+      query += " WHERE status IN ('open', 'bill_requested')"
+    }
+    query += " ORDER BY seated_at DESC"
+    return db.prepare(query).all() as any[]
+  },
+
+  recalculateTableStatus(tableIdOrName: string): any {
+    const db = getDemoSqliteDb()
+    if (!db) return null
+    const table = findTableInDb(db, tableIdOrName) as any
+    if (!table) return null
+
+    const session = db.prepare(
+      "SELECT * FROM table_sessions WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested') ORDER BY seated_at DESC LIMIT 1"
+    ).get(table.id, table.name) as any
+
+    let newStatus = "available"
+    if (session) {
+      newStatus = session.status === "bill_requested" ? "bill_requested" : "occupied"
+    } else {
+      const now = Date.now()
+      const reservations = db.prepare(
+        "SELECT * FROM reservations WHERE (table_id = ? OR table_name = ? COLLATE NOCASE) AND status IN ('pending', 'confirmed', 'arrived') ORDER BY reserved_for ASC"
+      ).all(table.id, table.name) as any[]
+
+      let isHeld = false
+      for (const res of reservations) {
+        if (res.status === "arrived") {
+          isHeld = true
+          break
+        }
+        const start = new Date(res.reserved_for).getTime() - 30 * 60000
+        const end = new Date(res.reserved_for).getTime() + (Number(res.duration_minutes) || 90) * 60000
+        if (now >= start && now <= end) {
+          isHeld = true
+          break
+        }
+      }
+
+      if (isHeld) {
+        newStatus = "reserved"
+      } else if (table.status === "cleaning") {
+        newStatus = "cleaning"
+      } else {
+        newStatus = "available"
+      }
+    }
+
+    db.prepare("UPDATE pos_tables SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(newStatus, table.id)
+    return { ...table, status: newStatus }
+  },
+
+  createReservation(data: {
+    customer_name: string
+    phone: string
+    party_size: number
+    reserved_for: string
+    duration_minutes?: number
+    table_id?: string
+    table_name?: string
+    special_requests?: string
+    source?: string
+  }): { success: boolean; reservation?: any; error?: string } {
+    const db = getDemoSqliteDb()
+    if (!db) return { success: false, error: "Database not available" }
+
+    try {
+      const duration = Number(data.duration_minutes) || 90
+      const partySize = Number(data.party_size) || 2
+      const startMs = new Date(data.reserved_for).getTime()
+      if (Number.isNaN(startMs)) {
+        return { success: false, error: "Invalid reservation time" }
+      }
+
+      let table: any = null
+      if (data.table_id || data.table_name) {
+        table = findTableInDb(db, data.table_id || data.table_name || "")
+      }
+
+      if (!table && data.table_id) {
+        return { success: false, error: `Table '${data.table_id}' not found` }
+      }
+
+      if (!table) {
+        const candidates = db.prepare(
+          "SELECT * FROM pos_tables WHERE capacity >= ? ORDER BY capacity ASC, name ASC"
+        ).all(partySize) as any[]
+
+        for (const cand of candidates) {
+          const clash = this.checkBookingConflict(cand.id, data.reserved_for, duration)
+          if (!clash) {
+            table = cand
+            break
+          }
+        }
+
+        if (!table) {
+          return { success: false, error: "No free table available for that party size and time" }
+        }
+      }
+
+      if (table.capacity < partySize) {
+        return { success: false, error: `${table.name} seats ${table.capacity} guests (party is ${partySize})` }
+      }
+
+      const conflict = this.checkBookingConflict(table.id, data.reserved_for, duration)
+      if (conflict) {
+        return {
+          success: false,
+          error: `${table.name} is already booked around that time by ${conflict.customer_name}`
+        }
+      }
+
+      const id = `res-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      const nowIso = new Date().toISOString()
+
+      db.prepare(`
+        INSERT INTO reservations (
+          id, customer_name, phone, party_size, reserved_for, duration_minutes,
+          table_id, table_name, status, special_requests, source, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?)
+      `).run(
+        id,
+        data.customer_name.trim(),
+        data.phone.trim(),
+        partySize,
+        data.reserved_for,
+        duration,
+        table.id,
+        table.name,
+        data.special_requests || "",
+        data.source || "staff",
+        nowIso,
+        nowIso
+      )
+
+      this.recalculateTableStatus(table.id)
+
+      const created = db.prepare("SELECT * FROM reservations WHERE id = ?").get(id)
+      return { success: true, reservation: created }
+    } catch (err: any) {
+      return { success: false, error: err.message || "Failed to create reservation" }
+    }
+  },
+
+  updateReservation(id: string, updates: {
+    customer_name?: string
+    phone?: string
+    party_size?: number
+    reserved_for?: string
+    duration_minutes?: number
+    table_id?: string
+    table_name?: string
+    status?: string
+    special_requests?: string
+  }): { success: boolean; reservation?: any; error?: string } {
+    const db = getDemoSqliteDb()
+    if (!db) return { success: false, error: "Database not available" }
+
+    try {
+      const existing = db.prepare("SELECT * FROM reservations WHERE id = ?").get(id) as any
+      if (!existing) return { success: false, error: "Reservation not found" }
+
+      const oldTableId = existing.table_id
+      let targetTableId = oldTableId
+      let targetTableName = existing.table_name
+
+      if (updates.table_id || updates.table_name) {
+        const found = findTableInDb(db, updates.table_id || updates.table_name || "")
+        if (found) {
+          targetTableId = found.id
+          targetTableName = found.name
+        }
+      }
+
+      const reservedFor = updates.reserved_for || existing.reserved_for
+      const duration = updates.duration_minutes !== undefined ? Number(updates.duration_minutes) : existing.duration_minutes
+      const status = updates.status || existing.status
+
+      if (["pending", "confirmed", "arrived"].includes(status)) {
+        const conflict = this.checkBookingConflict(targetTableId, reservedFor, duration, id)
+        if (conflict) {
+          return {
+            success: false,
+            error: `${targetTableName} is already booked around that time by ${conflict.customer_name}`
+          }
+        }
+      }
+
+      db.prepare(`
+        UPDATE reservations SET
+          customer_name = COALESCE(?, customer_name),
+          phone = COALESCE(?, phone),
+          party_size = COALESCE(?, party_size),
+          reserved_for = ?,
+          duration_minutes = ?,
+          table_id = ?,
+          table_name = ?,
+          status = ?,
+          special_requests = COALESCE(?, special_requests),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(
+        updates.customer_name?.trim() || null,
+        updates.phone?.trim() || null,
+        updates.party_size !== undefined ? Number(updates.party_size) : null,
+        reservedFor,
+        duration,
+        targetTableId,
+        targetTableName,
+        status,
+        updates.special_requests !== undefined ? updates.special_requests : null,
+        id
+      )
+
+      if (oldTableId) this.recalculateTableStatus(oldTableId)
+      if (targetTableId && targetTableId !== oldTableId) this.recalculateTableStatus(targetTableId)
+
+      const updated = db.prepare("SELECT * FROM reservations WHERE id = ?").get(id)
+      return { success: true, reservation: updated }
+    } catch (err: any) {
+      return { success: false, error: err.message || "Failed to update reservation" }
+    }
+  },
+
+  cancelReservation(id: string): { success: boolean; error?: string } {
+    const db = getDemoSqliteDb()
+    if (!db) return { success: false, error: "Database not available" }
+    try {
+      const res = db.prepare("SELECT * FROM reservations WHERE id = ?").get(id) as any
+      if (!res) return { success: false, error: "Reservation not found" }
+
+      db.prepare("UPDATE reservations SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id)
+      if (res.table_id) {
+        this.recalculateTableStatus(res.table_id)
+      }
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message || "Failed to cancel reservation" }
+    }
+  },
+
+  seatReservation(id: string, guestCount?: number): { success: boolean; session?: any; error?: string } {
+    const db = getDemoSqliteDb()
+    if (!db) return { success: false, error: "Database not available" }
+    try {
+      const res = db.prepare("SELECT * FROM reservations WHERE id = ?").get(id) as any
+      if (!res) return { success: false, error: "Reservation not found" }
+
+      const table = findTableInDb(db, res.table_id || res.table_name) as any
+      if (!table) return { success: false, error: "Table assigned to reservation does not exist" }
+
+      const existingSession = db.prepare(
+        "SELECT * FROM table_sessions WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested')"
+      ).get(table.id, table.name)
+      if (existingSession) {
+        return { success: false, error: `Cannot seat: Table ${table.name} is already occupied` }
+      }
+
+      const sessionId = `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      const guests = guestCount || res.party_size || 2
+
+      db.prepare(`
+        INSERT INTO table_sessions (id, table_id, customer_name, phone, guest_count, seated_at, status, notes)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'open', ?)
+      `).run(sessionId, table.id, res.customer_name, res.phone, guests, res.special_requests || "Seated from reservation")
+
+      db.prepare("UPDATE reservations SET status = 'seated', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id)
+      db.prepare("UPDATE pos_tables SET status = 'occupied', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(table.id)
+
+      const session = db.prepare("SELECT * FROM table_sessions WHERE id = ?").get(sessionId)
+      return { success: true, session }
+    } catch (err: any) {
+      return { success: false, error: err.message || "Failed to seat reservation" }
+    }
+  },
+
+  seatWalkIn(tableIdOrName: string, guestInfo?: {
+    customer_name?: string
+    phone?: string
+    guest_count?: number
+    notes?: string
+  }): { success: boolean; session?: any; error?: string } {
+    const db = getDemoSqliteDb()
+    if (!db) return { success: false, error: "Database not available" }
+    try {
+      const table = findTableInDb(db, tableIdOrName) as any
+      if (!table) return { success: false, error: `Table '${tableIdOrName}' not found` }
+
+      const existingSession = db.prepare(
+        "SELECT * FROM table_sessions WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested')"
+      ).get(table.id, table.name)
+      if (existingSession) {
+        return { success: false, error: `Cannot seat: Table ${table.name} is already occupied` }
+      }
+
+      const sessionId = `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      const guests = guestInfo?.guest_count || 2
+      const customerName = guestInfo?.customer_name?.trim() || "Walk-in"
+
+      db.prepare(`
+        INSERT INTO table_sessions (id, table_id, customer_name, phone, guest_count, seated_at, status, notes)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'open', ?)
+      `).run(sessionId, table.id, customerName, guestInfo?.phone || null, guests, guestInfo?.notes || "Walk-in seated")
+
+      db.prepare("UPDATE pos_tables SET status = 'occupied', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(table.id)
+
+      const session = db.prepare("SELECT * FROM table_sessions WHERE id = ?").get(sessionId)
+      return { success: true, session }
+    } catch (err: any) {
+      return { success: false, error: err.message || "Failed to seat walk-in guests" }
+    }
+  },
+
+  releaseTable(tableIdOrName: string): { success: boolean; status?: string; error?: string } {
+    const db = getDemoSqliteDb()
+    if (!db) return { success: false, error: "Database not available" }
+    try {
+      const table = findTableInDb(db, tableIdOrName) as any
+      if (!table) return { success: false, error: `Table '${tableIdOrName}' not found` }
+
+      db.prepare(
+        "UPDATE table_sessions SET status = 'closed' WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested')"
+      ).run(table.id, table.name)
+
+      const updated = this.recalculateTableStatus(table.id)
+      return { success: true, status: updated?.status || "available" }
+    } catch (err: any) {
+      return { success: false, error: err.message || "Failed to release table" }
     }
   },
 
@@ -395,6 +870,8 @@ export const DemoDbService = {
         DELETE FROM pos_orders;
         DELETE FROM pos_products;
         DELETE FROM pos_categories;
+        DELETE FROM reservations;
+        DELETE FROM table_sessions;
         DELETE FROM pos_tables;
         DELETE FROM customers;
         DELETE FROM app_users;
