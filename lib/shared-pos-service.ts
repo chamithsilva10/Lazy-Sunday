@@ -650,6 +650,9 @@ export class SharedPosService {
   private static branchListeners = new Set<Listener<SharedBranch[]>>()
   private static isRefreshing = false
   private static lastRefreshTime = 0
+  private static isRefreshingApi = false
+  private static lastApiRefreshTime = 0
+  private static apiRefreshPromise: Promise<void> | null = null
 
   private static emitCustomers() {
     const data = [...this.customersCache]
@@ -1430,7 +1433,6 @@ export class SharedPosService {
       this.emitBookings()
       this.emitSessions()
     } catch {}
-    void this.refreshFromApi()
   }
 
   private static reloadProductsAndCategories() {
@@ -1689,66 +1691,106 @@ export class SharedPosService {
     return this.tablesCache
   }
 
-  static async refreshFromApi(): Promise<void> {
+  static async refreshFromApi(force = false): Promise<void> {
     if (!this.isBrowser()) return
-    try {
-      const [tableRes, bookingRes] = await Promise.all([
-        fetch("/api/tables").then((r) => r.json()).catch(() => null),
-        fetch("/api/tables/bookings").then((r) => r.json()).catch(() => null),
-      ])
-
-      if (tableRes && tableRes.success && Array.isArray(tableRes.tables)) {
-        this.tablesCache = tableRes.tables.map((r: any) => ({
-          id: String(r.id),
-          name: r.name,
-          capacity: Number(r.capacity) || 2,
-          status: r.status,
-          guestName: r.guestName,
-          occupiedAt: r.occupiedAt,
-          bookingId: r.bookingId,
-          department: r.department,
-          orderNumber: r.orderNumber,
-          orderTotal: r.orderTotal,
-        }))
-        localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
-        this.emitTables()
+    const now = Date.now()
+    if (!force) {
+      if (this.isRefreshingApi && this.apiRefreshPromise) {
+        return this.apiRefreshPromise
       }
-
-      if (bookingRes && bookingRes.success && Array.isArray(bookingRes.reservations)) {
-        this.bookingsCache = bookingRes.reservations.map((b: any) => ({
-          id: String(b.id),
-          customer_name: b.customer_name,
-          phone: b.phone,
-          party_size: Number(b.party_size) || 2,
-          reserved_for: b.reserved_for,
-          duration_minutes: Number(b.duration_minutes) || 90,
-          table_id: String(b.table_id || ""),
-          table_name: b.table_name || this.tablesCache.find((t) => t.id === String(b.table_id))?.name || "Table",
-          status: b.status,
-          special_requests: b.special_requests || "",
-          source: b.source || "staff",
-          created_at: b.created_at,
-        }))
-        localStorage.setItem(BOOKINGS_KEY, JSON.stringify(this.bookingsCache))
-        this.emitBookings()
+      if (now - this.lastApiRefreshTime < 2500) {
+        return Promise.resolve()
       }
+    }
 
-      if (tableRes && tableRes.sessions && Array.isArray(tableRes.sessions)) {
-        this.sessionsCache = tableRes.sessions.map((s: any) => ({
-          id: String(s.id),
-          table_id: String(s.table_id),
-          table_name: this.tablesCache.find((t) => t.id === String(s.table_id))?.name || "Table",
-          customer_name: s.customer_name,
-          phone: s.phone,
-          guest_count: Number(s.guest_count) || 2,
-          seated_at: s.seated_at,
-          status: s.status,
-          notes: s.notes || "",
-        }))
-        localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache))
-        this.emitSessions()
+    this.isRefreshingApi = true
+    this.lastApiRefreshTime = now
+
+    this.apiRefreshPromise = (async () => {
+      try {
+        const [tableRes, bookingRes] = await Promise.all([
+          fetch("/api/tables").then((r) => r.json()).catch(() => null),
+          fetch("/api/tables/bookings").then((r) => r.json()).catch(() => null),
+        ])
+
+        let tablesChanged = false
+        let bookingsChanged = false
+        let sessionsChanged = false
+
+        if (tableRes && tableRes.success && Array.isArray(tableRes.tables)) {
+          const newTables = tableRes.tables.map((r: any) => ({
+            id: String(r.id),
+            name: r.name,
+            capacity: Number(r.capacity) || 2,
+            status: r.status,
+            guestName: r.guestName,
+            occupiedAt: r.occupiedAt,
+            bookingId: r.bookingId,
+            department: r.department,
+            orderNumber: r.orderNumber,
+            orderTotal: r.orderTotal,
+          }))
+          if (JSON.stringify(newTables) !== JSON.stringify(this.tablesCache)) {
+            this.tablesCache = newTables
+            try { localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache)) } catch {}
+            tablesChanged = true
+          }
+        }
+
+        if (bookingRes && bookingRes.success && Array.isArray(bookingRes.reservations)) {
+          const newBookings = bookingRes.reservations.map((b: any) => ({
+            id: String(b.id),
+            customer_name: b.customer_name,
+            phone: b.phone,
+            party_size: Number(b.party_size) || 2,
+            reserved_for: b.reserved_for,
+            duration_minutes: Number(b.duration_minutes) || 90,
+            table_id: String(b.table_id || ""),
+            table_name: b.table_name || this.tablesCache.find((t) => t.id === String(b.table_id))?.name || "Table",
+            status: b.status,
+            special_requests: b.special_requests || "",
+            source: b.source || "staff",
+            created_at: b.created_at,
+          }))
+          if (JSON.stringify(newBookings) !== JSON.stringify(this.bookingsCache)) {
+            this.bookingsCache = newBookings
+            try { localStorage.setItem(BOOKINGS_KEY, JSON.stringify(this.bookingsCache)) } catch {}
+            bookingsChanged = true
+          }
+        }
+
+        if (tableRes && tableRes.sessions && Array.isArray(tableRes.sessions)) {
+          const newSessions = tableRes.sessions.map((s: any) => ({
+            id: String(s.id),
+            table_id: String(s.table_id),
+            table_name: this.tablesCache.find((t) => t.id === String(s.table_id))?.name || "Table",
+            customer_name: s.customer_name,
+            phone: s.phone,
+            guest_count: Number(s.guest_count) || 2,
+            seated_at: s.seated_at,
+            status: s.status,
+            notes: s.notes || "",
+          }))
+          if (JSON.stringify(newSessions) !== JSON.stringify(this.sessionsCache)) {
+            this.sessionsCache = newSessions
+            try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache)) } catch {}
+            sessionsChanged = true
+          }
+        }
+
+        // Only emit if data ACTUALLY changed!
+        if (tablesChanged) this.emitTables()
+        if (bookingsChanged) this.emitBookings()
+        if (sessionsChanged) this.emitSessions()
+      } catch (err) {
+        console.error("refreshFromApi failed:", err)
+      } finally {
+        this.isRefreshingApi = false
+        this.apiRefreshPromise = null
       }
-    } catch {}
+    })()
+
+    return this.apiRefreshPromise
   }
 
   static async refresh(): Promise<void> {

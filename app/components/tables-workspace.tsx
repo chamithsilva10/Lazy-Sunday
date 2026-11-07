@@ -206,11 +206,7 @@ export function TablesWorkspace({
     return SharedPosService.subscribeOrders(setOrders)
   }, [])
 
-  const load = useCallback(async () => {
-    try {
-      await SharedPosService.refreshFromApi()
-    } catch {}
-
+  const syncFromCache = useCallback(() => {
     const sharedTables = SharedPosService.getTables()
     const sharedBookings = SharedPosService.getBookings()
     const sharedSessions = SharedPosService.getSessions()
@@ -252,51 +248,47 @@ export function TablesWorkspace({
     setLoadError(null)
   }, [])
 
+  const load = useCallback(async () => {
+    try {
+      await SharedPosService.refreshFromApi(true)
+    } catch {}
+    syncFromCache()
+  }, [syncFromCache])
+
   useEffect(() => {
-    void load()
+    // 1. Instant local sync from cache (zero layout shift / flicker)
+    syncFromCache()
 
-    const unsubTables = SharedPosService.subscribeTables(() => void load())
-    const unsubBookings = SharedPosService.subscribeBookings(() => void load())
-    const unsubSessions = SharedPosService.subscribeSessions(() => void load())
+    // 2. Fetch authoritative database state once in background
+    void SharedPosService.refreshFromApi(true).then(() => syncFromCache())
 
-    let syncTimer: any = null
-    const onRealtimeSync = () => {
-      if (syncTimer) clearTimeout(syncTimer)
-      syncTimer = setTimeout(() => void load(), 200)
-    }
-    window.addEventListener("pos_realtime_sync", onRealtimeSync)
-    window.addEventListener("pos_tables_updated", onRealtimeSync)
-    window.addEventListener("pos_sessions_updated", onRealtimeSync)
-    window.addEventListener("pos_bookings_updated", onRealtimeSync)
+    // 3. Subscribe to SharedPosService cache updates (pure state updates, NO recursive fetch!)
+    const unsubTables = SharedPosService.subscribeTables(() => syncFromCache())
+    const unsubBookings = SharedPosService.subscribeBookings(() => syncFromCache())
+    const unsubSessions = SharedPosService.subscribeSessions(() => syncFromCache())
 
-    const channel = supabase
-      .channel("tables-workspace")
-      .on("postgres_changes", { event: "*", schema: "public", table: "pos_tables" }, onRealtimeSync)
-      .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, onRealtimeSync)
-      .on("postgres_changes", { event: "*", schema: "public", table: "table_sessions" }, onRealtimeSync)
-      .subscribe()
-
+    // 4. Stable background polling at calm 15-second interval
     const timer = window.setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return
-      void load()
-    }, 12000)
-    const onVisible = () => document.visibilityState === "visible" && void load()
+      void SharedPosService.refreshFromApi(false).then(() => syncFromCache())
+    }, 15000)
+
+    // 5. Hydrate on tab focus
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void SharedPosService.refreshFromApi(true).then(() => syncFromCache())
+      }
+    }
     document.addEventListener("visibilitychange", onVisible)
 
     return () => {
       unsubTables()
       unsubBookings()
       unsubSessions()
-      if (syncTimer) clearTimeout(syncTimer)
-      window.removeEventListener("pos_realtime_sync", onRealtimeSync)
-      window.removeEventListener("pos_tables_updated", onRealtimeSync)
-      window.removeEventListener("pos_sessions_updated", onRealtimeSync)
-      window.removeEventListener("pos_bookings_updated", onRealtimeSync)
-      void supabase.removeChannel(channel)
       window.clearInterval(timer)
       document.removeEventListener("visibilitychange", onVisible)
     }
-  }, [load, supabase])
+  }, [syncFromCache])
 
   const sessionFor = (table: Table) =>
     sessions.find(
@@ -350,7 +342,12 @@ export function TablesWorkspace({
     const held = heldBookingFor(table)
     if (held) return "reserved"
 
-    if (table.status === "occupied" || table.status === "bill_requested" || table.status === "cleaning") {
+    if (
+      table.status === "occupied" ||
+      table.status === "bill_requested" ||
+      table.status === "cleaning" ||
+      table.status === "reserved"
+    ) {
       return table.status as any
     }
     return "available"
@@ -728,7 +725,7 @@ export function TablesWorkspace({
       <div className="flex flex-col gap-3 rounded-2xl border border-[#dce6d9] bg-white/90 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex size-2 rounded-full bg-[#808068] animate-pulse" />
+            <span className="inline-flex size-2 rounded-full bg-emerald-500 shadow-xs" />
             <p className="text-xs font-bold uppercase tracking-[.18em] text-[#808068]">Table Management</p>
           </div>
           <h2 className="font-serif text-2xl font-bold text-[#343428]">Tables &amp; Bookings</h2>
@@ -906,7 +903,7 @@ export function TablesWorkspace({
                 <button
                   key={table.id}
                   onClick={() => setSelected(table)}
-                  className={`min-h-[168px] rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                  className={`min-h-[168px] rounded-2xl border p-4 text-left shadow-xs transition-colors duration-150 hover:shadow-sm ${
                     statusStyles[status] || statusStyles.available
                   } ${selected?.id === table.id ? "ring-2 ring-[#D67B6B]" : ""}`}
                 >
