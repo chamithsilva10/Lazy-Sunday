@@ -5,6 +5,8 @@ import { isDemoMode } from "@/lib/config/demo"
 
 const publicPaths = new Set(["/auth/login", "/api/auth/login", "/api/auth/demo", "/api/auth/session", "/menu", "/api/tables"])
 const publicGetPrefixes = ["/api/coffee/products", "/api/coffee/bills", "/api/products", "/api/tables"]
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 
 function withSecurityHeaders(response: NextResponse) {
   response.headers.set("X-Content-Type-Options", "nosniff")

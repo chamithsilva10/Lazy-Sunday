@@ -16,7 +16,7 @@ type Reservation = {
   duration_minutes: number; table_id: string | null; table_name?: string; status: string; source: string; special_requests: string
 }
 type Session = {
-  id: string; table_id: string; customer_name: string; phone: string | null; guest_count: number
+  id: string; table_id: string; table_name?: string; customer_name: string; phone: string | null; guest_count: number
   seated_at: string; status: string; notes: string
 }
 
