@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 type Table = { id: string; name: string; capacity: number; status: string }
 type Reservation = {
   id: string; customer_name: string; phone: string; party_size: number; reserved_for: string
-  duration_minutes: number; table_id: string | null; status: string; source: string; special_requests: string
+  duration_minutes: number; table_id: string | null; table_name?: string; status: string; source: string; special_requests: string
 }
 type Session = {
   id: string; table_id: string; customer_name: string; phone: string | null; guest_count: number
@@ -87,6 +87,7 @@ export function TablesWorkspace({
   const [mergePrimary, setMergePrimary] = useState("")
   const [mergeSecondary, setMergeSecondary] = useState("")
   const [zoneFilter, setZoneFilter] = useState<"all" | "indoor" | "patio" | "bar">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "available" | "occupied" | "reserved" | "cleaning">("all")
 
   useEffect(() => {
     return SharedPosService.subscribeOrders(setOrders)
@@ -104,7 +105,7 @@ export function TablesWorkspace({
         supabase.from("pos_tables").select("id,name,capacity,status").order("name"),
         supabase
           .from("reservations")
-          .select("id,customer_name,phone,party_size,reserved_for,duration_minutes,table_id,status,source,special_requests")
+          .select("id,customer_name,phone,party_size,reserved_for,duration_minutes,table_id,table_name,status,source,special_requests")
           .in("status", ACTIVE_BOOKING)
           .order("reserved_for"),
         supabase
@@ -157,6 +158,7 @@ export function TablesWorkspace({
             reserved_for: b.reserved_for,
             duration_minutes: b.duration_minutes,
             table_id: b.table_id,
+            table_name: b.table_name || sharedTables.find((t) => t.id === b.table_id || t.name === b.table_id)?.name || "",
             status: b.status,
             source: b.source || "staff",
             special_requests: b.special_requests || "",
@@ -193,6 +195,7 @@ export function TablesWorkspace({
           reserved_for: b.reserved_for,
           duration_minutes: b.duration_minutes,
           table_id: b.table_id,
+          table_name: b.table_name || sharedTables.find((t) => t.id === b.table_id || t.name === b.table_id)?.name || "",
           status: b.status,
           source: b.source || "staff",
           special_requests: b.special_requests || "",
@@ -269,21 +272,51 @@ export function TablesWorkspace({
         (item.table_id === table.id || item.table_name?.toLowerCase() === table.name.toLowerCase()) &&
         item.status !== "closed"
     )
-  const bookingsFor = (table: Table) => reservations.filter((item) => item.table_id === table.id)
-  /** The booking that currently holds the table (starting soon or in progress). */
-  const heldBookingFor = (table: Table) => {
-    const now = Date.now()
-    return bookingsFor(table).find((item) => {
-      const window = bookingWindow(item)
-      return item.status === "arrived" || (now >= window.start && now <= window.end)
+  const bookingsFor = (table: Table) =>
+    reservations.filter((item) => {
+      if (item.table_id && (item.table_id === table.id || String(item.table_id) === String(table.id))) {
+        return true
+      }
+      if (item.table_name && table.name && item.table_name.trim().toLowerCase() === table.name.trim().toLowerCase()) {
+        return true
+      }
+      return false
     })
+
+  /** Any active or upcoming booking that holds or reserves this table */
+  const activeBookingFor = (table: Table) => {
+    const tableBookings = bookingsFor(table).filter((b) => ACTIVE_BOOKING.includes(b.status))
+    if (!tableBookings.length) return null
+
+    const now = Date.now()
+    // 1. Arrived or within holding window (starts 30m before until duration ends)
+    const current = tableBookings.find((b) => {
+      const window = bookingWindow(b)
+      return b.status === "arrived" || (now >= window.start && now <= window.end)
+    })
+    if (current) return current
+
+    // 2. Nearest upcoming booking that has not ended yet
+    const upcoming = tableBookings
+      .filter((b) => {
+        const window = bookingWindow(b)
+        return window.end > now
+      })
+      .sort((a, b) => new Date(a.reserved_for).getTime() - new Date(b.reserved_for).getTime())
+
+    return upcoming[0] || tableBookings[0] || null
   }
+
+  const heldBookingFor = (table: Table) => activeBookingFor(table)
+
   const statusFor = (table: Table): "available" | "occupied" | "reserved" | "cleaning" | "bill_requested" => {
     const session = sessionFor(table)
     if (session && session.status !== "closed") {
       return session.status === "bill_requested" ? "bill_requested" : "occupied"
     }
-    if (heldBookingFor(table)) return "reserved"
+    const booking = activeBookingFor(table)
+    if (booking) return "reserved"
+
     if (table.status === "occupied" || table.status === "bill_requested" || table.status === "cleaning" || table.status === "reserved") {
       return table.status
     }
@@ -292,6 +325,9 @@ export function TablesWorkspace({
 
   const visibleTables = tables.filter((table) => {
     const q = search.trim().toLowerCase()
+    const st = statusFor(table)
+    if (statusFilter !== "all" && st !== statusFilter) return false
+
     const matchesSearch =
       !q ||
       table.name.toLowerCase().includes(q) ||
@@ -299,8 +335,8 @@ export function TablesWorkspace({
       bookingsFor(table).some((b) => b.customer_name.toLowerCase().includes(q))
     if (!matchesSearch) return false
 
-    if (zoneFilter === "indoor") return !table.name.toLowerCase().includes("patio") && !table.name.toLowerCase().includes("bar")
-    if (zoneFilter === "patio") return table.name.toLowerCase().includes("patio") || table.name.toLowerCase().includes("garden") || Number(table.name.replace(/\D/g, "")) >= 5
+    if (zoneFilter === "indoor") return !table.name.toLowerCase().includes("patio") && !table.name.toLowerCase().includes("bar") && !table.name.toLowerCase().includes("terrace")
+    if (zoneFilter === "patio") return table.name.toLowerCase().includes("patio") || table.name.toLowerCase().includes("terrace") || table.name.toLowerCase().includes("garden") || Number(table.name.replace(/\D/g, "")) >= 7
     if (zoneFilter === "bar") return table.name.toLowerCase().includes("bar") || table.name.toLowerCase().includes("counter")
     return true
   })
@@ -308,7 +344,8 @@ export function TablesWorkspace({
   const counts = useMemo(() => {
     const tally = { available: 0, reserved: 0, occupied: 0, cleaning: 0, bill_requested: 0 } as Record<string, number>
     tables.forEach((table) => {
-      tally[statusFor(table)] = (tally[statusFor(table)] || 0) + 1
+      const st = statusFor(table)
+      tally[st] = (tally[st] || 0) + 1
     })
     return tally
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -504,7 +541,7 @@ export function TablesWorkspace({
     }
   }
 
-  async function setTableState(table: Table, status: "available" | "occupied" | "cleaning" | "bill_requested") {
+  async function setTableState(table: Table, status: "available" | "occupied" | "cleaning" | "reserved" | "bill_requested") {
     try {
       if (status === "available") {
         await SharedPosService.releaseTable(table.name)
@@ -550,7 +587,7 @@ export function TablesWorkspace({
   }
 
   const availableForSeating = tables.filter((table) => !sessionFor(table))
-  const tableName = (id: string | null) => tables.find((t) => t.id === id)?.name || "Unassigned"
+  const tableName = (id: string | null, name?: string | null) => name || tables.find((t) => t.id === id || t.name === id)?.name || "Unassigned"
 
   return (
     <div className="space-y-4">
@@ -613,10 +650,33 @@ export function TablesWorkspace({
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap gap-2 text-xs font-semibold">
-          {(["available", "occupied", "reserved", "cleaning"] as const).map((key) => (
-            <span key={key} className={`rounded-full border px-3 py-1.5 capitalize ${statusStyles[key]}`}>{counts[key] || 0} {key}</span>
-          ))}
+        <div className="flex flex-wrap gap-1.5 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+              statusFilter === "all"
+                ? "bg-[#343428] text-white border-[#343428] shadow-xs font-bold"
+                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            All ({tables.length})
+          </button>
+          {(["available", "occupied", "reserved", "cleaning"] as const).map((key) => {
+            const active = statusFilter === key
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setStatusFilter(active ? "all" : key)}
+                className={`rounded-full border px-3 py-1.5 text-xs capitalize transition-all ${
+                  statusStyles[key]
+                } ${active ? "ring-2 ring-[#D67B6B] font-bold shadow-xs scale-105" : "hover:opacity-90"}`}
+              >
+                {counts[key] || 0} {key}
+              </button>
+            )
+          })}
           <Badge className="rounded-full bg-[#FAF5F1] px-3 py-1.5 text-[#808068] border border-[#EAB8B5]">Live sync</Badge>
         </div>
       </div>
@@ -625,34 +685,59 @@ export function TablesWorkspace({
         {visibleTables.map((table) => {
           const status = statusFor(table)
           const session = sessionFor(table)
-          const booking = heldBookingFor(table) || bookingsFor(table)[0]
+          const booking = activeBookingFor(table)
           return (
             <button
               key={table.id}
               onClick={() => setSelected(table)}
-              className={`min-h-[168px] rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${statusStyles[status] || statusStyles.available} ${selected?.id === table.id ? "ring-2 ring-[#D67B6B]" : ""}`}
+              className={`min-h-[168px] rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                statusStyles[status] || statusStyles.available
+              } ${selected?.id === table.id ? "ring-2 ring-[#D67B6B]" : ""}`}
             >
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-lg font-bold">{table.name}</p>
                   <p className="text-xs opacity-70">Seats {table.capacity}</p>
                 </div>
-                <Badge className="bg-white/70 capitalize text-current">{status.replace("_", " ")}</Badge>
+                <Badge
+                  className={`capitalize font-semibold text-xs border ${
+                    status === "reserved"
+                      ? "bg-violet-100 text-violet-900 border-violet-300"
+                      : "bg-white/80 text-current border-transparent"
+                  }`}
+                >
+                  {status === "reserved" && booking
+                    ? `Booked ${formatTime(booking.reserved_for)}`
+                    : status.replace("_", " ")}
+                </Badge>
               </div>
               {session ? (
-                <div className="mt-6">
-                  <p className="font-semibold">{session.customer_name}</p>
-                  <p className="text-xs">{session.guest_count} guests · {minutesSince(session.seated_at)} min open</p>
+                <div className="mt-5 space-y-0.5">
+                  <p className="font-bold text-base truncate">{session.customer_name}</p>
+                  <p className="text-xs opacity-80">{session.guest_count} guests · {minutesSince(session.seated_at)} min open</p>
                 </div>
               ) : booking ? (
-                <div className="mt-6">
-                  <p className="font-semibold">Booked {formatTime(booking.reserved_for)}</p>
-                  <p className="text-xs">{booking.customer_name} · {booking.party_size} guests</p>
+                <div className="mt-5 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-violet-950 truncate">
+                    <CalendarDays className="size-4 shrink-0 text-violet-600" />
+                    <span>{booking.customer_name}</span>
+                  </div>
+                  <p className="text-xs text-violet-800 font-medium">
+                    {booking.party_size} guests · {booking.phone}
+                  </p>
+                  <p className="text-[11px] text-violet-600 font-medium">
+                    Booked for {formatTime(booking.reserved_for)} ({booking.duration_minutes} min)
+                  </p>
+                  {booking.special_requests && (
+                    <p className="text-[11px] text-violet-700/80 italic truncate">
+                      “{booking.special_requests}”
+                    </p>
+                  )}
                 </div>
               ) : status === "occupied" ? (
-                <div className="mt-6">
-                  <p className="font-semibold">Occupied</p>
-                  <p className="text-xs">Dine-in guests seated</p>
+                <div className="mt-5 space-y-0.5">
+                  <p className="font-bold text-base">Occupied</p>
+                  <p className="text-xs opacity-80">Dine-in guests seated</p>
                 </div>
               ) : (
                 <p className="mt-8 text-sm font-medium">{status === "cleaning" ? "Being cleaned" : "Ready for guests"}</p>
@@ -676,11 +761,11 @@ export function TablesWorkspace({
             <div key={booking.id} className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm">
                 <p className="font-semibold">{booking.customer_name} · {booking.party_size} guests</p>
-                <p className="text-xs text-muted-foreground">{formatTime(booking.reserved_for)} · {booking.duration_minutes} min · {tableName(booking.table_id)} · {booking.phone}</p>
+                <p className="text-xs text-muted-foreground">{formatTime(booking.reserved_for)} · {booking.duration_minutes} min · {tableName(booking.table_id, booking.table_name)} · {booking.phone}</p>
                 {booking.special_requests && <p className="text-xs text-muted-foreground">“{booking.special_requests}”</p>}
               </div>
               <div className="flex shrink-0 gap-2">
-                <Button size="sm" className="bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(tables.find((t) => t.id === booking.table_id) || null, booking)}>Seat now</Button>
+                <Button size="sm" className="bg-[#D67B6B] hover:bg-[#c26555] text-white" onClick={() => openSeat(tables.find((t) => t.id === booking.table_id || t.name === booking.table_name) || null, booking)}>Seat now</Button>
                 <Button size="sm" variant="outline" onClick={() => void updateBooking(booking, "no_show")}>No-show</Button>
                 <Button size="sm" variant="ghost" onClick={() => void updateBooking(booking, "cancelled")}>Cancel</Button>
               </div>
@@ -711,12 +796,12 @@ export function TablesWorkspace({
             {/* Quick Status Selector: Staff can directly update table status with 1 click */}
             <div className="rounded-2xl border border-[#E5D8CF] bg-white p-3 space-y-2">
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Update Table Status</p>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-5 gap-1">
                 <Button
                   size="sm"
                   type="button"
                   variant={statusFor(selected) === "available" ? "default" : "outline"}
-                  className={statusFor(selected) === "available" ? "bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8" : "text-xs h-8"}
+                  className={statusFor(selected) === "available" ? "bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] h-8 px-1" : "text-[11px] h-8 px-1"}
                   onClick={() => void setTableState(selected, "available")}
                 >
                   Available
@@ -725,7 +810,7 @@ export function TablesWorkspace({
                   size="sm"
                   type="button"
                   variant={statusFor(selected) === "occupied" ? "default" : "outline"}
-                  className={statusFor(selected) === "occupied" ? "bg-amber-600 hover:bg-amber-700 text-white text-xs h-8" : "text-xs h-8"}
+                  className={statusFor(selected) === "occupied" ? "bg-amber-600 hover:bg-amber-700 text-white text-[11px] h-8 px-1" : "text-[11px] h-8 px-1"}
                   onClick={() => void setTableState(selected, "occupied")}
                 >
                   Occupied
@@ -733,8 +818,17 @@ export function TablesWorkspace({
                 <Button
                   size="sm"
                   type="button"
+                  variant={statusFor(selected) === "reserved" ? "default" : "outline"}
+                  className={statusFor(selected) === "reserved" ? "bg-violet-600 hover:bg-violet-700 text-white text-[11px] h-8 px-1" : "text-[11px] h-8 px-1"}
+                  onClick={() => void setTableState(selected, "reserved")}
+                >
+                  Reserved
+                </Button>
+                <Button
+                  size="sm"
+                  type="button"
                   variant={statusFor(selected) === "cleaning" ? "default" : "outline"}
-                  className={statusFor(selected) === "cleaning" ? "bg-blue-600 hover:bg-blue-700 text-white text-xs h-8" : "text-xs h-8"}
+                  className={statusFor(selected) === "cleaning" ? "bg-blue-600 hover:bg-blue-700 text-white text-[11px] h-8 px-1" : "text-[11px] h-8 px-1"}
                   onClick={() => void setTableState(selected, "cleaning")}
                 >
                   Cleaning
@@ -743,7 +837,7 @@ export function TablesWorkspace({
                   size="sm"
                   type="button"
                   variant={statusFor(selected) === "bill_requested" ? "default" : "outline"}
-                  className={statusFor(selected) === "bill_requested" ? "bg-purple-600 hover:bg-purple-700 text-white text-xs h-8" : "text-xs h-8"}
+                  className={statusFor(selected) === "bill_requested" ? "bg-purple-600 hover:bg-purple-700 text-white text-[11px] h-8 px-1" : "text-[11px] h-8 px-1"}
                   onClick={() => void setTableState(selected, "bill_requested")}
                 >
                   Bill Req.
@@ -849,6 +943,120 @@ export function TablesWorkspace({
                     </Button>
                   )}
                 </div>
+              </>
+            ) : statusFor(selected) === "reserved" ? (
+              <>
+                {(() => {
+                  const b = activeBookingFor(selected) || bookingsFor(selected)[0]
+                  return (
+                    <div className="rounded-2xl border-2 border-violet-300 bg-violet-50/80 p-4 space-y-3 shadow-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-violet-200 rounded-xl text-violet-800">
+                            <CalendarDays className="size-5" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-violet-950 text-base leading-tight">
+                              {b?.customer_name || "Reserved Guest"}
+                            </p>
+                            <p className="text-xs text-violet-700">{b?.phone || "No phone provided"}</p>
+                          </div>
+                        </div>
+                        <Badge className="bg-violet-200 text-violet-900 border-violet-300 capitalize text-xs font-semibold px-2.5 py-0.5">
+                          {b?.status || "Reserved"}
+                        </Badge>
+                      </div>
+
+                      {b && (
+                        <div className="grid grid-cols-2 gap-2 text-xs bg-white/90 p-3 rounded-xl border border-violet-200 text-violet-950">
+                          <div>
+                            <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Party Size</span>
+                            <span className="font-bold text-sm">{b.party_size} Guests</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Reserved Time</span>
+                            <span className="font-bold text-sm">{formatTime(b.reserved_for)}</span>
+                          </div>
+                          <div className="col-span-2 pt-1.5 border-t border-violet-100 flex items-center justify-between text-[11px] text-gray-600">
+                            <span>Duration: {b.duration_minutes} minutes</span>
+                            {b.special_requests && (
+                              <span className="text-violet-800 italic truncate max-w-[200px]" title={b.special_requests}>
+                                “{b.special_requests}”
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Primary Action: Seat Guests Now */}
+                      <Button
+                        className="h-12 w-full bg-[#D67B6B] hover:bg-[#c26555] text-white font-semibold text-sm rounded-xl shadow-sm gap-2"
+                        onClick={() => openSeat(selected, b)}
+                        disabled={saving}
+                      >
+                        <Users className="size-4" /> Seat Guests Now
+                      </Button>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {b && b.status !== "arrived" ? (
+                          <Button
+                            variant="outline"
+                            className="h-10 rounded-xl border-violet-300 text-violet-800 hover:bg-violet-100 font-semibold text-xs"
+                            onClick={() => void updateBooking(b, "arrived")}
+                            disabled={saving}
+                          >
+                            Mark Arrived
+                          </Button>
+                        ) : b ? (
+                          <Button
+                            variant="outline"
+                            className="h-10 rounded-xl border-amber-300 text-amber-900 hover:bg-amber-50 font-semibold text-xs"
+                            onClick={() => void updateBooking(b, "no_show")}
+                            disabled={saving}
+                          >
+                            Mark No-show
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          className="h-10 rounded-xl border-rose-200 text-rose-700 hover:bg-rose-50 font-semibold text-xs"
+                          onClick={() => {
+                            if (b) {
+                              void updateBooking(b, "cancelled")
+                            } else {
+                              void setTableState(selected, "available")
+                            }
+                          }}
+                          disabled={saving}
+                        >
+                          Cancel Booking
+                        </Button>
+                      </div>
+
+                      {onStartOrder && (
+                        <Button
+                          variant="outline"
+                          className="h-10 w-full border-[#808068] text-[#808068] hover:bg-white rounded-xl gap-2 font-semibold text-xs"
+                          onClick={() => {
+                            if (b) void openSeat(selected, b)
+                            onStartOrder(selected.name)
+                          }}
+                        >
+                          <ShoppingBag className="size-4" /> Seat &amp; Start Dine-in Order in POS
+                        </Button>
+                      )}
+
+                      <Button
+                        variant="ghost"
+                        className="w-full text-xs text-gray-600 hover:text-gray-900"
+                        onClick={() => void setTableState(selected, "available")}
+                        disabled={saving}
+                      >
+                        Release Table to Available
+                      </Button>
+                    </div>
+                  )
+                })()}
               </>
             ) : (
               <>

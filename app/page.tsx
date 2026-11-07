@@ -146,6 +146,7 @@ export type TableInfo = {
   name: string
   capacity: number
   status: "available" | "occupied" | "cleaning" | "reserved" | "bill_requested"
+  guestName?: string
 }
 
 export type OrderRecord = {
@@ -503,7 +504,7 @@ export default function POSPage() {
   // Floor state is shared (Supabase + realtime) so POS, Tables and Coffee Bill always agree.
   const sharedTables = useSharedTables()
   const tables: TableInfo[] = useMemo(
-    () => sharedTables.map((t) => ({ id: t.id, name: t.name, capacity: t.capacity, status: t.status })),
+    () => sharedTables.map((t) => ({ id: t.id, name: t.name, capacity: t.capacity, status: t.status, guestName: t.guestName })),
     [sharedTables],
   )
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
@@ -4823,22 +4824,43 @@ function POSView({
 
             {/* Table / Delivery / Takeaway contextual info */}
             {orderType === "dine_in" && (
-              <div className="mt-2.5 flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-xl border border-[#E5D8CF]">
-                <div className="flex items-center gap-1.5">
-                  <Table2 className="size-3.5 text-[#808068]" />
-                  <span className="text-[11px] font-semibold text-gray-700">Table:</span>
+              <div className="mt-2.5 space-y-1">
+                <div className="flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-xl border border-[#E5D8CF]">
+                  <div className="flex items-center gap-1.5">
+                    <Table2 className="size-3.5 text-[#808068]" />
+                    <span className="text-[11px] font-semibold text-gray-700">Table:</span>
+                  </div>
+                  <select
+                    value={selectedTable}
+                    onChange={(e) => setSelectedTable(e.target.value)}
+                    className="h-7 rounded-lg border border-gray-300 bg-white px-2 text-xs font-bold text-gray-900 outline-none focus:ring-1 focus:ring-[#D67B6B]"
+                  >
+                    {tables.map((t: TableInfo) => (
+                      <option key={t.id} value={t.name}>
+                        {t.name} ({t.status.toUpperCase()})
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <select
-                  value={selectedTable}
-                  onChange={(e) => setSelectedTable(e.target.value)}
-                  className="h-7 rounded-lg border border-gray-300 bg-white px-2 text-xs font-bold text-gray-900 outline-none focus:ring-1 focus:ring-[#D67B6B]"
-                >
-                  {tables.map((t: TableInfo) => (
-                    <option key={t.id} value={t.name}>
-                      {t.name} ({t.status.toUpperCase()})
-                    </option>
-                  ))}
-                </select>
+                {(() => {
+                  const cur = tables.find((t: TableInfo) => t.name.toLowerCase() === selectedTable?.toLowerCase())
+                  if (cur?.status === "reserved") {
+                    return (
+                      <div className="flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg bg-violet-50 border border-violet-200 text-[10px] text-violet-800">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <CalendarDays className="size-3 text-violet-600 shrink-0" />
+                          <span className="font-semibold truncate">
+                            Reserved{cur.guestName ? `: ${cur.guestName}` : ""}
+                          </span>
+                        </div>
+                        <Badge className="bg-violet-200 text-violet-900 border-none text-[9px] px-1.5 py-0 uppercase font-bold shrink-0">
+                          Reserved
+                        </Badge>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
               </div>
             )}
 
@@ -5106,22 +5128,43 @@ function POSView({
 
           {/* Table Selector (for Dine-in) */}
           {orderType === "dine_in" && (
-            <div className="flex items-center justify-between gap-2 bg-[#FAF5F1] px-3 py-2 rounded-xl border border-[#E5D8CF]">
-              <div className="flex items-center gap-2">
-                <Table2 className="size-4 text-[#808068]" />
-                <span className="text-xs font-semibold text-gray-700">Dining Table:</span>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2 bg-[#FAF5F1] px-3 py-2 rounded-xl border border-[#E5D8CF]">
+                <div className="flex items-center gap-2">
+                  <Table2 className="size-4 text-[#808068]" />
+                  <span className="text-xs font-semibold text-gray-700">Dining Table:</span>
+                </div>
+                <select
+                  value={selectedTable}
+                  onChange={(e) => setSelectedTable(e.target.value)}
+                  className="h-8 rounded-lg border border-gray-300 bg-white px-2.5 text-xs font-bold text-gray-900 outline-none focus:ring-1 focus:ring-[#D67B6B]"
+                >
+                  {tables.map((t: TableInfo) => (
+                    <option key={t.id} value={t.name}>
+                      {t.name} ({t.status.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
               </div>
-              <select
-                value={selectedTable}
-                onChange={(e) => setSelectedTable(e.target.value)}
-                className="h-8 rounded-lg border border-gray-300 bg-white px-2.5 text-xs font-bold text-gray-900 outline-none focus:ring-1 focus:ring-[#D67B6B]"
-              >
-                {tables.map((t: TableInfo) => (
-                  <option key={t.id} value={t.name}>
-                    {t.name} ({t.status.toUpperCase()})
-                  </option>
-                ))}
-              </select>
+              {(() => {
+                const cur = tables.find((t: TableInfo) => t.name.toLowerCase() === selectedTable?.toLowerCase())
+                if (cur?.status === "reserved") {
+                  return (
+                    <div className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-lg bg-violet-50 border border-violet-200 text-[11px] text-violet-800">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <CalendarDays className="size-3.5 text-violet-600 shrink-0" />
+                        <span className="font-semibold truncate">
+                          Reserved{cur.guestName ? `: ${cur.guestName}` : ""}
+                        </span>
+                      </div>
+                      <Badge className="bg-violet-200 text-violet-900 border-none text-[9px] px-1.5 py-0 uppercase font-bold shrink-0">
+                        Reserved
+                      </Badge>
+                    </div>
+                  )
+                }
+                return null
+              })()}
             </div>
           )}
 

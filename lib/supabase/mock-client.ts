@@ -141,6 +141,9 @@ class MockQueryBuilder {
       emitMockRealtime("table_sessions", { eventType: "INSERT", new: arr[0] })
     } else if (this.tableName === "reservations") {
       for (const r of arr) {
+        if (!r.id) {
+          r.id = "res-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6)
+        }
         localReservations.unshift(r)
       }
       emitMockRealtime("reservations", { eventType: "INSERT", new: arr[0] })

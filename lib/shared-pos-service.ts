@@ -828,6 +828,28 @@ export class SharedPosService {
       this.bookingsCache = []
     }
 
+    // Sync table reserved status from active upcoming bookings
+    const now = Date.now()
+    for (const b of this.bookingsCache) {
+      const start = new Date(b.reserved_for).getTime()
+      const end = start + (b.duration_minutes || 90) * 60000
+      if (["pending", "confirmed", "arrived"].includes(b.status) && end > now) {
+        this.tablesCache = this.tablesCache.map((t) => {
+          const match = t.id === b.table_id || sameName(t.name, b.table_name)
+          if (match && t.status !== "occupied" && t.status !== "bill_requested") {
+            return {
+              ...t,
+              status: "reserved" as const,
+              guestName: b.customer_name,
+              occupiedAt: b.reserved_for,
+              bookingId: b.id,
+            }
+          }
+          return t
+        })
+      }
+    }
+
     // Sessions
     try {
       const rawSessions = localStorage.getItem(SESSIONS_KEY)
@@ -1690,15 +1712,16 @@ export class SharedPosService {
         for (const b of (bookings as any[]) || []) {
           const start = new Date(b.reserved_for).getTime()
           const end = start + (b.duration_minutes || 90) * 60000
-          if (b.status === "arrived" || (now >= start - 30 * 60000 && now <= end)) {
-            bookingByTable.set(String(b.table_id), b)
+          if (["pending", "confirmed", "arrived"].includes(b.status) && end > now) {
+            if (b.table_id) bookingByTable.set(String(b.table_id), b)
+            if (b.table_name) bookingByTable.set(b.table_name.toLowerCase(), b)
           }
         }
 
         const previous = new Map(this.tablesCache.map((t) => [t.id, t]))
         this.tablesCache = rows.map((row: any) => {
-          const session = sessionByTable.get(String(row.id))
-          const booking = bookingByTable.get(String(row.id))
+          const session = sessionByTable.get(String(row.id)) || sessionByTable.get(row.name.toLowerCase())
+          const booking = bookingByTable.get(String(row.id)) || bookingByTable.get(row.name.toLowerCase())
           const prev = previous.get(String(row.id))
 
           let status: SharedTable["status"] = "available"
@@ -1715,6 +1738,8 @@ export class SharedPosService {
                 (s) => (s.table_id === String(row.id) || sameName(s.table_name, row.name)) && s.status !== "closed"
               )
             status = hasActiveOrder ? "occupied" : "available"
+          } else if (row.status === "reserved" || prev?.status === "reserved") {
+            status = "reserved"
           }
 
           return {
@@ -1725,9 +1750,9 @@ export class SharedPosService {
             department: status === "occupied" ? prev?.department : undefined,
             orderNumber: status === "occupied" ? prev?.orderNumber : undefined,
             orderTotal: status === "occupied" ? prev?.orderTotal : undefined,
-            guestName: session?.customer_name || booking?.customer_name,
-            occupiedAt: session?.seated_at || (booking ? booking.reserved_for : undefined),
-            bookingId: booking?.id,
+            guestName: session?.customer_name || booking?.customer_name || (status === "reserved" ? prev?.guestName : undefined),
+            occupiedAt: session?.seated_at || (booking ? booking.reserved_for : (status === "reserved" ? prev?.occupiedAt : undefined)),
+            bookingId: booking?.id || (status === "reserved" ? prev?.bookingId : undefined),
           }
         })
         localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
@@ -1743,7 +1768,7 @@ export class SharedPosService {
           reserved_for: b.reserved_for,
           duration_minutes: Number(b.duration_minutes) || 90,
           table_id: String(b.table_id),
-          table_name: this.tablesCache.find((t) => t.id === String(b.table_id))?.name || "Table",
+          table_name: b.table_name || this.tablesCache.find((t) => t.id === String(b.table_id))?.name || "Table",
           status: b.status,
           special_requests: b.special_requests || "",
           source: b.source || "staff",
@@ -2003,20 +2028,33 @@ export class SharedPosService {
     }
     this.bookingsCache = [newBooking, ...this.bookingsCache]
 
-    // If booking is for right now or starting soon, mark table as reserved
+    // Mark table as reserved
     const targetTable = this.tablesCache.find((t) => t.id === newBooking.table_id || sameName(t.name, newBooking.table_name))
     if (targetTable) {
       this.tablesCache = this.tablesCache.map((t) =>
         t.id === targetTable.id
           ? {
               ...t,
-              status: t.status === "available" ? "reserved" : t.status,
+              status: t.status === "available" ? ("reserved" as const) : t.status,
               guestName: newBooking.customer_name,
               occupiedAt: newBooking.reserved_for,
               bookingId: newBooking.id,
             }
           : t,
       )
+      if (this.isBrowser() && targetTable.status !== "occupied" && targetTable.status !== "bill_requested") {
+        try {
+          void fetch("/api/tables", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tableId: targetTable.id,
+              tableName: targetTable.name,
+              status: "reserved",
+            }),
+          })
+        } catch {}
+      }
     }
 
     localStorage.setItem(BOOKINGS_KEY, JSON.stringify(this.bookingsCache))
@@ -2030,12 +2068,14 @@ export class SharedPosService {
       try {
         const supabase = createClient()
         await supabase.from("reservations").insert({
+          id: newBooking.id,
           customer_name: newBooking.customer_name,
           phone: newBooking.phone,
           party_size: newBooking.party_size,
           reserved_for: newBooking.reserved_for,
           duration_minutes: newBooking.duration_minutes,
           table_id: newBooking.table_id,
+          table_name: newBooking.table_name,
           special_requests: newBooking.special_requests || "",
           status: newBooking.status,
           source: newBooking.source || "staff",
@@ -2048,9 +2088,37 @@ export class SharedPosService {
 
   static async updateBookingStatus(id: string, status: SharedBooking["status"]) {
     this.init()
+    const targetBooking = this.bookingsCache.find((b) => b.id === id)
     this.bookingsCache = this.bookingsCache.map((b) => (b.id === id ? { ...b, status } : b))
     if (status === "cancelled" || status === "no_show" || status === "completed") {
-      this.tablesCache = this.tablesCache.map((t) => (t.bookingId === id && t.status === "reserved" ? { ...t, status: "available", bookingId: undefined } : t))
+      this.tablesCache = this.tablesCache.map((t) => {
+        const matches =
+          t.bookingId === id ||
+          (targetBooking && (t.id === targetBooking.table_id || sameName(t.name, targetBooking.table_name)))
+        if (matches && t.status === "reserved") {
+          return {
+            ...t,
+            status: "available" as const,
+            bookingId: undefined,
+            guestName: undefined,
+            occupiedAt: undefined,
+          }
+        }
+        return t
+      })
+      if (targetBooking && this.isBrowser()) {
+        try {
+          void fetch("/api/tables", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tableId: targetBooking.table_id,
+              tableName: targetBooking.table_name,
+              status: "available",
+            }),
+          })
+        } catch {}
+      }
     }
     localStorage.setItem(BOOKINGS_KEY, JSON.stringify(this.bookingsCache))
     localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
@@ -2061,7 +2129,10 @@ export class SharedPosService {
 
     if (isSupabaseConfigured()) {
       try {
-        await createClient().from("reservations").update({ status, updated_at: new Date().toISOString() }).eq("id", id)
+        await createClient()
+          .from("reservations")
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq("id", id)
       } catch {}
     }
   }
