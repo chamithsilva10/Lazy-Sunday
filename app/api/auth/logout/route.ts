@@ -10,10 +10,10 @@ export async function POST(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   const response = NextResponse.json({ success: true })
-  response.cookies.set(SESSION_COOKIE_NAME, "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "strict" })
-  response.cookies.set("pos-local-user", "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "strict" })
-  response.cookies.set("pos-staff-role", "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "strict" })
-  response.cookies.set("pos-staff-user", "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "strict" })
+  response.cookies.set(SESSION_COOKIE_NAME, "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "lax" })
+  response.cookies.set("pos-local-user", "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "lax" })
+  response.cookies.set("pos-staff-role", "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "lax" })
+  response.cookies.set("pos-staff-user", "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "lax" })
   response.headers.set("Cache-Control", "no-store")
 
   if (!url || !key) return response
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
         ...options,
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "lax",
       })),
     },
   })
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
   }
   await supabase.auth.signOut({ scope: "local" })
-  response.cookies.set(SESSION_COOKIE_NAME, "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "strict" })
+  response.cookies.set(SESSION_COOKIE_NAME, "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "lax" })
   response.headers.set("Cache-Control", "no-store")
   return response
 }

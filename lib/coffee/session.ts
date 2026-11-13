@@ -135,7 +135,7 @@ export function setSessionCookie(response: NextResponse, value: string) {
   response.cookies.set(SESSION_COOKIE_NAME, value, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",
     path: "/",
     maxAge: Math.floor(absoluteTimeoutMs / 1000),
   })

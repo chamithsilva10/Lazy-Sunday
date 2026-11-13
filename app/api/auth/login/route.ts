@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       path: "/",
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict" as const,
+      sameSite: "lax" as const,
       maxAge: 8 * 60 * 60,
     }
 
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
         path: "/",
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict" as const,
+        sameSite: "lax" as const,
         maxAge: 8 * 60 * 60,
       }
       success.cookies.set("pos-local-user", "true", cookieOptions)
@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
       ...options,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
     })
   })
   if (process.env.SESSION_COOKIE_SECRET && process.env.SESSION_COOKIE_SECRET.length >= 32) {

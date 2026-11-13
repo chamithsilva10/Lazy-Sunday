@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     ...options,
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",
   }))
   const sessionMarker = await refreshSessionMarker(request.cookies.get(SESSION_COOKIE_NAME)?.value)
   if (!sessionMarker) return NextResponse.json({ error: "Authentication required." }, { status: 401 })

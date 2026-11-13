@@ -14,8 +14,19 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+    if (event) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
     if (loading) return
+    if (!username.trim()) {
+      setError("Please enter your username.")
+      return
+    }
+    if (!password) {
+      setError("Please enter your password.")
+      return
+    }
     setLoading(true)
     setError("")
 
@@ -29,9 +40,10 @@ export default function LoginPage() {
         const result = await response.json().catch(() => ({}))
         if (!response.ok) {
           setError(result.error || "Invalid verification code.")
+          setLoading(false)
           return
         }
-        window.location.assign("/?view=POS")
+        window.location.replace("/?view=POS")
         return
       }
 
@@ -44,24 +56,22 @@ export default function LoginPage() {
       const result = await response.json().catch(() => ({}))
       if (!response.ok) {
         setError(result.error || "Invalid username or password.")
+        setLoading(false)
         return
       }
 
       if (result.mfaRequired) {
         setMfaRequired(true)
+        setLoading(false)
         return
       }
 
       // Role-based redirection: Kitchen -> /?view=Kitchen, everyone else -> /?view=POS
       const userRole = (result.role || "").toLowerCase()
-      if (userRole === "kitchen") {
-        window.location.assign("/?view=Kitchen")
-      } else {
-        window.location.assign("/?view=POS")
-      }
+      const targetUrl = userRole === "kitchen" ? "/?view=Kitchen" : "/?view=POS"
+      window.location.replace(targetUrl)
     } catch {
       setError("Unable to sign in right now. Please try again.")
-    } finally {
       setLoading(false)
     }
   }
@@ -111,7 +121,7 @@ export default function LoginPage() {
               <p className="mt-1 text-xs sm:text-sm text-[#808068]/80">Sign in to open your POS register & workspace.</p>
             </div>
 
-            <form action="#" method="POST" onSubmit={submit} className="flex flex-col gap-4">
+            <form onSubmit={submit} className="flex flex-col gap-4">
               <label className="flex flex-col gap-1.5 text-xs sm:text-sm font-semibold text-gray-700">
                 Username
                 <Input

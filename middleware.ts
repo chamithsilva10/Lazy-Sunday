@@ -46,7 +46,7 @@ function unauthenticatedResponse(request: NextRequest) {
     : NextResponse.redirect(new URL("/auth/login", request.url))
   request.cookies.getAll().forEach(({ name }) => {
     if (name === SESSION_COOKIE_NAME || name.startsWith("sb-")) {
-      response.cookies.set(name, "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "strict" })
+      response.cookies.set(name, "", { path: "/", maxAge: 0, httpOnly: true, sameSite: "lax" })
     }
   })
   return withSecurityHeaders(response)
@@ -99,7 +99,7 @@ export async function middleware(request: NextRequest) {
               ...options,
               httpOnly: true,
               secure: process.env.NODE_ENV === "production",
-              sameSite: "strict",
+              sameSite: "lax",
             }))
           },
         },
