@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("admin")
-  const [password, setPassword] = useState("Welcome123")
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
   const [mfaRequired, setMfaRequired] = useState(false)
   const [mfaCode, setMfaCode] = useState("")
   const [error, setError] = useState("")
@@ -101,7 +101,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="mb-4">
+            <div className="mb-6">
               <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
                 <span className="size-2 rounded-full bg-emerald-500" />
                 Online POS Terminal • Authoritative Database
@@ -109,42 +109,6 @@ export default function LoginPage() {
               <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#808068]">Staff access</p>
               <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold text-gray-900">Welcome to Lazy Sunday</h1>
               <p className="mt-1 text-xs sm:text-sm text-[#808068]/80">Sign in to open your POS register & workspace.</p>
-            </div>
-
-            {/* Quick Staff Account Selection */}
-            <div className="mb-5 rounded-2xl border border-[#E5D8CF] bg-[#FAF5F1]/60 p-3 sm:p-4">
-              <p className="text-[11px] font-bold text-[#808068] uppercase tracking-wider mb-2">
-                Quick Sign-in (Select Staff Account):
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {[
-                  { role: "Admin", user: "admin", desc: "Full Access" },
-                  { role: "Manager", user: "manager", desc: "Store Ops" },
-                  { role: "Cashier", user: "cashier", desc: "POS Register" },
-                  { role: "Kitchen", user: "kitchen", desc: "KDS Screen" },
-                  { role: "Staff", user: "staff", desc: "Dine-in Floor" },
-                ].map((account) => (
-                  <button
-                    key={account.user}
-                    type="button"
-                    onClick={() => {
-                      setUsername(account.user)
-                      setPassword("Welcome123")
-                      setError("")
-                    }}
-                    className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-all text-left flex flex-col justify-center ${
-                      username === account.user
-                        ? "bg-[#808068] text-white border-[#808068] shadow-xs scale-[1.02]"
-                        : "bg-white text-[#343428] border-[#E5D8CF] hover:border-[#808068]/60 hover:bg-white/80"
-                    }`}
-                  >
-                    <span className="font-bold">{account.role}</span>
-                    <span className={`text-[10px] ${username === account.user ? "text-white/80" : "text-[#808068]"}`}>
-                      @{account.user}
-                    </span>
-                  </button>
-                ))}
-              </div>
             </div>
 
             <form action="#" method="POST" onSubmit={submit} className="flex flex-col gap-4">
