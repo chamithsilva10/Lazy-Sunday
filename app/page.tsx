@@ -716,7 +716,7 @@ export default function POSPage() {
     try {
       const [{ data: ps }, { data: os }, { data: ts }, { data: cs }, { data: cbs }] = await Promise.all([
         supabase.from("pos_products").select("id,name,price,image,stock,category_id,active,is_archived,description,temperature,dietary_tags,department_override,station").eq("is_archived", false).order("sort_order").order("name"),
-        supabase.from("pos_orders").select("*").order("created_at", { ascending: false }),
+        supabase.from("pos_orders").select("*").order("created_at", { ascending: false }).limit(100),
         supabase.from("pos_tables").select("id,name,capacity,status").order("name"),
         supabase.from("pos_categories").select("id,name").eq("is_active", true).order("sort_order").order("name"),
         supabase.from("coffee_bills").select("*").order("created_at", { ascending: false }),
@@ -871,8 +871,8 @@ export default function POSPage() {
     let cloudCoffee: OrderRecord[] = []
     try {
       const [{ data, error }, { data: cbs }] = await Promise.all([
-        supabase.from("pos_orders").select("*").order("created_at", { ascending: false }),
-        supabase.from("coffee_bills").select("*").order("created_at", { ascending: false }),
+        supabase.from("pos_orders").select("*").order("created_at", { ascending: false }).limit(50),
+        supabase.from("coffee_bills").select("*").order("created_at", { ascending: false }).limit(50),
       ])
       if (!error && Array.isArray(data)) {
         cloudOrders = data.map(toOrderRecord)
@@ -1504,13 +1504,24 @@ export default function POSPage() {
     const selectedCust = customers.find((c) => c.id === selectedCustomerId)
 
     const isPayingExisting = Boolean(activeOpenOrder)
-    const { orderNum: generatedOrderNum, receiptNum: generatedReceiptNum, nextSeq } = getNextOrderNumberInfo()
-    if (!isPayingExisting) {
-      setOrderCount(nextSeq)
-    }
+    let orderNum = activeOpenOrder?.order_number || ""
+    let receiptNum = activeOpenOrder?.receipt_number || ""
 
-    const orderNum = isPayingExisting ? activeOpenOrder!.order_number : generatedOrderNum
-    const receiptNum = isPayingExisting ? (activeOpenOrder!.receipt_number || generatedReceiptNum) : generatedReceiptNum
+    if (!isPayingExisting) {
+      try {
+        const allocated = await SharedPosService.allocateNextOrderNumber()
+        orderNum = allocated.orderNumber
+        receiptNum = allocated.receiptNumber
+        setOrderCount(allocated.seq)
+      } catch {
+        const fallback = getNextOrderNumberInfo()
+        orderNum = fallback.orderNum
+        receiptNum = fallback.receiptNum
+        setOrderCount(fallback.nextSeq)
+      }
+    } else if (!receiptNum) {
+      receiptNum = `LS-RC-${orderNum.replace(/^LS-/, "")}`
+    }
 
     const purchasedItems: CartItem[] = cart.map((i) => ({
       ...i,
@@ -1597,138 +1608,54 @@ export default function POSPage() {
       created_at: isPayingExisting ? activeOpenOrder!.created_at : nowIso,
     }
 
-    // 1. Update database if Supabase connected
+    const idempotencyKey = `idem_${orderId}_${isPayingExisting ? "pay" : "create"}`
+
+    // 1. Authoritative transactional order persistence & atomic stock deduction
     try {
-      const insertPayload: any = {
-        order_number: orderNum,
-        receipt_number: receiptNum,
-        table_name: newOrderRecord.table_name || "Takeaway",
-        cashier_name: cashierName,
-        department: "Juice & Food",
-        order_type: orderType || "dine_in",
-        subtotal,
-        service_charge: serviceCharge,
-        service_charge_rate: serviceChargeRate || 0.1,
-        discount: discountNum,
-        tax: 0,
-        total,
-        payment_method: finalPaymentMethod,
-        split_payments: splitSummary || [],
-        cash_received: finalCashReceived,
-        change_amount: finalChangeAmount,
-        status: "paid",
-        payment_status: "paid",
-        notes: splitSummary && splitSummary.length > 0 ? JSON.stringify({ split_payments: splitSummary }) : "",
-        customer_name: selectedCustomerId ? (customers.find((c) => c.id === selectedCustomerId)?.name || "Walk-in") : "Walk-in",
-        source: "pos",
-        items: purchasedItems,
-        kitchen_status: newOrderRecord.kitchen_status,
-        bar_status: newOrderRecord.bar_status,
-        created_at: newOrderRecord.created_at,
-      }
-      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId)) {
-        insertPayload.id = orderId
-      }
-      let savedOrderId: string | undefined = undefined
-      try {
-        const { data: savedOrder, error } = await supabase.from("pos_orders").upsert(insertPayload, { onConflict: "order_number" }).select("id").maybeSingle()
-        if (savedOrder?.id) {
-          savedOrderId = savedOrder.id
-        } else if (error) {
-          console.warn("Supabase pos_orders upsert note:", error)
-          const fallbackPayload = { ...insertPayload }
-          delete fallbackPayload.split_payments
-          const { data: retryOrder } = await supabase.from("pos_orders").upsert(fallbackPayload, { onConflict: "order_number" }).select("id").maybeSingle()
-          if (retryOrder?.id) savedOrderId = retryOrder.id
-        }
-      } catch (upsertEx) {
-        console.warn("Supabase pos_orders exception note:", upsertEx)
-      }
+      const savedOrder = await SharedPosService.saveOrder({
+        ...newOrderRecord,
+        idempotency_key: idempotencyKey,
+        action: isPayingExisting ? "pay_tab" : "create_order",
+      })
+      if (savedOrder?.order_number) newOrderRecord.order_number = savedOrder.order_number
+      if (savedOrder?.receipt_number) newOrderRecord.receipt_number = savedOrder.receipt_number
+      if (savedOrder?.id) newOrderRecord.id = savedOrder.id
+    } catch (saveErr: any) {
+      console.error("Order payment transaction failed:", saveErr)
+      toast.error(saveErr?.message || "Failed to process payment. Please try again.")
+      return
+    }
 
-      if (savedOrderId) {
-        try {
-          void supabase.rpc("deduct_order_inventory", { p_order_id: savedOrderId })
-        } catch {}
+      // 2. Deduct Inventory stock for sold products ONLY if not already deducted on an open tab
+      if (!isPayingExisting) {
+        const updatedProducts = products.map((p) => {
+          const bought = purchasedItems.find((item) => item.id === p.id)
+          if (bought) {
+            const remaining = Math.max(0, p.stock - bought.quantity)
+            return { ...p, stock: remaining }
+          }
+          return p
+        })
+        setProducts(updatedProducts)
 
-        const kitchenItems = getStationItems(newOrderRecord, "kitchen")
-        const barItems = getStationItems(newOrderRecord, "bar")
-
-        if (kitchenItems.length > 0) {
-          void supabase.from("station_tickets").upsert(
-            {
-              order_id: savedOrderId,
-              ticket_number: `KOT-${orderNum}`,
-              station: "kitchen",
-              status: isPayingExisting ? (newOrderRecord.kitchen_status || "pending") : "pending",
-              notes: `Table: ${newOrderRecord.table_name || "Takeaway"}`,
-            },
-            { onConflict: "order_id,station" }
-          )
-        }
-
-        if (barItems.length > 0) {
-          void supabase.from("station_tickets").upsert(
-            {
-              order_id: savedOrderId,
-              ticket_number: `BOT-${orderNum}`,
-              station: "bar",
-              status: isPayingExisting ? (newOrderRecord.bar_status || "pending") : "pending",
-              notes: `Table: ${newOrderRecord.table_name || "Takeaway"}`,
-            },
-            { onConflict: "order_id,station" }
-          )
-        }
-
-        const orderItemsPayload = purchasedItems.map((item) => ({
-          order_id: savedOrderId,
-          product_id: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.id)
-            ? item.id
-            : null,
-          product_name_snapshot: item.name,
-          unit_price_snapshot: Number(item.price) || 0,
-          quantity: Number(item.quantity) || 1,
-          station: determineItemStation(item),
-          item_status: "pending",
-          notes: (item as any).notes || "",
+        // Record inventory movements
+        const newMovements = purchasedItems.map((item) => ({
+          id: String(Date.now() + Math.random()),
+          product_id: item.id,
+          product_name: item.name,
+          quantity_change: -item.quantity,
+          reason: `Sale #${orderNum}`,
+          created_at: nowIso,
         }))
-        if (orderItemsPayload.length > 0) {
-          void supabase.from("order_items").insert(orderItemsPayload)
-        }
+        setMovements((prev) => [...newMovements, ...prev])
       }
-    } catch (e) {
-      console.warn("Synced POS order to local state", e)
-    }
 
-    // 2. Deduct Inventory stock for sold products
-    const updatedProducts = products.map((p) => {
-      const bought = purchasedItems.find((item) => item.id === p.id)
-      if (bought) {
-        const remaining = Math.max(0, p.stock - bought.quantity)
-        return { ...p, stock: remaining }
+      // 3. Mark Table Status as OCCUPIED for dine-in tables (freed from Tables workspace when guests leave)
+      if (orderType === "dine_in" && selectedTable && selectedTable !== "Takeaway") {
+        void SharedPosService.occupyTable(selectedTable, "Juice & Food", orderNum, total)
       }
-      return p
-    })
-    setProducts(updatedProducts)
 
-    // Record inventory movements
-    const newMovements = purchasedItems.map((item) => ({
-      id: String(Date.now() + Math.random()),
-      product_id: item.id,
-      product_name: item.name,
-      quantity_change: -item.quantity,
-      reason: `Sale #${orderNum}`,
-      created_at: nowIso,
-    }))
-    setMovements((prev) => [...newMovements, ...prev])
-
-    // 3. Mark Table Status as OCCUPIED for dine-in tables (freed from Tables workspace when guests leave)
-    if (orderType === "dine_in" && selectedTable && selectedTable !== "Takeaway") {
-      void SharedPosService.occupyTable(selectedTable, "Juice & Food", orderNum, total)
-    }
-
-    // Save order in SharedPosService and state (instantly updates Orders and Reports across tabs)
-    void SharedPosService.saveOrder(newOrderRecord)
-    setOrders((prev) => [newOrderRecord, ...prev.filter((o) => o.id !== newOrderRecord.id && o.order_number !== newOrderRecord.order_number)])
+      setOrders((prev) => [newOrderRecord, ...prev.filter((o) => o.id !== newOrderRecord.id && o.order_number !== newOrderRecord.order_number)])
 
     // 4. Set receipt for thermal preview & reset cart & adjustments
     if (finalPaymentMethod === "cash" || (splitSummary && splitSummary.some((s: any) => s.method === "cash"))) {
@@ -1770,13 +1697,24 @@ export default function POSPage() {
     }
 
     const isUpdatingOpen = Boolean(activeOpenOrder)
-    const { orderNum: generatedOrderNum, receiptNum: generatedReceiptNum, nextSeq } = getNextOrderNumberInfo()
-    if (!isUpdatingOpen) {
-      setOrderCount(nextSeq)
-    }
+    let orderNum = activeOpenOrder?.order_number || ""
+    let receiptNum = activeOpenOrder?.receipt_number || ""
 
-    const orderNum = isUpdatingOpen ? activeOpenOrder!.order_number : generatedOrderNum
-    const receiptNum = isUpdatingOpen ? (activeOpenOrder!.receipt_number || generatedReceiptNum) : generatedReceiptNum
+    if (!isUpdatingOpen) {
+      try {
+        const allocated = await SharedPosService.allocateNextOrderNumber()
+        orderNum = allocated.orderNumber
+        receiptNum = allocated.receiptNumber
+        setOrderCount(allocated.seq)
+      } catch {
+        const fallback = getNextOrderNumberInfo()
+        orderNum = fallback.orderNum
+        receiptNum = fallback.receiptNum
+        setOrderCount(fallback.nextSeq)
+      }
+    } else if (!receiptNum) {
+      receiptNum = `LS-RC-${orderNum.replace(/^LS-/, "")}`
+    }
 
     const purchasedItems: CartItem[] = cart.map((i) => ({
       ...i,
@@ -1829,126 +1767,36 @@ export default function POSPage() {
       created_at: isUpdatingOpen ? activeOpenOrder!.created_at : nowIso,
     }
 
+    const idempotencyKey = `idem_${orderId}_send`
+
+    // 1. Authoritative transactional order persistence & station tickets creation
     try {
-      const insertPayload: any = {
-        order_number: orderNum,
-        receipt_number: receiptNum,
-        table_name: selectedTable,
-        cashier_name: cashierName,
-        customer_name: "Walk-in Guest",
-        department: "Juice & Food",
-        order_type: selectedTable && selectedTable !== "Takeaway" ? "dine_in" : "takeaway",
-        service_charge_rate: serviceChargeRate,
-        tax: 0,
-        subtotal,
-        service_charge: serviceCharge,
-        discount: discountNum,
-        total,
-        payment_method: "cash",
-        payment_status: "unpaid",
-        status: "open",
-        source: "pos",
-        items: purchasedItems,
-        kitchen_status: "pending",
-        bar_status: "pending",
-        created_at: newOrderRecord.created_at,
-      }
-      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId)) {
-        insertPayload.id = orderId
-      }
-      let savedOrderId: string | undefined = undefined
-      try {
-        const { data: savedOrder, error: saveErr } = await supabase
-          .from("pos_orders")
-          .upsert(insertPayload, { onConflict: "order_number" })
-          .select("id")
-          .maybeSingle()
-
-        if (savedOrder?.id) {
-          savedOrderId = savedOrder.id
-        } else if (saveErr) {
-          console.warn("Supabase pos_orders save note:", saveErr)
-          const fallbackPayload = { ...insertPayload }
-          delete fallbackPayload.split_payments
-          const { data: retryOrder } = await supabase
-            .from("pos_orders")
-            .upsert(fallbackPayload, { onConflict: "order_number" })
-            .select("id")
-            .maybeSingle()
-          if (retryOrder?.id) savedOrderId = retryOrder.id
-        }
-      } catch (upsertEx) {
-        console.warn("Supabase pos_orders save exception:", upsertEx)
-      }
-
-      if (savedOrderId) {
-        try {
-          void supabase.rpc("deduct_order_inventory", { p_order_id: savedOrderId })
-        } catch {}
-
-        const kitchenItems = getStationItems(newOrderRecord, "kitchen")
-        const barItems = getStationItems(newOrderRecord, "bar")
-
-        if (kitchenItems.length > 0) {
-          void supabase.from("station_tickets").upsert(
-            {
-              order_id: savedOrderId,
-              ticket_number: `KOT-${orderNum}`,
-              station: "kitchen",
-              status: "pending",
-              notes: `Table: ${selectedTable}`,
-            },
-            { onConflict: "order_id,station" }
-          )
-        }
-
-        if (barItems.length > 0) {
-          void supabase.from("station_tickets").upsert(
-            {
-              order_id: savedOrderId,
-              ticket_number: `BOT-${orderNum}`,
-              station: "bar",
-              status: "pending",
-              notes: `Table: ${selectedTable}`,
-            },
-            { onConflict: "order_id,station" }
-          )
-        }
-
-        const orderItemsPayload = purchasedItems.map((item) => ({
-          order_id: savedOrderId,
-          product_id: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.id)
-            ? item.id
-            : null,
-          product_name_snapshot: item.name,
-          unit_price_snapshot: Number(item.price) || 0,
-          quantity: Number(item.quantity) || 1,
-          station: isBarItem(item) ? "bar" : "kitchen",
-          item_status: "pending",
-          notes: (item as any).notes || "",
-        }))
-        if (orderItemsPayload.length > 0) {
-          void supabase.from("order_items").insert(orderItemsPayload)
-        }
-      }
-    } catch (e) {
-      console.warn("Saved open order to local state", e)
+      const savedOrder = await SharedPosService.saveOrder({
+        ...newOrderRecord,
+        idempotency_key: idempotencyKey,
+        action: isUpdatingOpen ? "add_items" : "send_kitchen",
+      })
+      if (savedOrder?.order_number) newOrderRecord.order_number = savedOrder.order_number
+      if (savedOrder?.receipt_number) newOrderRecord.receipt_number = savedOrder.receipt_number
+      if (savedOrder?.id) newOrderRecord.id = savedOrder.id
+    } catch (saveErr: any) {
+      console.error("Send to kitchen/bar failed:", saveErr)
+      toast.error(saveErr?.message || "Failed to send order to kitchen/bar. Please try again.")
+      return
     }
 
-    // Deduct inventory locally
-    setProducts((prev) =>
-      prev.map((p) => {
-        const bought = purchasedItems.find((it) => it.id === p.id)
-        return bought ? { ...p, stock: Math.max(0, p.stock - bought.quantity) } : p
-      }),
-    )
+      // Deduct inventory locally
+      setProducts((prev) =>
+        prev.map((p) => {
+          const bought = purchasedItems.find((it) => it.id === p.id)
+          return bought ? { ...p, stock: Math.max(0, p.stock - bought.quantity) } : p
+        }),
+      )
 
-    // Mark table occupied across POS, Tables, and Coffee screens
-    void SharedPosService.occupyTable(selectedTable, "Juice & Food", orderNum, total)
+      // Mark table occupied across POS, Tables, and Coffee screens
+      void SharedPosService.occupyTable(selectedTable, "Juice & Food", orderNum, total)
 
-    // Save order through SharedPosService so it syncs to Orders, Kitchen/Bar, and Reports views in real-time
-    void SharedPosService.saveOrder(newOrderRecord)
-    setOrders((prev) => [newOrderRecord, ...prev.filter((o) => o.id !== newOrderRecord.id && o.order_number !== newOrderRecord.order_number)])
+      setOrders((prev) => [newOrderRecord, ...prev.filter((o) => o.id !== newOrderRecord.id && o.order_number !== newOrderRecord.order_number)])
 
     // Set KOT ticket data and open KOT preview modal
     setKotTicketData(newOrderRecord)
@@ -4125,7 +3973,7 @@ export default function POSPage() {
               className="w-2/3 bg-[#D67B6B] hover:bg-[#c26555] text-white font-bold h-11 gap-1.5 sm:gap-2 rounded-xl text-xs sm:text-sm shadow-sm"
             >
               <Printer className="size-4 shrink-0" />
-              PRINT RECEIPT (4-INCH)
+              PRINT RECEIPT (80mm)
             </Button>
           </div>
         </DialogContent>
@@ -4238,70 +4086,122 @@ export default function POSPage() {
             const kotBarItems = getStationItems(kotTicketData, "bar")
 
             const renderTicketSlipChit = (items: typeof kotKitchenItems, station: "kitchen" | "bar") => {
-              const timeFormatted = new Date(kotTicketData.created_at || Date.now()).toLocaleTimeString("en-GB", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })
-              const dateFormatted = new Date(kotTicketData.created_at || Date.now()).toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })
+              const d = new Date(kotTicketData.created_at || Date.now())
+              const day = d.getDate().toString().padStart(2, "0")
+              const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+              const month = monthNames[d.getMonth()]
+              const year = d.getFullYear()
+              const hours = d.getHours().toString().padStart(2, "0")
+              const minutes = d.getMinutes().toString().padStart(2, "0")
+              const seconds = d.getSeconds().toString().padStart(2, "0")
+              const dateTimeFormatted = `${day} ${month} ${year} · ${hours}:${minutes}:${seconds}`
+
+              const orderNumClean = (kotTicketData.order_number || "").replace(/^LS-/, "")
+              const isTakeaway = (kotTicketData.table_name || "").toLowerCase() === "takeaway"
+              const tableNumOnly = kotTicketData.table_name ? kotTicketData.table_name.replace(/^(Table|Tab)\s*/i, "").trim() : "01"
+              const tableDisplay = isTakeaway
+                ? "TAKEAWAY"
+                : `DINE IN / TABLE ${tableNumOnly.length < 2 ? `0${tableNumOnly}` : tableNumOnly}`
 
               return (
-                <div className="bg-white border-2 border-black rounded-xl p-4 sm:p-5 shadow-sm font-mono text-xs text-black space-y-2.5 max-w-[340px] mx-auto select-none">
-                  {/* Header */}
-                  <div className="text-center">
-                    <p className="font-sans font-black text-sm sm:text-base tracking-wide uppercase leading-tight">
-                      *** {station === "bar" ? "BAR ORDER TICKET\n(BOT) ***" : "KITCHEN ORDER TICKET\n(KOT) ***"}
+                <div
+                  data-ticket="true"
+                  className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.06)] font-sans text-xs text-black space-y-2 max-w-[340px] mx-auto select-none print:w-[72mm] print:max-w-[72mm] print:border-none print:p-0 print:shadow-none"
+                >
+                  {/* Top Header matching reference image */}
+                  <div className="text-center space-y-1">
+                    {station === "bar" ? (
+                      <svg
+                        className="w-7 h-7 mx-auto text-black"
+                        viewBox="0 0 100 100"
+                        fill="currentColor"
+                        style={{ transform: "rotate(-22deg)" }}
+                      >
+                        <path d="M48,8 C28,10 14,28 14,50 C14,64 22,78 34,88 C38,82 40,72 40,62 C40,46 32,36 38,22 C41,15 45,10 48,8 Z" />
+                        <path d="M54,8 C56,12 58,18 56,26 C52,40 60,50 60,66 C60,76 56,86 52,92 C72,88 86,72 86,50 C86,30 72,12 54,8 Z" />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-6 h-6 mx-auto text-black"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>
+                      </svg>
+                    )}
+                    <h2 className="font-sans text-lg font-extrabold tracking-[0.16em] uppercase text-black pt-0.5">
+                      ABC COFFEE
+                    </h2>
+                    <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-black">
+                      {station === "bar" ? "BAR ORDER TICKET" : "KITCHEN ORDER TICKET"}
                     </p>
-                    <p className="text-[11px] font-bold tracking-widest text-black mt-1">LAZY SUNDAY POS</p>
+                    <p className="text-[10px] text-gray-700 tracking-wide">
+                      123, Main Street
+                    </p>
                   </div>
 
-                  <div className="border-t-[2.5px] border-black my-1" />
+                  <div className="border-t border-black my-2.5" />
 
                   {/* Metadata */}
-                  <div className="text-[11px] space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span>Order: <strong>{kotTicketData.order_number}</strong></span>
-                      <span className="bg-black text-white px-2.5 py-0.5 rounded font-sans font-black text-xs">
-                        {kotTicketData.table_name || "Takeaway"}
-                      </span>
+                  <div className="text-xs text-black space-y-0.5">
+                    <div className="font-extrabold tracking-wide uppercase text-sm">
+                      ORDER {orderNumClean}
                     </div>
-                    <div className="flex justify-between">
-                      <span>Date: {dateFormatted}</span>
-                      <span>Time: <strong>{timeFormatted}</strong></span>
+                    <div className="font-medium tracking-wider uppercase text-[11px]">
+                      {tableDisplay}
                     </div>
-                    <div className="flex justify-between">
-                      <span>Cashier: {kotTicketData.cashier_name || "System Administrator"}</span>
-                      <span>Station: <strong>{station.toUpperCase()}</strong></span>
+                    <div className="text-[11px] text-gray-800">
+                      {dateTimeFormatted}
+                    </div>
+                    <div className="text-[11px] text-gray-800">
+                      Server: {kotTicketData.cashier_name || "Admin"} · Station: <strong>{station.toUpperCase()}</strong>
                     </div>
                   </div>
 
+                  <div className="border-t border-black my-2.5" />
+
+                  {/* Column Header */}
+                  <div className="flex justify-between text-[11px] font-bold tracking-wider uppercase text-black pb-0.5">
+                    <span className="w-[14%]">QTY</span>
+                    <span className="flex-1 px-1">ITEM</span>
+                    <span className="w-[32%] text-right">NOTES</span>
+                  </div>
+
+                  <div className="border-t border-black my-1" />
+
                   {/* Items */}
-                  <div className="space-y-2 pt-1">
+                  <div className="py-1 space-y-1.5 text-xs text-black">
                     {items.map((it, idx) => (
-                      <div key={idx} className="pb-2 border-b border-dashed border-gray-400">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1 pr-2">
-                            <p className="font-bold text-sm text-black leading-tight">{it.name}</p>
-                            {it.category && <p className="text-[10px] text-gray-500 mt-0.5">{it.category}</p>}
-                            {it.notes && <p className="text-[10px] font-bold text-amber-700 mt-0.5">Note: {it.notes}</p>}
-                          </div>
-                          <span className="bg-gray-100 text-black px-2.5 py-1 rounded text-sm font-black font-mono">
-                            x{it.quantity}
-                          </span>
+                      <div key={idx} className="flex items-baseline justify-between py-0.5">
+                        <span className="w-[14%] font-bold text-sm">{it.quantity}</span>
+                        <div className="flex-1 px-1">
+                          <p className="font-bold text-sm leading-tight">{it.name}</p>
+                          {it.category && <p className="text-[10px] text-gray-600 mt-0.5">[{it.category}]</p>}
+                          {it.notes && (
+                            <p className="text-[10px] font-bold text-black border border-black px-1.5 py-0.5 rounded mt-1 inline-block uppercase">
+                              * Note: {it.notes} *
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
 
+                  <div className="border-t border-black my-2.5" />
+
                   {/* Summary & Footer */}
-                  <div className="border-t border-dashed border-black pt-1" />
-                  <div className="border-t border-dashed border-black pt-1.5 text-center space-y-0.5">
-                    <p className="text-[11px] text-gray-700">Total Station Items: {items.reduce((s, i) => s + (i.quantity || 1), 0)}</p>
-                    <p className="font-black text-xs tracking-wider uppercase">-- SENT TO {station.toUpperCase()} --</p>
+                  <div className="flex justify-between text-xs font-bold uppercase tracking-wider py-0.5">
+                    <span>TOTAL ITEMS</span>
+                    <span className="text-sm font-black">{items.reduce((s, i) => s + (i.quantity || 1), 0)}</span>
+                  </div>
+
+                  <div className="border-t border-black my-2.5" />
+
+                  <div className="text-center pt-1 space-y-1 text-black">
+                    <p className="text-xs font-medium">{station === "bar" ? "Good coffee. Good day." : "Good food. Good day."}</p>
+                    <p className="text-[10px] font-bold tracking-[0.35em] uppercase">
+                      O R D E R &nbsp; D I S P A T C H
+                    </p>
                   </div>
                 </div>
               )
@@ -6533,11 +6433,11 @@ function ManagementView({
             <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
               <Button
                 variant="outline"
-                onClick={() => toast.success("Printer test successful! 4-inch paper feed ready.")}
+                onClick={() => toast.success("Printer test successful! 80mm thermal paper feed ready.")}
                 className="rounded-xl h-10 text-xs gap-1.5"
               >
                 <Printer className="size-4" />
-                Test Thermal Printer
+                Test Thermal Printer (80mm)
               </Button>
               <Button
                 variant="outline"

@@ -5,19 +5,21 @@
 
 export function isDemoMode(): boolean {
   if (typeof process !== "undefined" && process.env) {
+    if (process.env.DEMO_MODE === "false" || process.env.NEXT_PUBLIC_DEMO_MODE === "false") {
+      return false
+    }
     if (process.env.DEMO_MODE === "true" || process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
       return true
     }
-    // If neither Supabase URL nor explicit production flags exist, default to safe demo mode
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("dysnpzrmppcmqdebgtzt")) {
-      // If user sets DEMO_MODE=false explicitly, permit production
-      if (process.env.DEMO_MODE === "false") {
-        return false
-      }
-      return true
+    // If Supabase URL or PostgreSQL URL is configured, run in authoritative online production mode
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.startsWith("http")) {
+      return false
+    }
+    if (process.env.POSTGRES_URL && process.env.POSTGRES_URL.startsWith("postgres")) {
+      return false
     }
   }
-  return true
+  return false
 }
 
 export const DEMO_CONFIG = {

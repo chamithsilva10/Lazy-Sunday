@@ -1598,7 +1598,7 @@ export function TablesWorkspace({
                   onClick={() => void updateSession("closed")}
                   disabled={saving}
                 >
-                  <Check className="size-4" /> Close Table (Customers Left · Mark Available)
+                  <Check className="size-4" /> Close Table (Guests Left · Mark Available)
                 </Button>
 
                 <div className="grid grid-cols-2 gap-2">

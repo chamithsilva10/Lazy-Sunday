@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeStaff, createStaffSupabaseClient, hasValidOrigin } from "@/lib/coffee/auth"
 import { determineItemStation } from "@/lib/station-routing"
-import { isDemoMode } from "@/lib/config/demo"
-import { MOCK_HISTORICAL_ORDERS } from "@/lib/mock/pos-mock-data"
-import { DemoDbService } from "@/lib/db/demo-sqlite"
+import { PosDatabase } from "@/lib/db/pos-database"
 
 export const dynamic = "force-dynamic"
 
@@ -55,10 +53,9 @@ const orderCreateSchema = z.object({
   change_amount: z.coerce.number().optional(),
   status: z.enum(["open", "paid", "completed", "refunded", "cancelled"]).default("paid"),
   notes: z.string().max(1000).optional(),
+  idempotency_key: z.string().optional(),
+  action: z.string().optional(),
 })
-
-// In-memory fallback for offline/development mode (Starts empty with 0 orders)
-const memoryOrders: any[] = []
 
 export async function GET(request: NextRequest) {
   const auth = await authorizeStaff(request, "cashier")
@@ -74,193 +71,156 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
     const limit = Math.max(1, Math.min(500, parseInt(searchParams.get("limit") || "50", 10)))
     const returnAll = searchParams.get("all") === "true"
-    const startDate = searchParams.get("startDate")
-    const endDate = searchParams.get("endDate")
-    const status = searchParams.get("status")
-    const station = searchParams.get("station") // "kitchen" | "bar"
-    const orderType = searchParams.get("order_type")
-    const paymentMethod = searchParams.get("payment_method")
-    const search = searchParams.get("search")?.trim().toLowerCase()
+    const startDate = searchParams.get("startDate") || undefined
+    const endDate = searchParams.get("endDate") || undefined
+    const status = searchParams.get("status") || undefined
+    const station = searchParams.get("station") || undefined
+    const orderType = searchParams.get("order_type") || undefined
+    const paymentMethod = searchParams.get("payment_method") || undefined
+    const search = searchParams.get("search")?.trim().toLowerCase() || undefined
 
     const supabase = createStaffSupabaseClient(request)
 
-    if (supabase && !isDemoMode()) {
-      // Build Supabase query with NO hidden default filters
-      let query = supabase
-        .from("pos_orders")
-        .select(
-          `
-          *,
-          order_items (
-            id,
-            product_id,
-            product_name_snapshot,
-            unit_price_snapshot,
-            quantity,
-            line_total,
-            notes,
-            station,
-            item_status,
-            created_at
-          ),
-          station_tickets (
-            id,
-            station,
-            status,
-            sent_at,
-            ready_at
+    if (supabase) {
+      try {
+        let query = supabase
+          .from("pos_orders")
+          .select(
+            `
+            *,
+            order_items (
+              id,
+              product_id,
+              product_name_snapshot,
+              unit_price_snapshot,
+              quantity,
+              line_total,
+              notes,
+              station,
+              item_status,
+              created_at
+            ),
+            station_tickets (
+              id,
+              station,
+              status,
+              sent_at,
+              ready_at,
+              served_at
+            )
+          `,
+            { count: "exact" }
           )
-        `,
-          { count: "exact" }
-        )
-        .order("created_at", { ascending: false })
+          .order("created_at", { ascending: false })
 
-      // Date Range Filters (inclusive start of day to end of day)
-      if (startDate) {
-        const startIso = new Date(`${startDate}T00:00:00.000Z`).toISOString()
-        query = query.gte("created_at", startIso)
-      }
-      if (endDate) {
-        const endIso = new Date(`${endDate}T23:59:59.999Z`).toISOString()
-        query = query.lte("created_at", endIso)
-      }
-
-      // Status Filter
-      if (status && status !== "all") {
-        if (status === "active") {
-          query = query.neq("status", "open").neq("status", "completed").neq("status", "refunded").neq("status", "cancelled")
-        } else {
+        if (startDate) {
+          query = query.gte("created_at", new Date(`${startDate}T00:00:00.000Z`).toISOString())
+        }
+        if (endDate) {
+          query = query.lte("created_at", new Date(`${endDate}T23:59:59.999Z`).toISOString())
+        }
+        if (status && status !== "all") {
           query = query.eq("status", status)
         }
-      }
+        if (paymentMethod && paymentMethod !== "all") {
+          query = query.eq("payment_method", paymentMethod)
+        }
+        if (orderType && orderType !== "all") {
+          query = query.eq("order_type", orderType)
+        }
+        if (search) {
+          query = query.or(
+            `order_number.ilike.%${search}%,table_name.ilike.%${search}%,receipt_number.ilike.%${search}%,cashier_name.ilike.%${search}%`
+          )
+        }
 
-      // Order Type / Department Filter
-      if (orderType && orderType !== "all") {
-        query = query.eq("order_type", orderType)
-      }
+        if (!returnAll) {
+          const from = (page - 1) * limit
+          const to = from + limit - 1
+          query = query.range(from, to)
+        }
 
-      // Payment Method Filter
-      if (paymentMethod && paymentMethod !== "all") {
-        query = query.eq("payment_method", paymentMethod)
-      }
-
-      // Search Filter
-      if (search) {
-        query = query.or(`order_number.ilike.%${search}%,receipt_number.ilike.%${search}%,table_name.ilike.%${search}%,cashier_name.ilike.%${search}%`)
-      }
-
-      // Server-side Pagination
-      if (!returnAll) {
-        const from = (page - 1) * limit
-        const to = from + limit - 1
-        query = query.range(from, to)
-      }
-
-      const { data, count, error } = await query
-
-      if (error) throw error
-
-      let orders = (data || []).map((o: any) => {
-        // Map order_items back to items format for frontend backwards compatibility
-        const items = Array.isArray(o.order_items) && o.order_items.length > 0
-          ? o.order_items.map((i: any) => ({
-              id: i.product_id || i.id,
+        const { data, count, error } = await query
+        if (!error && data) {
+          const formattedOrders = data.map((o: any) => ({
+            id: o.id,
+            order_number: o.order_number,
+            receipt_number: o.receipt_number,
+            table_name: o.table_name,
+            cashier_name: o.cashier_name,
+            department: o.department,
+            order_type: o.order_type,
+            subtotal: Number(o.subtotal) || 0,
+            service_charge: Number(o.service_charge) || 0,
+            service_charge_rate: Number(o.service_charge_rate) || 0,
+            discount: Number(o.discount) || 0,
+            tax: Number(o.tax) || 0,
+            total: Number(o.total) || 0,
+            payment_method: o.payment_method,
+            payment_status: o.payment_status || "paid",
+            cash_received: Number(o.cash_received) || 0,
+            change_amount: Number(o.change_amount) || 0,
+            status: o.status,
+            kitchen_status: o.kitchen_status || "pending",
+            bar_status: o.bar_status || "pending",
+            notes: o.notes || "",
+            created_at: o.created_at,
+            updated_at: o.updated_at,
+            items: (o.order_items || []).map((i: any) => ({
+              id: i.id,
+              product_id: i.product_id,
               name: i.product_name_snapshot,
               price: Number(i.unit_price_snapshot) || 0,
               quantity: Number(i.quantity) || 1,
-              category: i.station === "bar" ? "Coffee Bar" : "Kitchen",
+              line_total: Number(i.line_total) || 0,
               station: i.station,
-              notes: i.notes,
-              status: i.item_status,
-            }))
-          : Array.isArray(o.items)
-          ? o.items
-          : []
+              item_status: i.item_status,
+              notes: i.notes || "",
+            })),
+            tickets: o.station_tickets || [],
+          }))
 
-        return {
-          ...o,
-          items,
-          split_payments: Array.isArray(o.split_payments)
-            ? o.split_payments
-            : (typeof o.notes === "string" && o.notes.includes("split_payments")
-              ? (() => { try { return JSON.parse(o.notes).split_payments } catch { return undefined } })()
-              : undefined),
-          subtotal: Number(o.subtotal) || 0,
-          service_charge: Number(o.service_charge) || 0,
-          discount: Number(o.discount) || 0,
-          tax: Number(o.tax) || 0,
-          total: Number(o.total) || 0,
-          cash_received: o.cash_received != null ? Number(o.cash_received) : undefined,
-          change_amount: o.change_amount != null ? Number(o.change_amount) : undefined,
+          const total = count ?? formattedOrders.length
+          const totalPages = returnAll ? 1 : Math.ceil(total / limit)
+
+          return NextResponse.json({
+            success: true,
+            orders: formattedOrders,
+            pagination: {
+              page: returnAll ? 1 : page,
+              limit: returnAll ? total : limit,
+              total,
+              totalPages,
+            },
+          })
         }
-      })
-
-      // Station filter (in-memory if not already filtered)
-      if (station && station !== "all") {
-        orders = orders.filter((o: any) => {
-          return Array.isArray(o.items) && o.items.some((i: any) => determineItemStation(i) === station)
-        })
+      } catch (sbErr) {
+        console.warn("Supabase orders query fallback to direct PG:", sbErr)
       }
-
-      const total = count != null ? count : orders.length
-      const totalPages = returnAll ? 1 : Math.ceil(total / limit)
-
-      return NextResponse.json({
-        success: true,
-        orders,
-        pagination: {
-          page: returnAll ? 1 : page,
-          limit: returnAll ? total : limit,
-          total,
-          totalPages,
-        },
-      })
     }
 
-    // Offline / Demo SQLite fallback: query SQLite database or memoryOrders
-    const sqliteOrders = DemoDbService.getOrders({
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-      status: status || undefined,
-      paymentMethod: paymentMethod || undefined,
+    // Authoritative PostgreSQL query
+    const dbResult = await PosDatabase.getOrders({
+      startDate,
+      endDate,
+      status,
+      paymentMethod,
+      station,
+      orderType,
+      search,
+      page,
+      limit,
+      returnAll,
     })
-    let filtered = sqliteOrders.length > 0 ? sqliteOrders : [...memoryOrders]
-
-    if (startDate) {
-      const startT = new Date(`${startDate}T00:00:00.000Z`).getTime()
-      filtered = filtered.filter((o) => new Date(o.created_at).getTime() >= startT)
-    }
-    if (endDate) {
-      const endT = new Date(`${endDate}T23:59:59.999Z`).getTime()
-      filtered = filtered.filter((o) => new Date(o.created_at).getTime() <= endT)
-    }
-    if (status && status !== "all") {
-      filtered = filtered.filter((o) => o.status === status)
-    }
-    if (paymentMethod && paymentMethod !== "all") {
-      filtered = filtered.filter((o) => o.payment_method === paymentMethod)
-    }
-    if (search) {
-      filtered = filtered.filter(
-        (o) =>
-          String(o.order_number).toLowerCase().includes(search) ||
-          String(o.table_name).toLowerCase().includes(search) ||
-          String(o.receipt_number).toLowerCase().includes(search)
-      )
-    }
-
-    const total = filtered.length
-    const totalPages = returnAll ? 1 : Math.ceil(total / limit)
-    const paged = returnAll ? filtered : filtered.slice((page - 1) * limit, page * limit)
 
     return NextResponse.json({
       success: true,
-      orders: paged,
+      orders: dbResult.orders,
       pagination: {
         page: returnAll ? 1 : page,
-        limit: returnAll ? total : limit,
-        total,
-        totalPages,
+        limit: returnAll ? dbResult.total : limit,
+        total: dbResult.total,
+        totalPages: dbResult.totalPages,
       },
     })
   } catch (error: any) {
@@ -271,7 +231,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!hasValidOrigin(request)) {
-    return NextResponse.json({ success: false, error: "Invalid request." }, { status: 403 })
+    return NextResponse.json({ success: false, error: "Invalid request origin." }, { status: 403 })
   }
 
   const auth = await authorizeStaff(request, "cashier")
@@ -289,33 +249,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Invalid order data.", details: parsed.error.format() }, { status: 400 })
     }
 
-    const {
-      id,
-      order_number,
-      receipt_number,
-      table_name,
-      cashier_name,
-      department,
-      order_type,
-      items,
-      subtotal,
-      service_charge,
-      service_charge_rate,
-      discount,
-      tax,
-      total,
-      payment_method,
-      split_payments,
-      cash_received,
-      change_amount,
-      status,
-      notes,
-    } = parsed.data
+    const orderData = parsed.data
 
-    const supabase = createStaffSupabaseClient(request)
+    // If order_number is missing, generate atomic bill sequence numbers from PostgreSQL
+    if (!orderData.order_number) {
+      const billNumbers = await PosDatabase.getNextBillNumbers()
+      orderData.order_number = billNumbers.orderNumber
+      orderData.receipt_number = billNumbers.receiptNumber
+    } else if (!orderData.receipt_number) {
+      orderData.receipt_number = `LS-RC-${orderData.order_number.replace(/^LS-/, "")}`
+    }
 
     // Format items with station determination
-    const formattedItems = items.map((i) => {
+    const formattedItems = orderData.items.map((i) => {
       const itemStation = i.station || determineItemStation(i)
       return {
         id: i.id || i.product_id,
@@ -328,236 +274,84 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    if (supabase && !isDemoMode()) {
-      // 1. Try atomic database transaction RPC
+    const supabase = createStaffSupabaseClient(request)
+
+    if (supabase) {
       try {
         const { data: atomicResult, error: rpcError } = await supabase.rpc("create_pos_order_atomic", {
           p_order: {
-            id,
-            order_number,
-            receipt_number,
-            table_name,
-            cashier_name,
-            department,
-            order_type,
-            subtotal,
-            service_charge,
-            discount,
-            tax,
-            total,
-            payment_method,
-            cash_received,
-            change_amount,
-            status,
-            notes,
+            id: orderData.id,
+            order_number: orderData.order_number,
+            receipt_number: orderData.receipt_number,
+            table_name: orderData.table_name,
+            cashier_name: orderData.cashier_name,
+            department: orderData.department,
+            order_type: orderData.order_type,
+            subtotal: orderData.subtotal,
+            service_charge: orderData.service_charge,
+            service_charge_rate: orderData.service_charge_rate,
+            discount: orderData.discount,
+            tax: orderData.tax,
+            total: orderData.total,
+            payment_method: orderData.payment_method,
+            split_payments: orderData.split_payments,
+            cash_received: orderData.cash_received,
+            change_amount: orderData.change_amount,
+            status: orderData.status,
+            notes: orderData.notes || (orderData.split_payments?.length ? JSON.stringify({ split_payments: orderData.split_payments }) : ""),
+            idempotency_key: orderData.idempotency_key,
+            action: orderData.action,
           },
           p_items: formattedItems,
         })
 
-        if (!rpcError && atomicResult) {
+        if (rpcError) {
+          return NextResponse.json({ success: false, error: rpcError.message || "Failed to create order." }, { status: 400 })
+        }
+
+        if (atomicResult) {
           return NextResponse.json({ success: true, order: atomicResult }, { status: 201 })
         }
-      } catch (rpcErr) {
-        console.warn("create_pos_order_atomic RPC not available, using direct atomic transaction fallback", rpcErr)
+      } catch (rpcErr: any) {
+        console.warn("create_pos_order_atomic Supabase RPC error, trying direct PG:", rpcErr)
       }
-
-      // 2. Direct atomic insert with manual rollback fallback
-      const hasKitchen = formattedItems.some((i) => i.station === "kitchen")
-      const hasBar = formattedItems.some((i) => i.station === "bar")
-      const orderId = id || crypto.randomUUID()
-      const finalOrderNumber = order_number || `LS-${Date.now().toString().slice(-6)}`
-
-      let newOrder: any = null
-      try {
-        const { data: upsertData, error: orderError } = await supabase
-          .from("pos_orders")
-          .upsert(
-            {
-              id: orderId,
-              order_number: finalOrderNumber,
-              receipt_number: receipt_number || `RC-${finalOrderNumber}`,
-              table_name,
-              cashier_name,
-              department,
-              order_type,
-              subtotal,
-              service_charge,
-              discount,
-              tax,
-              total,
-              payment_method,
-              split_payments: split_payments || [],
-              cash_received: cash_received || total,
-              change_amount: change_amount || 0,
-              status,
-              payment_status: status === "open" ? "unpaid" : "paid",
-              kitchen_status: hasKitchen ? "pending" : "served",
-              bar_status: hasBar ? "pending" : "served",
-              notes: split_payments && split_payments.length > 0
-                ? JSON.stringify({ split_payments, notes: notes || "" })
-                : (notes || ""),
-              items: formattedItems,
-              stock_deducted: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "order_number" }
-          )
-          .select()
-          .maybeSingle()
-
-        if (upsertData) {
-          newOrder = upsertData
-        } else if (orderError) {
-          console.warn("Supabase pos_orders upsert warning in /api/orders:", orderError)
-          // Fallback attempt without split_payments
-          const fallbackPayload: any = {
-            order_number: finalOrderNumber,
-            receipt_number: receipt_number || `RC-${finalOrderNumber}`,
-            table_name,
-            cashier_name,
-            department,
-            order_type,
-            subtotal,
-            service_charge,
-            discount,
-            tax,
-            total,
-            payment_method,
-            cash_received: cash_received || total,
-            change_amount: change_amount || 0,
-            status,
-            payment_status: status === "open" ? "unpaid" : "paid",
-            kitchen_status: hasKitchen ? "pending" : "served",
-            bar_status: hasBar ? "pending" : "served",
-            notes: split_payments && split_payments.length > 0
-              ? JSON.stringify({ split_payments, notes: notes || "" })
-              : (notes || ""),
-            items: formattedItems,
-            stock_deducted: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }
-          const { data: retryData } = await supabase
-            .from("pos_orders")
-            .upsert(fallbackPayload, { onConflict: "order_number" })
-            .select()
-            .maybeSingle()
-          if (retryData) newOrder = retryData
-        }
-      } catch (upsertEx) {
-        console.warn("Exception during pos_orders upsert in /api/orders:", upsertEx)
-      }
-
-      if (!newOrder) {
-        newOrder = {
-          id: orderId,
-          order_number: finalOrderNumber,
-          receipt_number: receipt_number || `RC-${finalOrderNumber}`,
-          table_name,
-          cashier_name,
-          department,
-          order_type,
-          subtotal,
-          service_charge,
-          discount,
-          tax,
-          total,
-          payment_method,
-          split_payments: split_payments || [],
-          cash_received: cash_received || total,
-          change_amount: change_amount || 0,
-          status,
-          payment_status: status === "open" ? "unpaid" : "paid",
-          kitchen_status: hasKitchen ? "pending" : "served",
-          bar_status: hasBar ? "pending" : "served",
-          notes: notes || "",
-          items: formattedItems,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-      }
-
-      // Insert normalized order_items
-      if (newOrder.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(newOrder.id)) {
-        try {
-          const orderItemInserts = formattedItems.map((item) => ({
-            order_id: newOrder.id,
-            product_id: item.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.id) ? item.id : null,
-            product_name_snapshot: item.name,
-            unit_price_snapshot: item.price,
-            quantity: item.quantity,
-            station: item.station,
-            notes: item.notes,
-            item_status: "pending",
-          }))
-          await supabase.from("order_items").insert(orderItemInserts)
-        } catch (e) {
-          console.warn("Could not insert order_items", e)
-        }
-
-        // Create station tickets
-        if (hasKitchen) {
-          try {
-            await supabase.from("station_tickets").upsert(
-              { order_id: newOrder.id, ticket_number: `${finalOrderNumber}-K`, station: "kitchen", status: "pending" },
-              { onConflict: "order_id,station" }
-            )
-          } catch {}
-        }
-        if (hasBar) {
-          try {
-            await supabase.from("station_tickets").upsert(
-              { order_id: newOrder.id, ticket_number: `${finalOrderNumber}-B`, station: "bar", status: "pending" },
-              { onConflict: "order_id,station" }
-            )
-          } catch {}
-        }
-
-        // Trigger inventory deduction
-        try {
-          void supabase.rpc("deduct_order_inventory", { p_order_id: newOrder.id })
-        } catch {}
-      }
-
-      memoryOrders.unshift(newOrder)
-      return NextResponse.json({ success: true, order: newOrder }, { status: 201 })
     }
 
-    // Offline / Local save
-    const localOrder = {
-      id: id || `ord-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      order_number: order_number || `LS-${(memoryOrders.length + 101).toString().padStart(6, "0")}`,
-      receipt_number: receipt_number || `LS-RC-${(memoryOrders.length + 101).toString().padStart(6, "0")}`,
-      table_name,
-      cashier_name,
-      department,
-      order_type,
-      items: formattedItems,
-      subtotal,
-      service_charge,
-      service_charge_rate,
-      discount,
-      tax,
-      total,
-      payment_method,
-      cash_received: cash_received || total,
-      change_amount: change_amount || 0,
-      status,
-      kitchen_status: formattedItems.some((i) => i.station === "kitchen") ? "pending" : "served",
-      bar_status: formattedItems.some((i) => i.station === "bar") ? "pending" : "served",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    // Authoritative PostgreSQL transaction execution
+    const atomicResult = await PosDatabase.createOrderAtomic(
+      {
+        id: orderData.id,
+        order_number: orderData.order_number,
+        receipt_number: orderData.receipt_number,
+        table_name: orderData.table_name,
+        cashier_name: orderData.cashier_name,
+        department: orderData.department,
+        order_type: orderData.order_type,
+        subtotal: orderData.subtotal,
+        service_charge: orderData.service_charge,
+        service_charge_rate: orderData.service_charge_rate,
+        discount: orderData.discount,
+        tax: orderData.tax,
+        total: orderData.total,
+        payment_method: orderData.payment_method,
+        split_payments: orderData.split_payments,
+        cash_received: orderData.cash_received,
+        change_amount: orderData.change_amount,
+        status: orderData.status,
+        notes: orderData.notes || (orderData.split_payments?.length ? JSON.stringify({ split_payments: orderData.split_payments }) : ""),
+        idempotency_key: orderData.idempotency_key,
+        action: orderData.action,
+      },
+      formattedItems
+    )
+
+    if (!atomicResult) {
+      return NextResponse.json({ success: false, error: "Failed to create order in database." }, { status: 400 })
     }
 
-    memoryOrders.unshift(localOrder)
-    try {
-      DemoDbService.createOrder(localOrder as any)
-    } catch {}
-
-    return NextResponse.json({ success: true, order: localOrder }, { status: 201 })
+    return NextResponse.json({ success: true, order: atomicResult }, { status: 201 })
   } catch (error: any) {
     console.error("POST /api/orders failed", error)
-    return NextResponse.json({ success: false, error: "Unable to create order.", message: error.message }, { status: 500 })
+    return NextResponse.json({ success: false, error: error.message || "Unable to create order." }, { status: 400 })
   }
 }

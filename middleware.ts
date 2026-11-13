@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
-import { refreshSessionMarker, setSessionCookie, SESSION_COOKIE_NAME } from "@/lib/coffee/session"
+import { refreshSessionMarker, setSessionCookie, verifyAndExtractSession, SESSION_COOKIE_NAME } from "@/lib/coffee/session"
 import { isDemoMode } from "@/lib/config/demo"
 
 const publicPaths = new Set(["/auth/login", "/api/auth/login", "/api/auth/demo", "/api/auth/session", "/menu", "/api/tables", "/api/tables/bookings"])
@@ -64,8 +64,7 @@ export async function middleware(request: NextRequest) {
 
   if (isDemoMode()) {
     const rawRole = request.cookies.get("pos-staff-role")?.value
-    const localUser = request.cookies.get("pos-local-user")?.value
-    const hasLocalAuth = (rawRole === "admin" || rawRole === "manager" || rawRole === "cashier" || rawRole === "kitchen" || rawRole === "staff") || localUser === "true"
+    const hasLocalAuth = rawRole === "admin" || rawRole === "manager" || rawRole === "cashier" || rawRole === "kitchen" || rawRole === "staff"
     if (!hasLocalAuth) {
       return unauthenticatedResponse(request)
     }
@@ -74,38 +73,45 @@ export async function middleware(request: NextRequest) {
 
   let response = nextResponse()
   try {
-    const rawRole = request.cookies.get("pos-staff-role")?.value
-    const localUser = request.cookies.get("pos-local-user")?.value
-    const hasLocalAuth = (rawRole === "admin" || rawRole === "manager" || rawRole === "cashier") || localUser === "true"
+    // 1. Verify signed HMAC session marker
+    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value
+    const session = sessionCookie ? await verifyAndExtractSession(sessionCookie) : null
 
-    const supabase = createServerClient(url, key, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          response = nextResponse()
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, {
-            ...options,
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-          }))
-        },
-      },
-    })
-
-    const { data: { user }, error } = await supabase.auth.getUser()
-
-    if ((error || !user) && !hasLocalAuth) {
-      return unauthenticatedResponse(request)
+    if (session) {
+      const refreshed = await refreshSessionMarker(sessionCookie)
+      if (refreshed) {
+        setSessionCookie(response, refreshed)
+      }
+      return withSecurityHeaders(response)
     }
-    if (process.env.SESSION_COOKIE_SECRET && process.env.SESSION_COOKIE_SECRET.length >= 32) {
-      const sessionMarker = await refreshSessionMarker(request.cookies.get(SESSION_COOKIE_NAME)?.value)
-      if (!sessionMarker && !hasLocalAuth) return unauthenticatedResponse(request)
-      if (sessionMarker) setSessionCookie(response, sessionMarker)
+
+    // 2. Fall back to Supabase Auth token if configured
+    if (url && key) {
+      const supabase = createServerClient(url, key, {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+            response = nextResponse()
+            cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, {
+              ...options,
+              httpOnly: true,
+              secure: process.env.NODE_ENV === "production",
+              sameSite: "strict",
+            }))
+          },
+        },
+      })
+
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (!error && user) {
+        return withSecurityHeaders(response)
+      }
     }
+
+    return unauthenticatedResponse(request)
   } catch {
     if (pathname.startsWith("/api/")) {
       return withSecurityHeaders(NextResponse.json({ error: "Authentication unavailable." }, { status: 503 }))

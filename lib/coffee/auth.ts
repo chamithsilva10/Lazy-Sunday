@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { createClient } from "@supabase/supabase-js"
 import { isDemoMode } from "../config/demo"
+import { SESSION_COOKIE_NAME, verifyAndExtractSession } from "./session"
 
 export type StaffRole = "cashier" | "manager" | "admin" | "kitchen" | "staff" | "waiter"
 
@@ -55,16 +56,24 @@ export function createStaffSupabaseClient(request?: NextRequest) {
 }
 
 export async function getStaffIdentity(request: NextRequest): Promise<StaffIdentity | null> {
-  const rawRole = request.cookies.get("pos-staff-role")?.value as StaffRole | undefined
-  const localUser = request.cookies.get("pos-local-user")?.value
-  const username = request.cookies.get("pos-staff-user")?.value || "admin"
-
-  const parseRole = (candidate?: string): StaffRole => {
-    return candidate && validRoles.includes(candidate as StaffRole) ? (candidate as StaffRole) : "admin"
+  // 1. Verify signed HMAC session cookie
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value
+  if (sessionCookie) {
+    const verified = await verifyAndExtractSession(sessionCookie)
+    if (verified && validRoles.includes(verified.role as StaffRole)) {
+      return {
+        userId: verified.userId,
+        role: verified.role as StaffRole,
+        email: `${verified.username}@posdemo.com`,
+      }
+    }
   }
 
+  // 2. Demo mode only (when DEMO_MODE=true is explicitly set for local isolated mock testing)
   if (isDemoMode()) {
-    const role: StaffRole = parseRole(rawRole)
+    const rawRole = request.cookies.get("pos-staff-role")?.value as StaffRole | undefined
+    const username = request.cookies.get("pos-staff-user")?.value || "admin"
+    const role: StaffRole = rawRole && validRoles.includes(rawRole) ? rawRole : "admin"
     return {
       userId: `demo-${username}`,
       role,
@@ -72,83 +81,32 @@ export async function getStaffIdentity(request: NextRequest): Promise<StaffIdent
     }
   }
 
-  let url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
-  let anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-  if (!url || !anonKey) {
-    if (rawRole || localUser === "true") {
-      const role: StaffRole = parseRole(rawRole)
-      return {
-        userId: `local-${username}`,
-        role,
-        email: `${username}@posdemo.com`,
+  // 3. Check Supabase Auth session if present
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+  if (url && anonKey) {
+    try {
+      const cookieSupabase = createServerClient(url, anonKey, {
+        cookies: {
+          getAll: () => request.cookies.getAll(),
+          setAll: () => {},
+        },
+      })
+      const { data: { user }, error: authError } = await cookieSupabase.auth.getUser()
+      if (!authError && user) {
+        const { data: profile } = await cookieSupabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle()
+        if (profile && validRoles.includes(profile.role as StaffRole)) {
+          return { userId: user.id, role: profile.role as StaffRole, email: user.email }
+        }
       }
-    }
-    return null
+    } catch {}
   }
 
-  const cookieSupabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll: () => request.cookies.getAll(),
-      setAll: () => {},
-    },
-  })
-
-  try {
-    const { data: { user }, error: authError } = await cookieSupabase.auth.getUser()
-    if (authError || !user) {
-      if (rawRole || localUser === "true") {
-        const role: StaffRole = parseRole(rawRole)
-        return {
-          userId: `local-${username}`,
-          role,
-          email: `${username}@posdemo.com`,
-        }
-      }
-      return null
-    }
-
-    const { data: profile, error: profileError } = await cookieSupabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    if (profileError || !profile || !validRoles.includes(profile.role as StaffRole)) {
-      if (rawRole || localUser === "true") {
-        const role: StaffRole = parseRole(rawRole)
-        return {
-          userId: `local-${username}`,
-          role,
-          email: `${username}@posdemo.com`,
-        }
-      }
-      return null
-    }
-
-    const role = profile.role as StaffRole
-    if (role !== "cashier" && role !== "kitchen" && role !== "staff" && role !== "waiter") {
-      try {
-        const { data: assurance, error: assuranceError } = await cookieSupabase.auth.mfa.getAuthenticatorAssuranceLevel()
-        if (!assuranceError && assurance?.nextLevel === "aal2" && assurance?.currentLevel !== "aal2") {
-          return null
-        }
-      } catch {
-        // MFA level check optional if service unavailable
-      }
-    }
-
-    return { userId: user.id, role, email: user.email }
-  } catch {
-    if (rawRole || localUser === "true") {
-      const role: StaffRole = parseRole(rawRole)
-      return {
-        userId: `local-${username}`,
-        role,
-        email: `${username}@posdemo.com`,
-      }
-    }
-    return null
-  }
+  return null
 }
 
 export async function authorizeStaff(

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authorizeStaff, createStaffSupabaseClient } from "@/lib/coffee/auth"
-import { isDemoMode } from "@/lib/config/demo"
-import { DemoDbService } from "@/lib/db/demo-sqlite"
+import { PosDatabase } from "@/lib/db/pos-database"
 
 export const dynamic = "force-dynamic"
 
@@ -27,53 +26,59 @@ export async function GET(request: NextRequest) {
 
     let orders: any[] = []
 
-    if (isDemoMode() || !supabase) {
-      orders = DemoDbService.getOrders({
+    if (supabase) {
+      try {
+        let query = supabase
+          .from("pos_orders")
+          .select(`
+            *,
+            order_items (
+              id,
+              product_id,
+              product_name_snapshot,
+              unit_price_snapshot,
+              quantity,
+              line_total,
+              notes,
+              station,
+              item_status,
+              created_at
+            )
+          `)
+          .order("created_at", { ascending: false })
+
+        if (startDate) {
+          const startIso = new Date(`${startDate}T00:00:00.000Z`).toISOString()
+          query = query.gte("created_at", startIso)
+        }
+        if (endDate) {
+          const endIso = new Date(`${endDate}T23:59:59.999Z`).toISOString()
+          query = query.lte("created_at", endIso)
+        }
+        if (paymentMethod && paymentMethod !== "all") {
+          query = query.eq("payment_method", paymentMethod)
+        }
+        if (department && department !== "all") {
+          query = query.eq("department", department)
+        }
+
+        const { data, error } = await query
+        if (!error && data) {
+          orders = data
+        }
+      } catch (sbErr) {
+        console.warn("Supabase reports query note:", sbErr)
+      }
+    }
+
+    if (orders.length === 0) {
+      const dbResult = await PosDatabase.getOrders({
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         paymentMethod: paymentMethod || undefined,
+        returnAll: true,
       })
-    } else {
-      let query = supabase
-        .from("pos_orders")
-        .select(`
-          *,
-          order_items (
-            id,
-            product_id,
-            product_name_snapshot,
-            unit_price_snapshot,
-            quantity,
-            line_total,
-            notes,
-            station,
-            item_status,
-            created_at
-          )
-        `)
-        .order("created_at", { ascending: false })
-
-      // Timezone-correct date filters (inclusive start-of-day to end-of-day)
-      if (startDate) {
-        const startIso = new Date(`${startDate}T00:00:00.000Z`).toISOString()
-        query = query.gte("created_at", startIso)
-      }
-      if (endDate) {
-        const endIso = new Date(`${endDate}T23:59:59.999Z`).toISOString()
-        query = query.lte("created_at", endIso)
-      }
-
-      if (paymentMethod && paymentMethod !== "all") {
-        query = query.eq("payment_method", paymentMethod)
-      }
-
-      if (department && department !== "all") {
-        query = query.eq("department", department)
-      }
-
-      const { data, error } = await query
-      if (error) throw error
-      orders = data || []
+      orders = dbResult.orders
     }
 
     // Process items for each order
@@ -121,10 +126,11 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Separate voids/refunds from positive sales
+    // Separate paid sales, open tabs, voids, and refunds
     const validOrders = processedOrders.filter(
-      (o: any) => o.status !== "refunded" && o.status !== "cancelled" && !o.is_void
+      (o: any) => (o.status === "paid" || o.status === "completed") && !o.is_void
     )
+    const openOrders = processedOrders.filter((o: any) => o.status === "open" && !o.is_void)
     const voidOrders = processedOrders.filter((o: any) => o.is_void || o.status === "cancelled")
     const refundOrders = processedOrders.filter((o: any) => o.status === "refunded")
 
@@ -324,6 +330,10 @@ export async function GET(request: NextRequest) {
           voidTotal: voidOrders.reduce((sum: number, o: any) => sum + o.total, 0),
           refundCount: refundOrders.length,
           refundTotal: refundOrders.reduce((sum: number, o: any) => sum + o.total, 0),
+        },
+        openTabs: {
+          count: openOrders.length,
+          total: openOrders.reduce((sum: number, o: any) => sum + o.total, 0),
         },
         filteredOrders: stationFilteredOrders,
       },

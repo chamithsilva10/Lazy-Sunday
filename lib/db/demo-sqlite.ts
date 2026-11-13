@@ -71,6 +71,11 @@ export function getDemoSqliteDb() {
       initSchemaAndSeed(dbInstance)
     }
 
+    try { dbInstance.exec("ALTER TABLE pos_orders ADD COLUMN idempotency_key TEXT;") } catch {}
+    try { dbInstance.exec("ALTER TABLE pos_orders ADD COLUMN is_void INTEGER DEFAULT 0;") } catch {}
+    try { dbInstance.exec("ALTER TABLE pos_orders ADD COLUMN void_reason TEXT;") } catch {}
+    try { dbInstance.exec("ALTER TABLE pos_orders ADD COLUMN stock_deducted INTEGER DEFAULT 1;") } catch {}
+
     return dbInstance
   } catch (err) {
     console.error("Failed to initialize SQLite database:", err)
@@ -806,17 +811,72 @@ export const DemoDbService = {
     const db = getDemoSqliteDb()
     if (!db) return false
     try {
+      // Idempotency check: if idempotency_key already committed, return immediately
+      const idempotencyKey = (order as any).idempotency_key
+      if (idempotencyKey) {
+        const existing = db.prepare("SELECT id FROM pos_orders WHERE idempotency_key = ?").get(idempotencyKey)
+        if (existing) {
+          return true
+        }
+      }
+
+      // Check if updating an existing order (e.g. paying an open tab)
+      const existingOrder = db.prepare("SELECT id, status, stock_deducted FROM pos_orders WHERE id = ? OR order_number = ?").get(order.id, order.order_number) as any
+      const wasDeducted = Boolean(existingOrder && existingOrder.stock_deducted)
+
+      if (existingOrder) {
+        db.prepare(`
+          UPDATE pos_orders SET
+            subtotal = ?, service_charge = ?, discount = ?, tax = ?, total = ?,
+            payment_method = ?, split_payments = ?, cash_received = ?, change_amount = ?,
+            status = ?, payment_status = ?, kitchen_status = ?, bar_status = ?,
+            stock_deducted = 1
+          WHERE id = ?
+        `).run(
+          order.subtotal || 0,
+          order.service_charge || 0,
+          order.discount || 0,
+          order.tax || 0,
+          order.total || 0,
+          order.payment_method || "cash",
+          order.split_payments ? JSON.stringify(order.split_payments) : null,
+          order.cash_received != null ? order.cash_received : (order.total || 0),
+          order.change_amount || 0,
+          order.status || "paid",
+          order.payment_status || "paid",
+          order.kitchen_status || "pending",
+          order.bar_status || "pending",
+          existingOrder.id
+        )
+
+        // Only deduct stock if not already deducted!
+        if (!wasDeducted) {
+          const updateStockStmt = db.prepare(`
+            UPDATE pos_products SET stock = MAX(0, stock - ?) WHERE id = ? OR name = ?
+          `)
+          for (const item of (order.items || [])) {
+            const pId = item.product_id || (item as any).id || null
+            if (pId) {
+              updateStockStmt.run(item.quantity || 1, pId, item.name || "")
+            }
+          }
+        }
+        return true
+      }
+
       const insertOrder = db.prepare(`
         INSERT INTO pos_orders (
           id, order_number, receipt_number, table_name, cashier_name, department, order_type,
           subtotal, service_charge, service_charge_rate, discount, tax, total,
           payment_method, split_payments, cash_received, change_amount,
-          status, payment_status, kitchen_status, bar_status, customer_name, customer_id, created_at
+          status, payment_status, kitchen_status, bar_status, customer_name, customer_id,
+          idempotency_key, stock_deducted, created_at
         ) VALUES (
           ?, ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?,
-          ?, ?, ?, ?, ?, ?, ?
+          ?, ?, ?, ?, ?, ?,
+          ?, 1, ?
         )
       `)
 
@@ -844,6 +904,7 @@ export const DemoDbService = {
         order.bar_status || "pending",
         order.customer_name || "Walk-in",
         order.customer_id || null,
+        idempotencyKey || null,
         order.created_at || new Date().toISOString()
       )
 
@@ -889,6 +950,35 @@ export const DemoDbService = {
     }
   },
 
+  voidOrder(orderIdOrNumber: string, reason = "Voided by staff"): boolean {
+    const db = getDemoSqliteDb()
+    if (!db) return false
+    try {
+      const order = db.prepare("SELECT * FROM pos_orders WHERE id = ? OR order_number = ?").get(orderIdOrNumber, orderIdOrNumber) as any
+      if (!order) return false
+      if (order.is_void) return true
+
+      if (order.stock_deducted) {
+        const items = db.prepare("SELECT product_id, product_name, quantity FROM order_items WHERE order_id = ?").all(order.id) as any[]
+        const restoreStock = db.prepare("UPDATE pos_products SET stock = stock + ? WHERE id = ? OR name = ?")
+        for (const item of items) {
+          restoreStock.run(item.quantity || 1, item.product_id, item.product_name)
+        }
+      }
+
+      db.prepare(`
+        UPDATE pos_orders
+        SET status = 'cancelled', payment_status = 'void', is_void = 1, void_reason = ?, stock_deducted = 0
+        WHERE id = ?
+      `).run(reason, order.id)
+
+      return true
+    } catch (err) {
+      console.error("Failed to void order in SQLite:", err)
+      return false
+    }
+  },
+
   runRawQuery(sql: string, params: any[] = []): any {
     const db = getDemoSqliteDb()
     if (!db) return { error: "Database not available" }
@@ -903,6 +993,47 @@ export const DemoDbService = {
       }
     } catch (err: any) {
       return { success: false, error: err.message }
+    }
+  },
+
+  getNextOrderNumber(): { orderNumber: string; receiptNumber: string; seq: number } {
+    const db = getDemoSqliteDb()
+    if (!db) {
+      const seq = 101
+      const formatted = String(seq).padStart(6, "0")
+      return { orderNumber: `LS-${formatted}`, receiptNumber: `LS-RC-${formatted}`, seq }
+    }
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS system_sequences (
+          name TEXT PRIMARY KEY,
+          current_val INTEGER NOT NULL DEFAULT 100
+        );
+      `)
+      const row = db.prepare("SELECT current_val FROM system_sequences WHERE name = 'pos_orders'").get() as any
+      if (!row) {
+        const maxRow = db.prepare(`
+          SELECT MAX(CAST(substr(order_number, 4) AS INTEGER)) as max_seq FROM pos_orders WHERE order_number LIKE 'LS-%'
+        `).get() as any
+        let maxCoffee = { max_seq: 0 }
+        try {
+          maxCoffee = db.prepare(`
+            SELECT MAX(CAST(substr(bill_number, 4) AS INTEGER)) as max_seq FROM coffee_bills WHERE bill_number LIKE 'LS-%'
+          `).get() as any
+        } catch {}
+        const initSeq = Math.max(100, Number(maxRow?.max_seq || 100), Number(maxCoffee?.max_seq || 100))
+        db.prepare("INSERT INTO system_sequences (name, current_val) VALUES ('pos_orders', ?)").run(initSeq)
+      }
+      const updated = db.prepare(
+        "UPDATE system_sequences SET current_val = current_val + 1 WHERE name = 'pos_orders' RETURNING current_val"
+      ).get() as any
+      const seq = updated?.current_val || 101
+      const formatted = String(seq).padStart(6, "0")
+      return { orderNumber: `LS-${formatted}`, receiptNumber: `LS-RC-${formatted}`, seq }
+    } catch {
+      const seq = 101
+      const formatted = String(seq).padStart(6, "0")
+      return { orderNumber: `LS-${formatted}`, receiptNumber: `LS-RC-${formatted}`, seq }
     }
   },
 

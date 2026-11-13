@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server"
-import { DemoDbService } from "@/lib/db/demo-sqlite"
+import { PosDatabase } from "@/lib/db/pos-database"
+
+export const dynamic = "force-dynamic"
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
     const statusParam = searchParams.get("status")
     const statusFilter = statusParam ? statusParam.split(",") : undefined
-    const reservations = DemoDbService.getReservations(statusFilter)
+    const reservations = await PosDatabase.getReservations(statusFilter)
     return NextResponse.json({ success: true, reservations })
   } catch (error: any) {
+    console.error("GET /api/tables/bookings failed:", error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }
@@ -19,7 +22,7 @@ export async function POST(req: Request) {
     const { action = "create", id } = body
 
     if (action === "create") {
-      const res = DemoDbService.createReservation({
+      const res = await PosDatabase.createReservation({
         customer_name: body.customer_name,
         phone: body.phone,
         party_size: Number(body.party_size) || 2,
@@ -42,7 +45,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: "Reservation ID is required" }, { status: 400 })
       }
 
-      const res = DemoDbService.updateReservation(id, {
+      const res = await PosDatabase.updateReservation(id, {
         customer_name: body.customer_name,
         phone: body.phone,
         party_size: body.party_size !== undefined ? Number(body.party_size) : undefined,
@@ -64,7 +67,7 @@ export async function POST(req: Request) {
       if (!id) {
         return NextResponse.json({ success: false, error: "Reservation ID is required" }, { status: 400 })
       }
-      const res = DemoDbService.seatReservation(id, body.guestCount ? Number(body.guestCount) : undefined)
+      const res = await PosDatabase.seatReservation(id, body.guestCount ? Number(body.guestCount) : undefined)
       if (!res.success) {
         return NextResponse.json({ success: false, error: res.error }, { status: 409 })
       }
@@ -75,7 +78,7 @@ export async function POST(req: Request) {
       if (!id) {
         return NextResponse.json({ success: false, error: "Reservation ID is required" }, { status: 400 })
       }
-      const res = DemoDbService.cancelReservation(id)
+      const res = await PosDatabase.cancelReservation(id)
       if (!res.success) {
         return NextResponse.json({ success: false, error: res.error }, { status: 400 })
       }
@@ -86,7 +89,7 @@ export async function POST(req: Request) {
       if (!id || !body.status) {
         return NextResponse.json({ success: false, error: "Reservation ID and status required" }, { status: 400 })
       }
-      const res = DemoDbService.updateReservation(id, { status: body.status })
+      const res = await PosDatabase.updateReservation(id, { status: body.status })
       if (!res.success) {
         return NextResponse.json({ success: false, error: res.error }, { status: 400 })
       }
@@ -95,6 +98,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: false, error: `Unknown action '${action}'` }, { status: 400 })
   } catch (error: any) {
+    console.error("POST /api/tables/bookings failed:", error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }

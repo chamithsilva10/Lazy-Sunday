@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto"
 import { isDemoMode } from "../config/demo"
+import { PosDatabase } from "../db/pos-database"
 import {
   AppUser,
   DEFAULT_ROLE_PERMISSIONS,
@@ -16,16 +17,13 @@ function hashPassword(password: string): string {
 }
 
 function verifyPassword(password: string, storedHash: string): boolean {
-  if (!storedHash) return false
-  if (storedHash.startsWith("$2b$") || storedHash.startsWith("$2a$")) {
-    // Standard mock hash check for initial seed passwords
-    return password.length > 0
-  }
+  if (!storedHash || !password) return false
   const parts = storedHash.split(":")
   if (parts.length !== 2) return false
   const [salt, key] = parts
   const derivedKey = scryptSync(password, salt, 64)
   const keyBuffer = Buffer.from(key, "hex")
+  if (derivedKey.length !== keyBuffer.length) return false
   return timingSafeEqual(derivedKey, keyBuffer)
 }
 
@@ -165,6 +163,13 @@ export class RbacService {
   // ROLES
   // =========================================================================
   static async getRoles(): Promise<Role[]> {
+    try {
+      const dbRoles = await PosDatabase.getRoles()
+      if (dbRoles && dbRoles.length > 0) return dbRoles
+    } catch (err) {
+      console.warn("PosDatabase.getRoles warning:", err)
+    }
+
     const supabase = getSupabaseAdminClient()
     if (!supabase) {
       // Calculate user counts locally
@@ -356,6 +361,13 @@ export class RbacService {
   // USERS
   // =========================================================================
   static async getUsers(): Promise<AppUser[]> {
+    try {
+      const dbUsers = await PosDatabase.getUsers()
+      if (dbUsers && dbUsers.length > 0) return dbUsers
+    } catch (err) {
+      console.warn("PosDatabase.getUsers warning:", err)
+    }
+
     const supabase = getSupabaseAdminClient()
     const roles = await this.getRoles()
     const rolesMap = new Map(roles.map((r) => [r.id, r]))
@@ -406,6 +418,10 @@ export class RbacService {
   }
 
   static async getUserByUsername(username: string): Promise<AppUser | null> {
+    try {
+      const user = await PosDatabase.getUserByUsername(username)
+      if (user) return user
+    } catch {}
     const clean = username.trim().toLowerCase()
     const users = await this.getUsers()
     return users.find((u) => u.username.toLowerCase() === clean) || null
@@ -567,6 +583,13 @@ export class RbacService {
   }
 
   static async authenticateUser(username: string, password: string): Promise<AppUser | null> {
+    try {
+      const authUser = await PosDatabase.authenticateUser(username, password)
+      if (authUser) return authUser
+    } catch (err) {
+      console.warn("PosDatabase.authenticateUser warning:", err)
+    }
+
     const user = await this.getUserByUsername(username)
     if (!user || !user.is_active) return null
 
@@ -577,12 +600,14 @@ export class RbacService {
       return user
     }
 
-    // Fallback for dev convenience (allow default passwords Welcome123, admin123, cashier123, kitchen123, staff123)
+    // Fallback for dev convenience (allow default passwords Welcome123, welcome123, Welcome123!, admin123, manager123, cashier123, kitchen123, staff123)
+    const isWelcome = password === "Welcome123" || password === "welcome123" || password === "Welcome123!"
     if (
-      (user.username === "admin" && (password === "Welcome123" || password === "admin123")) ||
-      (user.username === "cashier" && password === "cashier123") ||
-      (user.username === "kitchen" && password === "kitchen123") ||
-      (user.username === "staff" && password === "staff123")
+      (user.username === "admin" && (isWelcome || password === "admin123")) ||
+      (user.username === "manager" && (isWelcome || password === "manager123")) ||
+      (user.username === "cashier" && (isWelcome || password === "cashier123")) ||
+      (user.username === "kitchen" && (isWelcome || password === "kitchen123")) ||
+      (user.username === "staff" && (isWelcome || password === "staff123"))
     ) {
       return user
     }

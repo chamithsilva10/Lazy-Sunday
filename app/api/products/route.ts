@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { authorizeStaff, createStaffSupabaseClient, hasValidOrigin } from "@/lib/coffee/auth"
+import { authorizeStaff, hasValidOrigin } from "@/lib/coffee/auth"
 import { determineItemStation } from "@/lib/station-routing"
-import { DemoDbService } from "@/lib/db/demo-sqlite"
-import { MOCK_PRODUCTS } from "@/lib/mock/pos-mock-data"
+import { PosDatabase } from "@/lib/db/pos-database"
 
 export const dynamic = "force-dynamic"
 
@@ -17,7 +16,7 @@ const productCreateSchema = z.object({
   station: z.enum(["kitchen", "bar", "none"]).optional(),
   image: z.string().trim().max(2048).optional(),
   description: z.string().trim().max(1000).optional(),
-  temperature: z.enum(["hot", "iced", "none"]).default("none"),
+  temperature: z.enum(["hot", "iced", "cold", "none"]).default("none"),
   dietary_tags: z.array(z.string()).default([]),
   department: z.string().trim().max(80).optional(),
   active: z.boolean().default(true),
@@ -27,138 +26,28 @@ const productCreateSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const category = searchParams.get("category")
-    const station = searchParams.get("station")
+    const category = searchParams.get("category") || undefined
+    const station = searchParams.get("station") || undefined
     const activeOnly = searchParams.get("activeOnly") === "true"
-    const search = searchParams.get("search")?.trim().toLowerCase()
+    const search = searchParams.get("search")?.trim().toLowerCase() || undefined
 
-    const supabase = createStaffSupabaseClient(request)
+    const products = await PosDatabase.getProducts({
+      category,
+      station,
+      activeOnly,
+      search,
+    })
 
-    if (supabase) {
-      let query = supabase
-        .from("pos_products")
-        .select(`
-          id,
-          name,
-          price,
-          cost,
-          stock,
-          category_id,
-          image,
-          description,
-          temperature,
-          dietary_tags,
-          department_override,
-          station,
-          active,
-          is_archived,
-          sort_order,
-          created_at,
-          updated_at,
-          pos_categories (
-            id,
-            name
-          )
-        `)
-        .eq("is_archived", false)
-        .order("sort_order", { ascending: true })
-        .order("name", { ascending: true })
-
-      if (activeOnly) {
-        query = query.eq("active", true)
-      }
-
-      if (station && station !== "all") {
-        query = query.eq("station", station)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      let products = (data || []).map((p: any) => ({
-        id: String(p.id),
-        name: p.name,
-        price: Number(p.price) || 0,
-        cost: Number(p.cost) || 0,
-        stock: Number(p.stock) || 0,
-        category: p.pos_categories?.name || "General",
-        category_id: p.category_id,
-        image: p.image || "/placeholder.svg",
-        description: p.description || "",
-        temperature: p.temperature || "none",
-        dietary_tags: p.dietary_tags || [],
-        department: p.department_override || (p.station === "bar" ? "Coffee Bar" : "Juice & Food"),
-        station: p.station || (p.department_override && /bar/i.test(p.department_override) ? "bar" : "kitchen"),
-        active: p.active !== false,
-        track_stock: p.track_stock !== false,
-        updated_at: p.updated_at,
-      }))
-
-      if (category && category !== "All") {
-        products = products.filter((p) => p.category.toLowerCase() === category.toLowerCase())
-      }
-
-      if (search) {
-        products = products.filter(
-          (p) => p.name.toLowerCase().includes(search) || p.category.toLowerCase().includes(search)
-        )
-      }
-
-      if (products.length > 0) {
-        return NextResponse.json({ success: true, products })
-      }
-    }
-
-    // SQLite / Demo Mode Fallback
-    const offlineList = DemoDbService.getProducts() || MOCK_PRODUCTS
-    let fallbackProducts = (offlineList && offlineList.length > 0 ? offlineList : MOCK_PRODUCTS).map((p: any) => ({
-      id: String(p.id),
-      name: p.name,
-      price: Number(p.price) || 0,
-      cost: Number(p.cost_price || p.cost || 0),
-      stock: Number(p.stock) || 0,
-      category: p.category || "General",
-      category_id: p.category_id,
-      image: p.image || "/placeholder.svg",
-      description: p.description || "",
-      temperature: p.temperature || "none",
-      dietary_tags: p.dietary_tags || [],
-      department: p.department || (p.station === "bar" ? "Coffee Bar" : "Juice & Food"),
-      station: p.station || "kitchen",
-      active: p.active !== false,
-      track_stock: true,
-      updated_at: new Date().toISOString(),
-    }))
-
-    if (category && category !== "All") {
-      fallbackProducts = fallbackProducts.filter((p) => p.category.toLowerCase() === category.toLowerCase())
-    }
-
-    if (station && station !== "all") {
-      fallbackProducts = fallbackProducts.filter((p) => p.station === station)
-    }
-
-    if (activeOnly) {
-      fallbackProducts = fallbackProducts.filter((p) => p.active)
-    }
-
-    if (search) {
-      fallbackProducts = fallbackProducts.filter(
-        (p) => p.name.toLowerCase().includes(search) || p.category.toLowerCase().includes(search)
-      )
-    }
-
-    return NextResponse.json({ success: true, products: fallbackProducts })
+    return NextResponse.json({ success: true, products })
   } catch (error: any) {
-    console.error("GET /api/products failed", error)
+    console.error("GET /api/products failed:", error)
     return NextResponse.json({ success: false, error: "Unable to load products." }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   if (!hasValidOrigin(request)) {
-    return NextResponse.json({ success: false, error: "Invalid request." }, { status: 403 })
+    return NextResponse.json({ success: false, error: "Invalid request origin." }, { status: 403 })
   }
 
   const auth = await authorizeStaff(request, "admin")
@@ -182,6 +71,7 @@ export async function POST(request: NextRequest) {
       cost,
       stock,
       category_id,
+      category,
       station,
       image,
       description,
@@ -192,61 +82,27 @@ export async function POST(request: NextRequest) {
       track_stock,
     } = parsed.data
 
-    const supabase = createStaffSupabaseClient(request)
+    const determinedStation = station || determineItemStation({ name, category, department })
 
-    // Determine station
-    const determinedStation = station || determineItemStation({
+    const product = await PosDatabase.createProduct({
       name,
-      department,
-      category: parsed.data.category,
+      price: Number(price),
+      cost: Number(cost),
+      stock: Number(stock),
+      category_id: category_id || null,
+      station: determinedStation,
+      image: image?.trim() || "/placeholder.svg",
+      description: description?.trim() || "",
+      temperature,
+      dietary_tags,
+      department: department || (determinedStation === "bar" ? "Coffee Bar" : "Juice & Food"),
+      active,
+      track_stock,
     })
 
-    if (supabase) {
-      const nowIso = new Date().toISOString()
-      const { data, error } = await supabase
-        .from("pos_products")
-        .insert({
-          name: name.trim(),
-          price: Number(price),
-          cost: Number(cost),
-          stock: Number(stock),
-          category_id: category_id || null,
-          station: determinedStation,
-          image: image?.trim() || "/placeholder.svg",
-          description: description?.trim() || "",
-          temperature,
-          dietary_tags,
-          department_override: department || (determinedStation === "bar" ? "Coffee Bar" : "Juice & Food"),
-          active,
-          track_stock,
-          is_archived: false,
-          created_at: nowIso,
-          updated_at: nowIso,
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      return NextResponse.json({ success: true, product: data }, { status: 201 })
-    }
-
-    const offlineProduct = {
-      id: `prod-${Date.now()}`,
-      name,
-      price,
-      cost,
-      stock,
-      category_id,
-      station: determinedStation,
-      image: image || "/placeholder.svg",
-      active,
-      updated_at: new Date().toISOString(),
-    }
-
-    return NextResponse.json({ success: true, product: offlineProduct }, { status: 201 })
+    return NextResponse.json({ success: true, product }, { status: 201 })
   } catch (error: any) {
     console.error("POST /api/products failed", error)
-    return NextResponse.json({ success: false, error: "Unable to create product." }, { status: 500 })
+    return NextResponse.json({ success: false, error: error.message || "Unable to create product." }, { status: 500 })
   }
 }

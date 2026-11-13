@@ -22,6 +22,10 @@ export interface PosSplitPaymentLine {
 }
 
 export interface PosReceiptProps {
+  brandName?: string
+  brandSubtitle?: string
+  brandAddress?: string
+  currency?: string
   receiptNumber: string
   orderNumber: string
   tableName?: string
@@ -67,10 +71,14 @@ function generateBarcodeBars(seed: string, count = 42): number[] {
 }
 
 export function PosReceipt({
+  brandName = "ABC COFFEE",
+  brandSubtitle = "SPECIALTY COFFEE",
+  brandAddress = "123, Main Street",
+  currency = "LKR",
   receiptNumber,
   orderNumber,
-  tableName = "Table 05",
-  cashierName = "System Administrator",
+  tableName = "04",
+  cashierName = "Admin",
   orderType = "DINE_IN",
   dateStr,
   timeStr,
@@ -86,13 +94,20 @@ export function PosReceipt({
   changeAmount,
   className,
   animated = false,
-  showBarcode = true,
+  showBarcode = false,
   isGuestBill = false,
   onPrintAgain,
 }: PosReceiptProps) {
   const now = new Date()
-  const displayDate = dateStr || now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-  const displayTime = timeStr || now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+  const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+  const day = now.getDate().toString().padStart(2, "0")
+  const month = monthNames[now.getMonth()]
+  const year = now.getFullYear()
+  const hours = now.getHours().toString().padStart(2, "0")
+  const minutes = now.getMinutes().toString().padStart(2, "0")
+
+  const displayDate = dateStr || `${day} ${month} ${year}`
+  const displayTime = timeStr || `${hours}:${minutes}`
   const serviceChargePercent = Math.round((serviceChargeRate || 0.1) * 100)
 
   const bars = React.useMemo(() => generateBarcodeBars(receiptNumber || orderNumber), [receiptNumber, orderNumber])
@@ -101,203 +116,199 @@ export function PosReceipt({
     return (val || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
 
-  const titleHeader = isGuestBill ? "GUEST BILL / TABLE CHECK" : "TAX INVOICE / RECEIPT"
-  const subtitleNotice = isGuestBill
-    ? "PLEASE PAY AT CASHIER COUNTER OR TO FLOOR SERVER"
-    : "PAYMENT COMPLETED & SETTLED"
+  const orderNumClean = (orderNumber || "").replace(/^LS-/, "")
+  const isTakeaway = (orderType || "").toLowerCase().includes("takeaway") || (tableName || "").toLowerCase() === "takeaway"
+  const tableNumOnly = tableName ? tableName.replace(/^(Table|Tab)\s*/i, "").trim() : "01"
+  const tableDisplay = isTakeaway
+    ? "TAKEAWAY"
+    : `DINE IN / TABLE ${tableNumOnly.length < 2 ? `0${tableNumOnly}` : tableNumOnly}`
 
-  const paymentFormatted =
-    splitPayments && splitPayments.length > 0
-      ? "SPLIT / MIXED TENDER"
-      : paymentMethod === "qr" || paymentMethod === "transfer"
-      ? "LANKA QR / DIGITAL"
-      : (paymentMethod || "CASH").toUpperCase()
-
-  const orderTypeFormatted = (orderType || "DINE_IN").toUpperCase().replace("-", "_")
+  const isSplit = splitPayments && splitPayments.length > 0
+  const isCash = (paymentMethod || "CASH").toUpperCase() === "CASH"
 
   return (
     <div
       data-receipt="true"
       data-slot="pos-receipt"
       className={cn(
-        "w-full max-w-[340px] sm:max-w-[360px] mx-auto text-black font-mono text-xs select-none",
+        "w-full max-w-[340px] sm:max-w-[360px] mx-auto text-black font-sans text-xs select-none print:w-[72mm] print:max-w-[72mm] print:p-0 print:border-none print:shadow-none print:rounded-none",
         animated && "animate-in fade-in slide-in-from-top-4 duration-400",
         className
       )}
     >
-      <article className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden">
-        {/* Top Header */}
-        <header className="text-center space-y-0.5">
-          <h2 className="font-sans text-xl sm:text-2xl font-black tracking-[0.18em] uppercase text-black">
-            LAZY SUNDAY
+      <article className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden print:p-2 print:border-none print:shadow-none print:rounded-none">
+        {/* Top Header matching reference image */}
+        <header className="text-center space-y-1">
+          {/* Sleek Tilted Coffee Bean Icon */}
+          <svg
+            className="w-7 h-7 mx-auto text-black"
+            viewBox="0 0 100 100"
+            fill="currentColor"
+            style={{ transform: "rotate(-22deg)" }}
+          >
+            <path d="M48,8 C28,10 14,28 14,50 C14,64 22,78 34,88 C38,82 40,72 40,62 C40,46 32,36 38,22 C41,15 45,10 48,8 Z" />
+            <path d="M54,8 C56,12 58,18 56,26 C52,40 60,50 60,66 C60,76 56,86 52,92 C72,88 86,72 86,50 C86,30 72,12 54,8 Z" />
+          </svg>
+          <h2 className="font-sans text-xl font-extrabold tracking-[0.16em] uppercase text-black pt-0.5">
+            {brandName}
           </h2>
-          <p className="text-[11px] font-extrabold tracking-[0.16em] uppercase text-black">
-            POINT OF SALE RECEIPT
+          <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-black">
+            {brandSubtitle}
           </p>
-          <p className="text-[10px] tracking-wide text-gray-600 italic">
-            Tropical Bites &amp; Specialty Coffee
+          <p className="text-[10px] text-gray-700 tracking-wide">
+            {brandAddress}
           </p>
-          <p className="text-[9px] text-gray-500">
-            Beach Road, Hiriketiya Bay · Tel: +94 41 227 1122
-          </p>
-          <div className="pt-1">
-            <span className="inline-block bg-black text-white text-[10px] sm:text-[11px] font-black px-3 py-1 rounded tracking-wider uppercase">
-              {titleHeader}
-            </span>
-          </div>
         </header>
 
-        <DashedRule className="my-2.5" />
+        <div className="border-t border-black my-3" />
 
-        {/* Chit Metadata (2 Column Clean Grid) */}
-        <div className="text-[11px] leading-relaxed text-black space-y-0.5">
-          <div className="flex justify-between items-baseline">
-            <span>Receipt #: <strong>{receiptNumber || orderNumber}</strong></span>
-            <span className="text-right">Order #: <strong>{orderNumber}</strong></span>
+        {/* Order Metadata */}
+        <div className="text-xs text-black space-y-0.5">
+          <div className="font-extrabold tracking-wide uppercase text-sm">
+            ORDER {orderNumClean}
           </div>
-          <div className="flex justify-between items-baseline">
-            <span>Table: <strong>{tableName || "Takeaway"}</strong></span>
-            <span className="text-right">Type: <strong>{orderTypeFormatted}</strong></span>
+          <div className="font-medium tracking-wider uppercase text-[11px]">
+            {tableDisplay}
           </div>
-          <div className="flex justify-between items-baseline">
-            <span className="truncate max-w-[55%]">Cashier: {cashierName}</span>
-            <span className="text-right">{displayDate} {displayTime}</span>
+          <div className="text-[11px] text-gray-800">
+            {displayDate} · {displayTime}
           </div>
-          <div className="flex justify-between items-baseline">
-            <span>Payment: <strong>{paymentFormatted}</strong></span>
+          <div className="text-[11px] text-gray-800">
+            Cashier: {cashierName}
           </div>
         </div>
 
-        <DashedRule className="my-2.5" />
+        <div className="border-t border-black my-3" />
 
-        {/* Items Table Header */}
-        <div className="flex justify-between text-[10px] font-extrabold tracking-wider uppercase text-black pb-1 border-b border-dashed border-gray-400">
+        {/* Table Column Header */}
+        <div className="flex justify-between text-[11px] font-bold tracking-wider uppercase text-black pb-1">
           <span className="w-[14%]">QTY</span>
-          <span className="w-[52%]">ITEM DESCRIPTION</span>
-          <span className="w-[34%] text-right">TOTAL (RS.)</span>
+          <span className="flex-1 px-1">ITEM</span>
+          <span className="w-[32%] text-right">{currency}</span>
         </div>
+
+        <div className="border-t border-black my-1" />
 
         {/* Items List */}
-        <div className="divide-y divide-gray-100 py-1">
+        <div className="py-1 space-y-1.5 text-xs text-black">
           {items.map((item, idx) => {
             const lineTotal = item.price * item.quantity
             return (
-              <div key={idx} className="py-1 text-xs">
-                <div className="flex items-start justify-between">
-                  <span className="w-[14%] font-bold text-black">{item.quantity}x</span>
-                  <div className="w-[52%] pr-1">
-                    <p className="font-bold text-black leading-tight">{item.name}</p>
-                    <p className="text-[10px] text-gray-500 font-mono">@ Rs. {formatCurrency(item.price)} ea</p>
-                    {item.modifiers && item.modifiers.length > 0 && (
-                      <div className="text-[9.5px] text-gray-500 space-y-0.5 mt-0.5">
-                        {item.modifiers.map((mod, mIdx) => (
-                          <p key={mIdx}>+ {mod}</p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <span className="w-[34%] text-right font-bold text-black font-mono">
-                    Rs. {formatCurrency(lineTotal)}
-                  </span>
+              <div key={idx} className="flex items-baseline justify-between py-0.5">
+                <span className="w-[14%] font-medium">{item.quantity}</span>
+                <div className="flex-1 px-1">
+                  <p className="font-medium leading-tight">{item.name}</p>
+                  {item.modifiers && item.modifiers.length > 0 && (
+                    <p className="text-[10px] text-gray-600 mt-0.5">
+                      {item.modifiers.map((m) => `+ ${m}`).join(", ")}
+                    </p>
+                  )}
                 </div>
+                <span className="w-[32%] text-right font-medium tabular-nums">
+                  {formatCurrency(lineTotal)}
+                </span>
               </div>
             )
           })}
         </div>
 
-        <DashedRule className="my-2.5" />
+        <div className="border-t border-black my-3" />
 
-        {/* Totals Breakdown */}
-        <div className="space-y-1 text-xs text-black">
+        {/* Subtotal & Discounts Breakdown */}
+        <div className="space-y-1 text-xs text-black leading-relaxed">
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span className="font-mono">Rs. {formatCurrency(subtotal)}</span>
+            <span className="tabular-nums">{formatCurrency(subtotal)}</span>
           </div>
 
-          <div className="flex justify-between">
-            <span>Hospitality Service Charge ({serviceChargePercent}%)</span>
-            <span className="font-mono">Rs. {formatCurrency(serviceCharge)}</span>
-          </div>
+          {serviceCharge > 0 && (
+            <div className="flex justify-between">
+              <span>Service Charge ({serviceChargePercent}%)</span>
+              <span className="tabular-nums">{formatCurrency(serviceCharge)}</span>
+            </div>
+          )}
 
           {discount > 0 && (
-            <div className="flex justify-between font-semibold">
-              <span>Discount Applied</span>
-              <span className="font-mono">-Rs. {formatCurrency(discount)}</span>
+            <div className="flex justify-between">
+              <span>Discount</span>
+              <span className="tabular-nums">-{formatCurrency(discount)}</span>
             </div>
           )}
         </div>
 
-        {/* TOTAL DUE Solid Border Box */}
-        <div className="border-2 border-black p-2 my-2.5 flex justify-between items-baseline font-black">
-          <span className="text-xs sm:text-sm tracking-wider uppercase">TOTAL DUE</span>
-          <span className="font-mono text-base sm:text-lg">
-            Rs. {formatCurrency(total)}
+        <div className="border-t-[1.5px] border-black my-2.5" />
+
+        {/* TOTAL / LKR Banner */}
+        <div className="flex justify-between items-baseline py-1">
+          <span className="text-sm font-extrabold tracking-wider uppercase">
+            TOTAL / {currency}
+          </span>
+          <span className="text-2xl sm:text-[26px] font-black tracking-tight tabular-nums">
+            {formatCurrency(total)}
           </span>
         </div>
 
-        {/* Split Payments Breakdown or Single Cash Tendered & Change */}
-        {splitPayments && splitPayments.length > 0 ? (
-          <div className="space-y-1.5 text-xs text-black py-1 border-t border-dashed border-gray-400 mt-2">
-            <div className="flex justify-between font-black text-[10px] tracking-wider uppercase text-black">
-              <span>SPLIT TENDER SETTLEMENT</span>
-              <span>{splitPayments.length} PAYMENTS</span>
+        <div className="border-t-[1.5px] border-black my-2.5" />
+
+        {/* Payment & Change Section */}
+        <div className="space-y-1 text-xs text-black leading-relaxed">
+          {isGuestBill ? (
+            <div className="text-center font-bold text-xs uppercase tracking-wider py-1">
+              PLEASE PAY AT CASHIER COUNTER
             </div>
-            {splitPayments.map((sp, idx) => (
-              <div key={idx} className="space-y-0.5 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                <div className="flex justify-between font-bold">
-                  <span>
-                    • {sp.method.toUpperCase()}
-                    {sp.reference ? ` [${sp.reference}]` : ""}
-                    {sp.customer_name ? ` (${sp.customer_name})` : ""}
-                  </span>
-                  <span className="font-mono">Rs. {formatCurrency(sp.amount)}</span>
+          ) : isSplit ? (
+            <>
+              {splitPayments.map((sp, idx) => (
+                <div key={idx} className="flex justify-between">
+                  <span>{sp.method.toUpperCase()}{sp.reference ? ` (${sp.reference})` : ""}</span>
+                  <span className="tabular-nums">{formatCurrency(sp.amount)}</span>
                 </div>
-                {sp.method.toLowerCase() === "cash" && sp.tendered && sp.tendered > sp.amount && (
-                  <div className="flex justify-between text-[10px] text-gray-600 pl-2">
-                    <span>Tendered: Rs. {formatCurrency(sp.tendered)}</span>
-                    <span className="font-semibold text-emerald-700">
-                      Change: Rs. {formatCurrency(sp.change_due ?? (sp.tendered - sp.amount))}
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-            {changeAmount !== undefined && changeAmount > 0 && (
-              <div className="flex justify-between font-black text-xs pt-1.5 border-t border-gray-300">
-                <span>TOTAL CHANGE RETURNED:</span>
-                <span className="font-mono text-emerald-800">Rs. {formatCurrency(changeAmount)}</span>
-              </div>
-            )}
-          </div>
-        ) : (
-          paymentMethod.toUpperCase() === "CASH" && (cashReceived !== undefined || (total > 0 && !isGuestBill)) && (
-            <div className="space-y-1 text-xs text-black py-0.5">
+              ))}
+              {changeAmount !== undefined && changeAmount > 0 && (
+                <div className="flex justify-between font-semibold">
+                  <span>Change</span>
+                  <span className="tabular-nums">{formatCurrency(changeAmount)}</span>
+                </div>
+              )}
+            </>
+          ) : isCash ? (
+            <>
               <div className="flex justify-between">
-                <span>Cash Tendered:</span>
-                <span className="font-mono font-bold">Rs. {formatCurrency(cashReceived ?? total)}</span>
+                <span>Cash</span>
+                <span className="tabular-nums">{formatCurrency(cashReceived ?? total)}</span>
               </div>
-              <div className="flex justify-between font-bold">
-                <span>Change Returned:</span>
-                <span className="font-mono">Rs. {formatCurrency(changeAmount ?? 0)}</span>
+              <div className="flex justify-between">
+                <span>Change</span>
+                <span className="tabular-nums">{formatCurrency(changeAmount ?? 0)}</span>
               </div>
-            </div>
-          )
-        )}
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between">
+                <span>{paymentMethod.toUpperCase()}</span>
+                <span className="tabular-nums">{formatCurrency(total)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Change</span>
+                <span className="tabular-nums">0.00</span>
+              </div>
+            </>
+          )}
+        </div>
 
-        {/* Double Solid Line */}
-        <div className="border-t-2 border-b border-black h-[3px] my-3" />
+        <div className="border-t border-black my-3" />
 
-        {/* Footer */}
-        <footer className="text-center space-y-1 text-[10px] text-gray-700">
-          <p className="font-black text-[11px] text-black tracking-wide">*** THANK YOU FOR DINING WITH US ***</p>
-          <p className="font-semibold uppercase text-black">{subtitleNotice}</p>
-          <p>Free WiFi: <strong>GuestWiFi</strong> · Pass: <strong>welcome2026</strong></p>
-          <p>Customer Support: support@posdemo.com</p>
+        {/* Footer matching reference image */}
+        <footer className="text-center pt-2 space-y-1.5 text-black">
+          <p className="text-xs font-medium">Good coffee. Good day.</p>
+          <p className="text-[10px] font-semibold tracking-[0.35em] uppercase text-black">
+            T H A N K &nbsp; Y O U
+          </p>
         </footer>
 
-        {/* Barcode Section */}
+        {/* Barcode Section (if requested) */}
         {showBarcode && (
-          <div className="mt-3 text-center">
+          <div className="mt-4 text-center">
             <div aria-hidden="true" className="mx-auto flex h-8 w-fit items-stretch bg-white px-2 py-0.5">
               {bars.map((w, b) => (
                 <span
@@ -315,21 +326,17 @@ export function PosReceipt({
 
         {/* Print Again Button */}
         {onPrintAgain && (
-          <div className="mt-4 text-center print:hidden">
+          <div className="mt-5 text-center print:hidden">
             <button
               type="button"
               onClick={onPrintAgain}
-              className="bg-[#D67B6B] hover:bg-[#c36859] text-white px-6 py-2 rounded-lg font-bold text-xs shadow-sm transition-colors"
+              className="bg-black hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-bold text-xs shadow-sm transition-colors uppercase tracking-wider"
             >
-              Print Again
+              Print Receipt
             </button>
           </div>
         )}
       </article>
     </div>
   )
-}
-
-function DashedRule({ className }: { className?: string }) {
-  return <div aria-hidden="true" className={cn("border-t border-dashed border-gray-400 w-full", className)} />
 }

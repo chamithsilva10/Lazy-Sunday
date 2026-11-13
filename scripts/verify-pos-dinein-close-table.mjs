@@ -10,8 +10,8 @@ async function run() {
   const data1 = await res1.json()
   console.log(`✓ Fetched ${data1.tables.length} tables from server.`)
 
-  const testTableName = "Table 6"
-  const table6 = data1.tables.find(t => t.name.toLowerCase() === testTableName.toLowerCase())
+  const table6 = data1.tables.find(t => t.name.replace(/Table 0?(\d+)/i, 'Table $1') === 'Table 6' || t.name.toLowerCase() === 'table 06')
+  const testTableName = table6 ? table6.name : "Table 06"
   if (!table6) throw new Error(`Could not find ${testTableName}`)
   console.log(`✓ Initial status of ${testTableName}: ${table6.status}`)
 

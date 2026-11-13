@@ -35,7 +35,7 @@ async function run() {
   console.log("\n[Test 3] Verifying Table 4 status in floor query...")
   const checkRes = await fetch(`${BASE_URL}/api/tables`)
   const checkData = await checkRes.json()
-  const tbl4 = checkData.tables.find((t) => t.id === "tbl-4" || t.name === "Table 4")
+  const tbl4 = checkData.tables.find((t) => t.id === "tbl-4" || t.name === "Table 4" || t.name === "Table 04")
   assert(tbl4, "Table 4 must exist")
   assert.strictEqual(tbl4.status, "reserved", "Table 4 must have status 'reserved'")
   console.log(`✓ Table 4 is confirmed 'reserved' on floor query.`)

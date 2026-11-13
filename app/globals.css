@@ -23,19 +23,43 @@
   }
 }
 
+@page {
+  size: 80mm auto;
+  margin: 0;
+}
+
 @media print {
-  body {
+  html, body {
+    width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
     background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  aside, nav, header, button, input, [role="dialog"] + * {
+  aside, nav, header, button, input, [role="dialog"] + *, .no-print, [data-no-print="true"] {
     display: none !important;
   }
 
-  [data-receipt="true"] {
+  [data-receipt="true"],
+  [data-ticket="true"] {
     display: block !important;
-    max-width: 420px;
-    margin: 0 auto;
+    width: 72mm !important;
+    max-width: 72mm !important;
+    margin: 0 auto !important;
+    padding: 2mm 0 12mm 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  [data-receipt="true"] article,
+  [data-ticket="true"] article {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 2mm 1mm !important;
+    border-radius: 0 !important;
   }
 }
 

@@ -1,20 +1,23 @@
 import { NextResponse } from "next/server"
-import { DemoDbService } from "@/lib/db/demo-sqlite"
-import { MOCK_TABLES } from "@/lib/mock/pos-mock-data"
+import { PosDatabase } from "@/lib/db/pos-database"
+
+export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    const tables = DemoDbService.getTables()
-    const sessions = DemoDbService.getTableSessions()
-    const reservations = DemoDbService.getReservations(["pending", "confirmed", "arrived"])
+    const tables = await PosDatabase.getTables()
+    const sessions = await PosDatabase.getTableSessions()
+    const reservations = await PosDatabase.getReservations(["pending", "confirmed", "arrived"])
+
     return NextResponse.json({
       success: true,
-      tables: tables && tables.length > 0 ? tables : MOCK_TABLES,
+      tables,
       sessions,
       reservations,
     })
-  } catch (error) {
-    return NextResponse.json({ success: true, tables: MOCK_TABLES })
+  } catch (error: any) {
+    console.error("GET /api/tables failed:", error)
+    return NextResponse.json({ success: false, error: error.message || "Failed to load tables." }, { status: 500 })
   }
 }
 
@@ -28,7 +31,7 @@ export async function POST(req: Request) {
       if (!targetId) {
         return NextResponse.json({ success: false, error: "Table identifier is required" }, { status: 400 })
       }
-      const res = DemoDbService.occupyTable(targetId, {
+      const res = await PosDatabase.occupyTable(targetId, {
         orderNumber,
         orderTotal,
         guestName,
@@ -44,7 +47,7 @@ export async function POST(req: Request) {
       if (!targetId) {
         return NextResponse.json({ success: false, error: "Table identifier is required" }, { status: 400 })
       }
-      const res = DemoDbService.seatWalkIn(targetId, guestInfo)
+      const res = await PosDatabase.seatWalkIn(targetId, guestInfo)
       if (!res.success) {
         return NextResponse.json({ success: false, error: res.error }, { status: 409 })
       }
@@ -55,7 +58,7 @@ export async function POST(req: Request) {
       if (!targetId) {
         return NextResponse.json({ success: false, error: "Table identifier is required" }, { status: 400 })
       }
-      const res = DemoDbService.releaseTable(targetId)
+      const res = await PosDatabase.releaseTable(targetId)
       if (!res.success) {
         return NextResponse.json({ success: false, error: res.error }, { status: 400 })
       }
@@ -70,12 +73,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Table identifier is required" }, { status: 400 })
     }
 
-    const updated = DemoDbService.updateTableStatus(targetId, status)
-    if (status === "available") {
-      DemoDbService.recalculateTableStatus(targetId)
-    }
+    const updated = await PosDatabase.updateTableStatus(targetId, status)
     return NextResponse.json({ success: true, updated, status })
   } catch (error: any) {
+    console.error("POST /api/tables failed:", error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }

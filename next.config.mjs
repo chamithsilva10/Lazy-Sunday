@@ -1,12 +1,10 @@
-const isDemo = process.env.DEMO_MODE === "true" || process.env.NEXT_PUBLIC_DEMO_MODE === "true" || !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("dysnpzrmppcmqdebgtzt")
+const isExplicitDemo = process.env.DEMO_MODE === "true" || process.env.NEXT_PUBLIC_DEMO_MODE === "true"
+const isExplicitProd = process.env.DEMO_MODE === "false" || process.env.NEXT_PUBLIC_DEMO_MODE === "false"
 
-const supabaseUrl = isDemo
-  ? ""
-  : (process.env.NEXT_PUBLIC_SUPABASE_URL || "")
+const isDemo = isExplicitProd ? false : isExplicitDemo
 
-const supabaseAnonKey = isDemo
-  ? ""
-  : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "")
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

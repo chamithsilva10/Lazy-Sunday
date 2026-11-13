@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { authorizeStaff, createStaffSupabaseClient, hasValidOrigin } from "@/lib/coffee/auth"
+import { authorizeStaff, hasValidOrigin } from "@/lib/coffee/auth"
+import { PosDatabase } from "@/lib/db/pos-database"
 
 export const dynamic = "force-dynamic"
 
@@ -13,7 +14,7 @@ const productUpdateSchema = z.object({
   station: z.enum(["kitchen", "bar", "none"]).optional(),
   image: z.string().trim().max(2048).optional(),
   description: z.string().trim().max(1000).optional(),
-  temperature: z.enum(["hot", "iced", "none"]).optional(),
+  temperature: z.enum(["hot", "iced", "cold", "none"]).optional(),
   dietary_tags: z.array(z.string()).optional(),
   department: z.string().trim().max(80).optional(),
   active: z.boolean().optional(),
@@ -26,22 +27,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = createStaffSupabaseClient(request)
+    const product = await PosDatabase.getProductById(id)
 
-    if (supabase) {
-      const { data, error } = await supabase
-        .from("pos_products")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle()
-
-      if (error) throw error
-      if (!data) return NextResponse.json({ success: false, error: "Product not found." }, { status: 404 })
-
-      return NextResponse.json({ success: true, product: data })
+    if (!product) {
+      return NextResponse.json({ success: false, error: "Product not found." }, { status: 404 })
     }
 
-    return NextResponse.json({ success: false, error: "Product not found." }, { status: 404 })
+    return NextResponse.json({ success: true, product })
   } catch (error: any) {
     console.error("GET /api/products/[id] failed", error)
     return NextResponse.json({ success: false, error: "Unable to load product." }, { status: 500 })
@@ -67,7 +59,7 @@ async function handleProductUpdate(
   paramsPromise: Promise<{ id: string }>
 ) {
   if (!hasValidOrigin(request)) {
-    return NextResponse.json({ success: false, error: "Invalid request." }, { status: 403 })
+    return NextResponse.json({ success: false, error: "Invalid request origin." }, { status: 403 })
   }
 
   const auth = await authorizeStaff(request, "admin")
@@ -86,38 +78,15 @@ async function handleProductUpdate(
       return NextResponse.json({ success: false, error: "Invalid product update data.", details: parsed.error.format() }, { status: 400 })
     }
 
-    const supabase = createStaffSupabaseClient(request)
-    const updateData: Record<string, any> = {
-      ...parsed.data,
-      updated_at: new Date().toISOString(),
+    const updated = await PosDatabase.updateProduct(id, parsed.data)
+    if (!updated) {
+      return NextResponse.json({ success: false, error: "Product not found or update failed." }, { status: 404 })
     }
 
-    if (parsed.data.department) {
-      updateData.department_override = parsed.data.department
-      delete updateData.department
-    }
-
-    if (supabase) {
-      const { data, error } = await supabase
-        .from("pos_products")
-        .update(updateData)
-        .eq("id", id)
-        .select()
-        .single()
-
-      if (error) throw error
-      if (!data) return NextResponse.json({ success: false, error: "Product not found." }, { status: 404 })
-
-      return NextResponse.json({ success: true, product: data })
-    }
-
-    return NextResponse.json({
-      success: true,
-      product: { id, ...updateData },
-    })
+    return NextResponse.json({ success: true, product: updated })
   } catch (error: any) {
     console.error("PUT/PATCH /api/products/[id] failed", error)
-    return NextResponse.json({ success: false, error: "Unable to update product." }, { status: 500 })
+    return NextResponse.json({ success: false, error: error.message || "Unable to update product." }, { status: 500 })
   }
 }
 
@@ -126,7 +95,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!hasValidOrigin(request)) {
-    return NextResponse.json({ success: false, error: "Invalid request." }, { status: 403 })
+    return NextResponse.json({ success: false, error: "Invalid request origin." }, { status: 403 })
   }
 
   const auth = await authorizeStaff(request, "admin")
@@ -139,28 +108,15 @@ export async function DELETE(
 
   try {
     const { id } = await params
-    const supabase = createStaffSupabaseClient(request)
+    const deleted = await PosDatabase.deleteProduct(id)
 
-    if (supabase) {
-      // Soft-delete to preserve foreign keys on order_items
-      const { data, error } = await supabase
-        .from("pos_products")
-        .update({
-          is_archived: true,
-          active: false,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return NextResponse.json({ success: true, message: "Product archived successfully", product: data })
+    if (!deleted) {
+      return NextResponse.json({ success: false, error: "Product not found." }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, message: "Product archived locally" })
+    return NextResponse.json({ success: true, message: "Product archived successfully", product: deleted })
   } catch (error: any) {
     console.error("DELETE /api/products/[id] failed", error)
-    return NextResponse.json({ success: false, error: "Unable to delete product." }, { status: 500 })
+    return NextResponse.json({ success: false, error: error.message || "Unable to delete product." }, { status: 500 })
   }
 }

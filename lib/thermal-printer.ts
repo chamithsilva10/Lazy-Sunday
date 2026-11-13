@@ -11,6 +11,10 @@ export interface ThermalReceiptItem {
 
 export interface ThermalReceiptOrder {
   id?: string
+  brand_name?: string
+  brand_subtitle?: string
+  brand_address?: string
+  currency?: string
   order_number: string
   receipt_number?: string
   table_name?: string
@@ -33,9 +37,13 @@ export interface ThermalTicketItem {
   quantity: number
   notes?: string
   category?: string
+  modifiers?: string[]
 }
 
 export interface ThermalTicketOrder {
+  brand_name?: string
+  brand_subtitle?: string
+  brand_address?: string
   order_number: string
   table_name?: string
   cashier_name?: string
@@ -44,7 +52,7 @@ export interface ThermalTicketOrder {
 }
 
 /**
- * Print 80mm Guest Bill or Tax Invoice Thermal Receipt (matches Image 2 format)
+ * Print modern 80mm Guest Bill, Tax Invoice, or Customer Receipt matching minimalist ABC Coffee design
  */
 export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBill = false) {
   if (!orderData) return
@@ -55,98 +63,98 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
     return
   }
 
+  const brandName = orderData.brand_name || "ABC COFFEE"
+  const brandSubtitle = orderData.brand_subtitle || "SPECIALTY COFFEE"
+  const brandAddress = orderData.brand_address || "123, Main Street"
+  const currency = orderData.currency || "LKR"
+
+  const d = new Date(orderData.created_at || Date.now())
+  const day = d.getDate().toString().padStart(2, "0")
+  const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+  const month = monthNames[d.getMonth()]
+  const year = d.getFullYear()
+  const hours = d.getHours().toString().padStart(2, "0")
+  const minutes = d.getMinutes().toString().padStart(2, "0")
+  const dateFormatted = `${day} ${month} ${year} · ${hours}:${minutes}`
+
+  const orderNumClean = (orderData.order_number || "").replace(/^LS-/, "")
   const receiptNum = orderData.receipt_number || orderData.order_number
-  const dateFormatted = new Date(orderData.created_at || Date.now()).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  })
-  const timeFormatted = new Date(orderData.created_at || Date.now()).toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  const isTakeaway = (orderData.order_type || "").toLowerCase().includes("takeaway") || (orderData.table_name || "").toLowerCase() === "takeaway"
+  const tableNumOnly = orderData.table_name ? orderData.table_name.replace(/^(Table|Tab)\s*/i, "").trim() : "01"
+  const tableDisplay = isTakeaway
+    ? "TAKEAWAY"
+    : `DINE IN / TABLE ${tableNumOnly.length < 2 ? `0${tableNumOnly}` : tableNumOnly}`
 
   const itemsHtml = orderData.items
     .map(
       (it) => `
-    <tr>
-      <td style="padding: 4px 0; vertical-align: top; width: 12%; font-weight: bold;">${it.quantity}x</td>
-      <td style="padding: 4px 0; vertical-align: top; width: 52%;">
-        <div style="font-weight: 700; line-height: 1.2;">${it.name}</div>
-        <div style="font-size: 10px; color: #555;">@ Rs. ${it.price.toLocaleString("en-US", { minimumFractionDigits: 2 })} ea</div>
-        ${it.notes ? `<div style="font-size: 9.5px; color: #b45309; font-weight: 600;">Note: ${it.notes}</div>` : ""}
-      </td>
-      <td style="padding: 4px 0; text-align: right; vertical-align: top; width: 36%; font-weight: bold; font-family: monospace;">
-        Rs. ${(it.price * it.quantity).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-      </td>
-    </tr>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; padding: 3.5px 0; color: #000;">
+      <span style="width: 14%; font-weight: 500;">${it.quantity}</span>
+      <div style="flex: 1; padding: 0 4px;">
+        <div style="font-weight: 500; line-height: 1.25;">${it.name}</div>
+        ${it.modifiers && it.modifiers.length > 0 ? `<div style="font-size: 10px; color: #333; margin-top: 1px;">${it.modifiers.map((m) => `+ ${m}`).join(", ")}</div>` : ""}
+        ${it.notes ? `<div style="font-size: 9.5px; color: #000; font-weight: 600; margin-top: 1px;">Note: ${it.notes}</div>` : ""}
+      </div>
+      <span style="width: 32%; text-align: right; font-variant-numeric: tabular-nums; font-weight: 500;">
+        ${(it.price * it.quantity).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </span>
+    </div>
   `
     )
     .join("")
 
   const isCash = (orderData.payment_method || "cash").toLowerCase() === "cash"
   const isSplit = (orderData.payment_method || "").toLowerCase() === "split" && Array.isArray((orderData as any).split_payments) && (orderData as any).split_payments.length > 0
-  const splitHtml = isSplit && !isGuestBill
-    ? `
-    <div style="border-top: 1px dashed #444; margin: 4px 0; padding-top: 4px;">
-      <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 2px;">Split Settlement:</div>
+
+  let paymentSectionHtml = ""
+  if (isGuestBill) {
+    paymentSectionHtml = `
+      <div style="text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 0;">
+        PLEASE PAY AT CASHIER COUNTER
+      </div>
+    `
+  } else if (isSplit) {
+    paymentSectionHtml = `
       ${((orderData as any).split_payments || []).map((sp: any) => `
-        <div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0;">
-          <span>• ${String(sp.method || "").toUpperCase()}${sp.reference ? ` (${sp.reference})` : ""}:</span>
-          <span style="font-family: monospace; font-weight: bold;">Rs. ${Number(sp.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+        <div style="display: flex; justify-content: space-between;">
+          <span>${String(sp.method || "Payment").charAt(0).toUpperCase() + String(sp.method || "Payment").slice(1)}${sp.reference ? ` (${sp.reference})` : ""}</span>
+          <span style="font-variant-numeric: tabular-nums;">${Number(sp.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
-        ${String(sp.method || "").toLowerCase() === "cash" && sp.tendered && sp.tendered > sp.amount ? `
-          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #555; padding-left: 8px;">
-            <span>Tendered: Rs. ${Number(sp.tendered).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-            <span>Change: Rs. ${Number(sp.change_due ?? (sp.tendered - sp.amount)).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-          </div>
-        ` : ""}
       `).join("")}
       ${(orderData.change_amount || 0) > 0 ? `
-        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 4px; border-top: 1px dashed #aaa; padding-top: 2px;">
-          <span>Total Change Returned:</span>
-          <span style="font-family: monospace;">Rs. ${Number(orderData.change_amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+        <div style="display: flex; justify-content: space-between; font-weight: 600;">
+          <span>Change</span>
+          <span style="font-variant-numeric: tabular-nums;">${Number(orderData.change_amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       ` : ""}
-    </div>
-  `
-    : ""
-
-  const cashHtml =
-    isSplit
-      ? splitHtml
-      : isCash && !isGuestBill
-      ? `
-    <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin: 4px 0;">
-      <tr>
-        <td style="padding: 1.5px 0;">Cash Tendered:</td>
-        <td style="text-align: right; font-family: monospace; font-weight: bold; padding: 1.5px 0;">
-          Rs. ${(orderData.cash_received || orderData.total).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 1.5px 0; font-weight: bold;">Change Returned:</td>
-        <td style="text-align: right; font-family: monospace; font-weight: bold; padding: 1.5px 0;">
-          Rs. ${(orderData.change_amount ?? Math.max(0, (orderData.cash_received || orderData.total) - orderData.total)).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-        </td>
-      </tr>
-    </table>
-  `
-      : ""
-
-  const titleHeader = isGuestBill ? "GUEST BILL / TABLE CHECK" : "TAX INVOICE / RECEIPT"
-  const subtitleNotice = isGuestBill
-    ? "PLEASE PAY AT CASHIER COUNTER OR TO FLOOR SERVER"
-    : "PAYMENT COMPLETED &amp; SETTLED"
-
-  const paymentDisplay =
-    isSplit
-      ? "SPLIT / MIXED TENDER"
-      : orderData.payment_method === "qr" || orderData.payment_method === "transfer"
-      ? "LANKA QR / DIGITAL"
-      : (orderData.payment_method || "cash").toUpperCase()
-
-  const orderTypeDisplay = (orderData.order_type || (orderData.table_name === "Takeaway" ? "takeaway" : "dine_in")).toUpperCase().replace("-", "_")
+    `
+  } else if (isCash) {
+    const cashTendered = orderData.cash_received || orderData.total
+    const changeDue = orderData.change_amount ?? Math.max(0, cashTendered - orderData.total)
+    paymentSectionHtml = `
+      <div style="display: flex; justify-content: space-between;">
+        <span>Cash</span>
+        <span style="font-variant-numeric: tabular-nums;">${cashTendered.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <span>Change</span>
+        <span style="font-variant-numeric: tabular-nums;">${changeDue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      </div>
+    `
+  } else {
+    const methodRaw = orderData.payment_method || "Card"
+    const methodLabel = methodRaw === "qr" || methodRaw === "transfer" ? "Lanka QR / Digital" : methodRaw.charAt(0).toUpperCase() + methodRaw.slice(1).toLowerCase()
+    paymentSectionHtml = `
+      <div style="display: flex; justify-content: space-between;">
+        <span>${methodLabel}</span>
+        <span style="font-variant-numeric: tabular-nums;">${orderData.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <span>Change</span>
+        <span style="font-variant-numeric: tabular-nums;">0.00</span>
+      </div>
+    `
+  }
 
   popup.document.write(`
     <!DOCTYPE html>
@@ -160,230 +168,138 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
             margin: 0;
           }
           @media print {
-            body {
-              width: 74mm;
-              margin: 0 auto;
-              padding: 4mm 1mm 10mm 1mm;
+            html, body {
+              width: 72mm !important;
+              max-width: 72mm !important;
+              margin: 0 auto !important;
+              padding: 4mm 2mm 12mm 2mm !important;
             }
             .no-print {
               display: none !important;
             }
           }
           body {
-            width: 74mm;
+            width: 72mm;
+            max-width: 72mm;
             margin: 0 auto;
-            padding: 12px 6px 24px 6px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Courier New", monospace;
+            padding: 6mm 3mm 14mm 3mm;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             font-size: 11.5px;
             color: #000;
             background: #fff;
-            line-height: 1.3;
+            line-height: 1.35;
+            word-break: break-word;
+            overflow-wrap: break-word;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          .text-center { text-align: center; }
-          .text-right { text-align: right; }
-          .font-bold { font-weight: bold; }
-          .font-mono { font-family: 'SF Mono', 'Courier Prime', 'Courier New', monospace; }
-          .brand-title {
-            font-size: 20px;
-            font-weight: 900;
-            letter-spacing: 2px;
-            margin: 0 0 2px 0;
-            text-transform: uppercase;
-          }
-          .brand-sub {
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 1.5px;
-            margin: 0;
-            color: #111;
-          }
-          .brand-tag {
-            font-size: 10px;
-            color: #555;
-            margin: 2px 0;
-            font-style: italic;
-          }
-          .brand-contact {
-            font-size: 9.5px;
-            color: #444;
-            margin: 2px 0 6px 0;
-          }
-          .badge-banner {
-            display: inline-block;
-            background: #000;
-            color: #fff;
-            padding: 2.5px 10px;
-            font-size: 11px;
-            font-weight: 900;
-            letter-spacing: 1px;
-            margin: 4px 0 6px 0;
-            border-radius: 4px;
-          }
-          .divider {
-            border-top: 1px dashed #333;
-            margin: 6px 0;
-          }
-          .divider-double {
-            border-top: 2px solid #000;
-            border-bottom: 1px solid #000;
-            height: 3px;
+          .line {
+            border-top: 1px solid #000;
             margin: 8px 0;
           }
-          .meta-table {
-            width: 100%;
-            font-size: 11px;
-            border-collapse: collapse;
-            margin: 4px 0;
-          }
-          .meta-table td {
-            padding: 1.5px 0;
-            vertical-align: top;
-          }
-          .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-            margin: 4px 0;
-          }
-          .items-table th {
-            text-align: left;
-            border-bottom: 1px dashed #333;
-            padding: 3px 0;
-            font-size: 10px;
-            font-weight: 800;
-            color: #333;
-          }
-          .totals-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-            margin: 4px 0;
-          }
-          .totals-table td {
-            padding: 2px 0;
-          }
-          .grand-total-box {
-            background: transparent;
-            border: 2px solid #000;
-            padding: 6px 8px;
-            margin: 6px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            font-weight: 900;
-          }
-          .footer-box {
-            text-align: center;
-            font-size: 9.5px;
-            color: #444;
-            margin-top: 8px;
-            line-height: 1.4;
-          }
-          .barcode-container {
-            margin-top: 10px;
-            text-align: center;
+          .line-thick {
+            border-top: 1.5px solid #000;
+            margin: 8px 0;
           }
         </style>
       </head>
       <body>
-        <div class="text-center">
-          <h1 class="brand-title">LAZY SUNDAY</h1>
-          <p class="brand-sub">POINT OF SALE TERMINAL</p>
-          <p class="brand-tag">Specialty Dining &amp; Fresh Beverages</p>
-          <p class="brand-contact">Customer Receipt</p>
-          <div class="badge-banner">${titleHeader}</div>
+        <div style="text-align: center; margin-bottom: 10px;">
+          <!-- Sleek Tilted Coffee Bean Icon -->
+          <svg width="26" height="30" viewBox="0 0 100 100" fill="#000" style="display: block; margin: 0 auto 6px auto; transform: rotate(-22deg);">
+            <path d="M48,8 C28,10 14,28 14,50 C14,64 22,78 34,88 C38,82 40,72 40,62 C40,46 32,36 38,22 C41,15 45,10 48,8 Z" />
+            <path d="M54,8 C56,12 58,18 56,26 C52,40 60,50 60,66 C60,76 56,86 52,92 C72,88 86,72 86,50 C86,30 72,12 54,8 Z" />
+          </svg>
+          <div style="font-size: 19px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #000; margin-top: 2px;">
+            ${brandName}
+          </div>
+          <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: #000; margin-top: 4px;">
+            ${brandSubtitle}
+          </div>
+          <div style="font-size: 10px; color: #333; margin-top: 4px; letter-spacing: 0.05em;">
+            ${brandAddress}
+          </div>
         </div>
 
-        <div class="divider"></div>
+        <div class="line"></div>
 
-        <table class="meta-table">
-          <tr>
-            <td style="width: 50%;">Receipt #: <strong>${receiptNum}</strong></td>
-            <td class="text-right" style="width: 50%;">Order #: <strong>${orderData.order_number}</strong></td>
-          </tr>
-          <tr>
-            <td>Table: <strong>${orderData.table_name || "Takeaway"}</strong></td>
-            <td class="text-right">Type: <strong>${orderTypeDisplay}</strong></td>
-          </tr>
-          <tr>
-            <td>Cashier: ${orderData.cashier_name || "System Administrator"}</td>
-            <td class="text-right">${dateFormatted} ${timeFormatted}</td>
-          </tr>
-          <tr>
-            <td colspan="2">Payment: <strong>${paymentDisplay}</strong></td>
-          </tr>
-        </table>
+        <div style="font-size: 13px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #000; margin-bottom: 3px;">
+          ORDER ${orderNumClean}
+        </div>
+        <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #000; margin-bottom: 2px;">
+          ${tableDisplay}
+        </div>
+        <div style="font-size: 11px; color: #000; margin-bottom: 2px;">
+          ${dateFormatted}
+        </div>
+        <div style="font-size: 11px; color: #000;">
+          Cashier: ${orderData.cashier_name || "Admin"}
+        </div>
 
-        <div class="divider"></div>
+        <div class="line"></div>
 
-        <table class="items-table">
-          <thead>
-            <tr>
-              <th style="width: 12%;">QTY</th>
-              <th style="width: 52%;">ITEM DESCRIPTION</th>
-              <th class="text-right" style="width: 36%;">TOTAL (RS.)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsHtml}
-          </tbody>
-        </table>
+        <div style="display: flex; justify-content: space-between; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #000; padding: 2px 0;">
+          <span style="width: 14%;">QTY</span>
+          <span style="flex: 1; padding: 0 4px;">ITEM</span>
+          <span style="width: 32%; text-align: right;">${currency}</span>
+        </div>
 
-        <div class="divider"></div>
+        <div class="line"></div>
 
-        <table class="totals-table">
-          <tr>
-            <td>Subtotal</td>
-            <td class="text-right font-mono">Rs. ${orderData.subtotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          </tr>
-          <tr>
-            <td>Hospitality Service Charge (${Math.round((orderData.service_charge_rate || 0.1) * 100)}%)</td>
-            <td class="text-right font-mono">Rs. ${orderData.service_charge.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          </tr>
-          ${(orderData.discount || 0) > 0 ? `
-          <tr style="color: #000; font-weight: 600;">
-            <td>Discount Applied</td>
-            <td class="text-right font-mono">-Rs. ${(orderData.discount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-          </tr>
+        ${itemsHtml}
+
+        <div class="line"></div>
+
+        <div style="font-size: 11.5px; color: #000; line-height: 1.6; margin: 3px 0;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>Subtotal</span>
+            <span style="font-variant-numeric: tabular-nums;">${orderData.subtotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          ${(orderData.service_charge || 0) > 0 ? `
+          <div style="display: flex; justify-content: space-between;">
+            <span>Service Charge (${Math.round((orderData.service_charge_rate || 0.1) * 100)}%)</span>
+            <span style="font-variant-numeric: tabular-nums;">${orderData.service_charge.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
           ` : ""}
-        </table>
+          ${(orderData.discount || 0) > 0 ? `
+          <div style="display: flex; justify-content: space-between;">
+            <span>Discount</span>
+            <span style="font-variant-numeric: tabular-nums;">-${(orderData.discount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          ` : ""}
+        </div>
 
-        <div class="grand-total-box">
-          <span style="font-size: 13px; font-weight: 900; letter-spacing: 1px;">TOTAL DUE</span>
-          <span style="font-size: 16px; font-weight: 900; font-family: monospace;">
-            Rs. ${orderData.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+        <div class="line-thick"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0;">
+          <span style="font-size: 14px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #000;">
+            TOTAL / ${currency}
+          </span>
+          <span style="font-size: 24px; font-weight: 900; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #000;">
+            ${orderData.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
 
-        ${cashHtml}
+        <div class="line-thick"></div>
 
-        <div class="divider-double"></div>
-
-        <div class="footer-box">
-          <p style="font-weight: 900; font-size: 11px; margin: 2px 0; color: #000;">*** THANK YOU FOR DINING WITH US ***</p>
-          <p style="margin: 2px 0; font-weight: 600; text-transform: uppercase;">${subtitleNotice}</p>
-          <p style="margin: 2px 0;">Free WiFi: <strong>GuestWiFi</strong> · Pass: <strong>welcome2026</strong></p>
-          <p style="margin: 2px 0;">Customer Support: support@posdemo.com</p>
+        <div style="font-size: 11.5px; color: #000; line-height: 1.6; margin: 3px 0;">
+          ${paymentSectionHtml}
         </div>
 
-        <div class="barcode-container">
-          <svg style="width: 190px; height: 36px; margin: 0 auto; display: block;" viewBox="0 0 190 36">
-            <rect width="190" height="36" fill="#fff"/>
-            ${Array.from({ length: 42 }).map((_, i) => {
-              const x = 8 + i * 4.2;
-              const w = ((i * 7 + 3) % 3) + 1.2;
-              return `<rect x="${x}" y="2" width="${w}" height="32" fill="#000"/>`;
-            }).join("")}
-          </svg>
-          <div style="font-family: monospace; font-size: 10px; letter-spacing: 2.5px; margin-top: 3px; font-weight: bold;">
-            *${receiptNum}*
+        <div class="line"></div>
+
+        <div style="text-align: center; margin-top: 16px; margin-bottom: 8px;">
+          <div style="font-size: 12px; font-weight: 500; color: #000; margin-bottom: 6px;">
+            Good coffee. Good day.
+          </div>
+          <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.35em; text-transform: uppercase; color: #000;">
+            T H A N K &nbsp; Y O U
           </div>
         </div>
 
         <div class="no-print" style="margin-top: 16px; text-align: center;">
-          <button onclick="window.print()" style="background: #D67B6B; color: white; border: none; padding: 10px 22px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px;">Print Again</button>
+          <button onclick="window.print()" style="background: #000; color: white; border: none; padding: 8px 22px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px;">Print Again</button>
         </div>
 
         <script>
@@ -400,7 +316,7 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
 }
 
 /**
- * Print 80mm Kitchen (KOT) or Bar (BOT) Order Ticket (matches Image 1 format)
+ * Print modern 80mm Kitchen (KOT) or Bar (BOT) Order Ticket matching minimalist ABC Coffee design
  */
 export function printTicketSlipDoc(
   order: ThermalTicketOrder,
@@ -411,105 +327,176 @@ export function printTicketSlipDoc(
     return
   }
 
-  const popup = window.open("", `${station}-ticket-print`, "width=420,height=600")
+  const popup = window.open("", `${station}-ticket-print`, "width=480,height=800")
   if (!popup) {
     alert("Please allow pop-ups to print the ticket slip.")
     return
   }
 
-  const timeFormatted = new Date(order.created_at || Date.now()).toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  })
-  const dateFormatted = new Date(order.created_at || Date.now()).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  })
+  const brandName = order.brand_name || "ABC COFFEE"
+  const stationTitle = station === "bar" ? "BAR ORDER TICKET" : "KITCHEN ORDER TICKET"
+  const brandAddress = order.brand_address || "123, Main Street"
+
+  const d = new Date(order.created_at || Date.now())
+  const day = d.getDate().toString().padStart(2, "0")
+  const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+  const month = monthNames[d.getMonth()]
+  const year = d.getFullYear()
+  const hours = d.getHours().toString().padStart(2, "0")
+  const minutes = d.getMinutes().toString().padStart(2, "0")
+  const seconds = d.getSeconds().toString().padStart(2, "0")
+  const dateTimeFormatted = `${day} ${month} ${year} · ${hours}:${minutes}:${seconds}`
+
+  const orderNumClean = (order.order_number || "").replace(/^LS-/, "")
+  const isTakeaway = (order.table_name || "").toLowerCase() === "takeaway"
+  const tableNumOnly = order.table_name ? order.table_name.replace(/^(Table|Tab)\s*/i, "").trim() : "01"
+  const tableDisplay = isTakeaway
+    ? "TAKEAWAY"
+    : `DINE IN / TABLE ${tableNumOnly.length < 2 ? `0${tableNumOnly}` : tableNumOnly}`
 
   const itemsHtml = order.items
     .map(
       (it) => `
-    <div style="padding: 6px 0; border-bottom: 1px dashed #333; display: flex; justify-content: space-between; align-items: flex-start;">
-      <div style="flex: 1; padding-right: 12px;">
-        <div style="font-size: 16px; font-weight: 900; line-height: 1.2; color: #000;">${it.name}</div>
-        ${it.category ? `<div style="font-size: 11.5px; color: #555; margin-top: 2px;">${it.category}</div>` : ""}
-        ${it.notes ? `<div style="font-size: 11px; color: #b45309; font-weight: bold; margin-top: 2px;">Note: ${it.notes}</div>` : ""}
-      </div>
-      <div style="font-size: 20px; font-weight: 900; background: #eee; padding: 3px 12px; border-radius: 6px; font-family: monospace; color: #000;">
-        x${it.quantity}
+    <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; padding: 4px 0; color: #000;">
+      <span style="width: 14%; font-weight: 800; font-size: 16px;">${it.quantity}</span>
+      <div style="flex: 1; padding: 0 4px;">
+        <div style="font-weight: 700; line-height: 1.25; font-size: 13px;">${it.name}</div>
+        ${it.modifiers && it.modifiers.length > 0 ? `<div style="font-size: 10.5px; color: #333; margin-top: 1px;">${it.modifiers.map((m) => `+ ${m}`).join(", ")}</div>` : ""}
+        ${it.notes ? `<div style="border: 1px solid #000; padding: 2px 5px; margin-top: 3px; font-size: 10px; font-weight: 700; text-transform: uppercase;">* NOTE: ${it.notes} *</div>` : ""}
       </div>
     </div>
   `
     )
     .join("")
 
+  const totalItems = order.items.reduce((s, i) => s + (i.quantity || 1), 0)
+
+  const iconSvg = station === "bar"
+    ? `
+      <!-- Sleek Tilted Coffee Bean Icon -->
+      <svg width="26" height="30" viewBox="0 0 100 100" fill="#000" style="display: block; margin: 0 auto 6px auto; transform: rotate(-22deg);">
+        <path d="M48,8 C28,10 14,28 14,50 C14,64 22,78 34,88 C38,82 40,72 40,62 C40,46 32,36 38,22 C41,15 45,10 48,8 Z" />
+        <path d="M54,8 C56,12 58,18 56,26 C52,40 60,50 60,66 C60,76 56,86 52,92 C72,88 86,72 86,50 C86,30 72,12 54,8 Z" />
+      </svg>
+    `
+    : `
+      <!-- Sleek Restaurant Cutlery Icon -->
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="#000" style="display: block; margin: 0 auto 6px auto;">
+        <path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>
+      </svg>
+    `
+
   popup.document.write(`
     <!DOCTYPE html>
     <html>
       <head>
+        <meta charset="utf-8" />
         <title>${station.toUpperCase()} Ticket - ${order.order_number}</title>
         <style>
-          @page { size: 3.1in auto; margin: 0; }
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
           @media print {
-            .no-print { display: none !important; }
+            html, body {
+              width: 72mm !important;
+              max-width: 72mm !important;
+              margin: 0 auto !important;
+              padding: 4mm 2mm 12mm 2mm !important;
+            }
+            .no-print {
+              display: none !important;
+            }
           }
           body {
-            width: 2.9in;
+            width: 72mm;
+            max-width: 72mm;
             margin: 0 auto;
-            padding: 12px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Courier New", monospace;
+            padding: 6mm 3mm 14mm 3mm;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             font-size: 11.5px;
             color: #000;
-            line-height: 1.3;
+            background: #fff;
+            line-height: 1.35;
+            word-break: break-word;
+            overflow-wrap: break-word;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          .header { text-align: center; }
-          .meta { font-size: 11.5px; margin-bottom: 8px; line-height: 1.4; }
-          .meta-row { display: flex; justify-content: space-between; margin: 3px 0; }
-          .table-badge { font-size: 16px; font-weight: 900; background: #000; color: #fff; padding: 2px 10px; border-radius: 6px; }
-          .items-container { margin: 8px 0; }
-          .footer { text-align: center; font-size: 11px; }
+          .line {
+            border-top: 1px solid #000;
+            margin: 8px 0;
+          }
+          .line-thick {
+            border-top: 1.5px solid #000;
+            margin: 8px 0;
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div style="font-size: 18px; font-weight: 900; letter-spacing: 0.5px; line-height: 1.25; text-transform: uppercase;">
-            *** ${station === "bar" ? "BAR ORDER TICKET<br/>(BOT) ***" : "KITCHEN ORDER TICKET<br/>(KOT) ***"}
+        <div style="text-align: center; margin-bottom: 10px;">
+          ${iconSvg}
+          <div style="font-size: 19px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #000; margin-top: 2px;">
+            ${brandName}
           </div>
-          <div style="font-size: 11px; font-weight: 800; letter-spacing: 1.5px; margin-top: 4px; color: #111;">
-            LAZY SUNDAY POS
+          <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #000; margin-top: 3px;">
+            ${stationTitle}
           </div>
-        </div>
-        <div style="border-top: 3px solid #000; margin: 8px 0 10px 0;"></div>
-        <div class="meta">
-          <div class="meta-row" style="align-items: center; margin-bottom: 4px;">
-            <span>Order: <strong>${order.order_number}</strong></span>
-            <span class="table-badge">${order.table_name || "Takeaway"}</span>
-          </div>
-          <div class="meta-row">
-            <span>Date: ${dateFormatted}</span>
-            <span>Time: <strong>${timeFormatted}</strong></span>
-          </div>
-          <div class="meta-row">
-            <span>Cashier: ${order.cashier_name || "System Administrator"}</span>
-            <span>Station: <strong>${station.toUpperCase()}</strong></span>
+          <div style="font-size: 10px; color: #333; margin-top: 2px;">
+            ${brandAddress}
           </div>
         </div>
-        <div class="items-container">
-          ${itemsHtml}
+
+        <div class="line"></div>
+
+        <div style="font-size: 13px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #000; margin-bottom: 3px;">
+          ORDER ${orderNumClean}
         </div>
-        <div class="footer">
-          <div style="border-top: 1px dashed #000; margin-top: 6px;"></div>
-          <div style="border-top: 1px dashed #000; margin-top: 3px; margin-bottom: 8px;"></div>
-          <div>Total Station Items: ${order.items.reduce((s, i) => s + (i.quantity || 1), 0)}</div>
-          <div style="margin-top: 5px; font-weight: 900; font-size: 12px; letter-spacing: 0.5px;">-- SENT TO ${station.toUpperCase()} --</div>
-          <div class="no-print" style="margin-top: 16px; text-align: center;">
-            <button onclick="window.print()" style="background: #D67B6B; color: white; border: none; padding: 8px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px;">Print Again</button>
+        <div style="font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #000; margin-bottom: 2px;">
+          ${tableDisplay}
+        </div>
+        <div style="font-size: 11px; color: #000; margin-bottom: 2px;">
+          ${dateTimeFormatted}
+        </div>
+        <div style="font-size: 11px; color: #000;">
+          Server: ${order.cashier_name || "Admin"} · Station: <strong>${station.toUpperCase()}</strong>
+        </div>
+
+        <div class="line"></div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #000; padding: 2px 0;">
+          <span style="width: 14%;">QTY</span>
+          <span style="flex: 1; padding: 0 4px;">ITEM</span>
+          <span style="width: 32%; text-align: right;">NOTES</span>
+        </div>
+
+        <div class="line"></div>
+
+        ${itemsHtml}
+
+        <div class="line"></div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 0;">
+          <span>TOTAL ITEMS</span>
+          <span style="font-size: 14px; font-weight: 900;">${totalItems}</span>
+        </div>
+
+        <div class="line"></div>
+
+        <div style="text-align: center; margin-top: 14px; margin-bottom: 6px;">
+          <div style="font-size: 12px; font-weight: 500; color: #000; margin-bottom: 6px;">
+            ${station === "bar" ? "Good coffee. Good day." : "Good food. Good day."}
+          </div>
+          <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.35em; text-transform: uppercase; color: #000;">
+            O R D E R &nbsp; D I S P A T C H
           </div>
         </div>
+
+        <div class="no-print" style="margin-top: 16px; text-align: center;">
+          <button onclick="window.print()" style="background: #000; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px;">Print Again</button>
+        </div>
+
         <script>
           window.onload = function() {
             window.focus();

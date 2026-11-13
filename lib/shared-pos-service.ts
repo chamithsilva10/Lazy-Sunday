@@ -128,6 +128,11 @@ export interface SharedOrder {
   bank_reference?: string
   branch_id?: string
   notes?: string
+  tax?: number
+  action?: string
+  idempotency_key?: string
+  stock_deducted?: boolean
+  offline_ref?: string
 }
 
 export interface SharedCustomer {
@@ -377,7 +382,7 @@ const ADJUSTMENTS_KEY = "pos_shared_adjustments"
 const EXPENSES_KEY = "pos_shared_expenses"
 const BRANCHES_KEY = "pos_shared_branches"
 const ACTIVE_BRANCH_KEY = "pos_shared_active_branch"
-const POLL_MS = 20000
+const POLL_MS = 60000
 
 export const DEFAULT_TABLES: SharedTable[] = [
   { id: "tbl-1", name: "Table 1", capacity: 2, status: "available" },
@@ -767,6 +772,11 @@ export class SharedPosService {
   private static timer: any = undefined
   private static bc: BroadcastChannel | null = null
   private static initialized = false
+  private static lastOrdersSyncTimestamp: string | null = null
+  private static lastOrdersSyncId: string | null = null
+  private static isRefreshingOrders = false
+  private static hasPendingOrdersRefresh = false
+  private static sharedNextSeq = 100
 
   private static isBrowser() {
     return typeof window !== "undefined"
@@ -1529,6 +1539,10 @@ export class SharedPosService {
 
     let orderDebounce: any = null
     const debouncedOrders = () => {
+      if (this.isRefreshingOrders) {
+        this.hasPendingOrdersRefresh = true
+        return
+      }
       if (orderDebounce) clearTimeout(orderDebounce)
       orderDebounce = setTimeout(() => void this.refreshOrdersFromCloud(), 250)
     }
@@ -2549,6 +2563,39 @@ export class SharedPosService {
     return this.ordersCache
   }
 
+  static getTerminalId(): string {
+    if (typeof window === "undefined") return "SRV"
+    let tid = localStorage.getItem("pos_terminal_id")
+    if (!tid) {
+      tid = `T${Math.floor(10 + Math.random() * 90)}`
+      localStorage.setItem("pos_terminal_id", tid)
+    }
+    return tid
+  }
+
+  static getOfflineOrderNumber(): { orderNumber: string; receiptNumber: string; seq: number } {
+    this.init()
+    const tid = this.getTerminalId()
+    let maxSeq = 100
+    for (const o of this.ordersCache) {
+      if (!o.order_number) continue
+      const match = o.order_number.match(/(\d+)/)
+      if (match) {
+        const val = parseInt(match[1], 10)
+        if (!isNaN(val) && val > maxSeq) {
+          maxSeq = val
+        }
+      }
+    }
+    const nextSeq = maxSeq + 1
+    const formatted = String(nextSeq).padStart(6, "0")
+    return {
+      orderNumber: `OFFLINE-${tid}-${formatted}`,
+      receiptNumber: `OFFLINE-RC-${tid}-${formatted}`,
+      seq: nextSeq,
+    }
+  }
+
   static getNextOrderNumber(): { orderNumber: string; receiptNumber: string; seq: number } {
     this.init()
     let maxSeq = 100
@@ -2571,6 +2618,50 @@ export class SharedPosService {
     }
   }
 
+  static async allocateNextOrderNumber(): Promise<{ orderNumber: string; receiptNumber: string; seq: number }> {
+    this.init()
+    if (this.isBrowser()) {
+      // 1. Direct Supabase RPC for maximum speed if configured in client
+      if (isSupabaseConfigured()) {
+        try {
+          const supabase = createClient()
+          const { data, error } = await supabase.rpc("get_next_bill_numbers")
+          if (!error && data && data.order_number) {
+            const seq = Number(data.seq) || 101
+            this.sharedNextSeq = Math.max(this.sharedNextSeq, seq + 1)
+            return {
+              orderNumber: data.order_number,
+              receiptNumber: data.receipt_number || `LS-RC-${data.order_number.replace(/^LS-/, "")}`,
+              seq,
+            }
+          }
+        } catch {
+          // Fall back to server endpoint
+        }
+      }
+
+      // 2. Next.js API server endpoint fallback (handles service-role key or SQLite atomic sequence)
+      try {
+        const res = await fetch("/api/orders/next-number", { cache: "no-store" })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && data.orderNumber) {
+            const seq = Number(data.seq) || 101
+            this.sharedNextSeq = Math.max(this.sharedNextSeq, seq + 1)
+            return {
+              orderNumber: data.orderNumber,
+              receiptNumber: data.receiptNumber || `LS-RC-${data.orderNumber.replace(/^LS-/, "")}`,
+              seq,
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not allocate server order sequence, falling back to provisional offline sequence", err)
+      }
+    }
+    return this.getOfflineOrderNumber()
+  }
+
   static restockAllProducts(amount = 100) {
     this.init()
     this.productsCache = this.productsCache.map((p) => ({
@@ -2582,81 +2673,183 @@ export class SharedPosService {
     this.broadcast("products")
   }
 
+  private static mapDbOrderToShared(o: any): SharedOrder {
+    return {
+      id: String(o.id),
+      order_number: o.order_number,
+      receipt_number: o.receipt_number || "",
+      table_name: o.table_name || "Takeaway",
+      cashier_name: o.cashier_name || "Staff",
+      department: o.department || "Juice & Food",
+      order_type: o.order_type || (o.table_name === "Takeaway" ? "takeaway" : "dine_in"),
+      items: Array.isArray(o.order_items) && o.order_items.length > 0
+        ? o.order_items.map((i: any) => ({
+            id: i.product_id || i.id,
+            name: i.product_name_snapshot,
+            price: Number(i.unit_price_snapshot) || 0,
+            quantity: Number(i.quantity) || 1,
+            station: i.station,
+          }))
+        : Array.isArray(o.items)
+        ? o.items
+        : [],
+      subtotal: Number(o.subtotal) || 0,
+      service_charge: Number(o.service_charge) || 0,
+      service_charge_rate: Number(o.service_charge_rate) || 0,
+      discount: Number(o.discount) || 0,
+      total: Number(o.total) || 0,
+      payment_method: o.payment_method || "cash",
+      split_payments: Array.isArray(o.split_payments)
+        ? o.split_payments
+        : (typeof o.notes === "string" && o.notes.includes("split_payments")
+          ? (() => { try { return JSON.parse(o.notes).split_payments } catch { return undefined } })()
+          : undefined),
+      cash_received: o.cash_received != null ? Number(o.cash_received) : undefined,
+      change_amount: o.change_amount != null ? Number(o.change_amount) : undefined,
+      status: o.status || "paid",
+      payment_status: o.payment_status || (o.status === "open" ? "unpaid" : "paid"),
+      kitchen_status: o.kitchen_status || "served",
+      bar_status: o.bar_status || "served",
+      stock_deducted: Boolean(o.stock_deducted),
+      idempotency_key: o.idempotency_key || undefined,
+      offline_ref: o.offline_ref || undefined,
+      created_at: o.created_at || new Date().toISOString(),
+    }
+  }
+
   private static async refreshOrdersFromCloud() {
-    if (!this.isBrowser()) return
+    if (!this.isBrowser() || this.isRefreshingOrders) return
+    this.isRefreshingOrders = true
     try {
-      // 1. Fetch unified orders via API route or Supabase
       let fetchedOrders: SharedOrder[] = []
 
       if (isSupabaseConfigured()) {
-        const { data, error } = await createClient()
-          .from("pos_orders")
-          .select(`
-            *,
-            order_items (
-              id,
-              product_id,
-              product_name_snapshot,
-              unit_price_snapshot,
-              quantity,
-              station,
-              item_status
-            )
-          `)
-          .order("created_at", { ascending: false })
+        const client = createClient()
 
-        if (!error && Array.isArray(data)) {
-          fetchedOrders = data.map((o: any) => ({
-            id: String(o.id),
-            order_number: o.order_number,
-            receipt_number: o.receipt_number || "",
-            table_name: o.table_name || "Takeaway",
-            cashier_name: o.cashier_name || "Staff",
-            department: o.department || "Juice & Food",
-            items: Array.isArray(o.order_items) && o.order_items.length > 0
-              ? o.order_items.map((i: any) => ({
-                  id: i.product_id || i.id,
-                  name: i.product_name_snapshot,
-                  price: Number(i.unit_price_snapshot) || 0,
-                  quantity: Number(i.quantity) || 1,
-                  station: i.station,
-                }))
-              : Array.isArray(o.items)
-              ? o.items
-              : [],
-            subtotal: Number(o.subtotal) || 0,
-            service_charge: Number(o.service_charge) || 0,
-            service_charge_rate: Number(o.service_charge_rate) || 0,
-            discount: Number(o.discount) || 0,
-            total: Number(o.total) || 0,
-            payment_method: o.payment_method || "cash",
-            split_payments: Array.isArray(o.split_payments)
-              ? o.split_payments
-              : (typeof o.notes === "string" && o.notes.includes("split_payments")
-                ? (() => { try { return JSON.parse(o.notes).split_payments } catch { return undefined } })()
-                : undefined),
-            cash_received: o.cash_received != null ? Number(o.cash_received) : undefined,
-            change_amount: o.change_amount != null ? Number(o.change_amount) : undefined,
-            status: o.status || "paid",
-            kitchen_status: o.kitchen_status || "served",
-            bar_status: o.bar_status || "served",
-            created_at: o.created_at || new Date().toISOString(),
-          }))
+        // 1. ALWAYS query all active/open dine-in orders unconditionally
+        // Guarantees active tabs and table occupancy are retained regardless of history pagination
+        try {
+          const { data: openData, error: openErr } = await client
+            .from("pos_orders")
+            .select(`
+              id, order_number, receipt_number, table_name, cashier_name, department,
+              order_type, subtotal, service_charge, service_charge_rate, discount, tax,
+              total, payment_method, split_payments, cash_received, change_amount,
+              status, payment_status, kitchen_status, bar_status, items, stock_deducted,
+              customer_id, customer_name, created_at, updated_at,
+              order_items (
+                id, product_id, product_name_snapshot, unit_price_snapshot, quantity, station, item_status
+              )
+            `)
+            .in("status", ["open", "pending"])
+            .order("created_at", { ascending: true })
+
+          if (!openErr && Array.isArray(openData)) {
+            for (const o of openData) {
+              fetchedOrders.push(this.mapDbOrderToShared(o))
+            }
+          }
+        } catch (openEx) {
+          console.warn("Failed fetching open orders:", openEx)
+        }
+
+        // 2. Incremental forward cursor pagination (updated_at ASC, id ASC)
+        if (!this.lastOrdersSyncTimestamp) {
+          // Initial sync: fetch latest 50 orders
+          const { data: initialData, error: initialErr } = await client
+            .from("pos_orders")
+            .select(`
+              id, order_number, receipt_number, table_name, cashier_name, department,
+              order_type, subtotal, service_charge, service_charge_rate, discount, tax,
+              total, payment_method, split_payments, cash_received, change_amount,
+              status, payment_status, kitchen_status, bar_status, items, stock_deducted,
+              customer_id, customer_name, created_at, updated_at,
+              order_items (
+                id, product_id, product_name_snapshot, unit_price_snapshot, quantity, station, item_status
+              )
+            `)
+            .order("updated_at", { ascending: false })
+            .limit(50)
+
+          if (!initialErr && Array.isArray(initialData) && initialData.length > 0) {
+            for (const o of initialData) {
+              fetchedOrders.push(this.mapDbOrderToShared(o))
+            }
+            const highest = initialData[0]
+            if (highest?.updated_at) {
+              const nowIso = new Date().toISOString()
+              this.lastOrdersSyncTimestamp = highest.updated_at > nowIso ? nowIso : highest.updated_at
+              this.lastOrdersSyncId = String(highest.id)
+            }
+          }
+        } else {
+          // Forward cursor loop: consume all batches without dropping records
+          let hasMore = true
+          let pageCount = 0
+          while (hasMore && pageCount < 10) {
+            pageCount++
+            let query = client
+              .from("pos_orders")
+              .select(`
+                id, order_number, receipt_number, table_name, cashier_name, department,
+                order_type, subtotal, service_charge, service_charge_rate, discount, tax,
+                total, payment_method, split_payments, cash_received, change_amount,
+                status, payment_status, kitchen_status, bar_status, items, stock_deducted,
+                customer_id, customer_name, created_at, updated_at,
+                order_items (
+                  id, product_id, product_name_snapshot, unit_price_snapshot, quantity, station, item_status
+                )
+              `)
+              .order("updated_at", { ascending: true })
+              .order("id", { ascending: true })
+              .limit(50)
+
+            if (this.lastOrdersSyncId) {
+              query = query.or(
+                `updated_at.gt.${this.lastOrdersSyncTimestamp},and(updated_at.eq.${this.lastOrdersSyncTimestamp},id.gt.${this.lastOrdersSyncId})`
+              )
+            } else {
+              query = query.gt("updated_at", this.lastOrdersSyncTimestamp)
+            }
+
+            const { data, error } = await query
+            if (error || !Array.isArray(data) || data.length === 0) {
+              hasMore = false
+              break
+            }
+
+            for (const o of data) {
+              fetchedOrders.push(this.mapDbOrderToShared(o))
+            }
+
+            const lastRec = data[data.length - 1]
+            if (lastRec?.updated_at) {
+              const nowIso = new Date().toISOString()
+              this.lastOrdersSyncTimestamp = lastRec.updated_at > nowIso ? nowIso : lastRec.updated_at
+              this.lastOrdersSyncId = String(lastRec.id)
+            }
+
+            if (data.length < 50) {
+              hasMore = false
+            }
+          }
         }
       } else {
-        // Offline / local API fallback
+        // Fallback for demo / offline mode
         try {
-          const res = await fetch("/api/orders?all=true", { cache: "no-store" })
+          const res = await fetch("/api/orders?limit=50", { cache: "no-store" })
           if (res.ok) {
             const json = await res.json()
             if (json.orders && Array.isArray(json.orders)) {
               fetchedOrders = json.orders
+              this.lastOrdersSyncTimestamp = new Date().toISOString()
             }
           }
         } catch {}
       }
 
       if (fetchedOrders.length > 0) {
+        let changed = false
         const map = new Map<string, SharedOrder>()
         this.ordersCache.forEach((o) => {
           map.set(o.order_number || o.id, o)
@@ -2666,37 +2859,51 @@ export class SharedPosService {
           const local = map.get(key)
           if (!local) {
             map.set(key, cloud)
+            changed = true
           } else {
             const kitchenServed = local.kitchen_status === "served" || cloud.kitchen_status === "served"
             const barServed = local.bar_status === "served" || cloud.bar_status === "served"
             const isCompleted = (local.status === "completed" || cloud.status === "completed") ||
               (kitchenServed && barServed && (local.status === "paid" || cloud.status === "paid"))
 
-            map.set(key, {
+            const updatedOrder: SharedOrder = {
               ...local,
               ...cloud,
               kitchen_status: kitchenServed ? "served" : (cloud.kitchen_status || local.kitchen_status),
               bar_status: barServed ? "served" : (cloud.bar_status || local.bar_status),
               status: isCompleted ? "completed" : (local.status === "paid" ? "paid" : cloud.status),
-            })
+            }
+
+            if (JSON.stringify(updatedOrder) !== JSON.stringify(local)) {
+              map.set(key, updatedOrder)
+              changed = true
+            }
           }
         })
 
-        this.ordersCache = Array.from(map.values()).sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
-        localStorage.setItem(ORDERS_KEY, JSON.stringify(this.ordersCache))
-        this.emitOrders()
+        if (changed) {
+          this.ordersCache = Array.from(map.values()).sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+          localStorage.setItem(ORDERS_KEY, JSON.stringify(this.ordersCache))
+          this.emitOrders()
+        }
       }
     } catch (err) {
       console.warn("refreshOrdersFromCloud error", err)
+    } finally {
+      this.isRefreshingOrders = false
+      if (this.hasPendingOrdersRefresh) {
+        this.hasPendingOrdersRefresh = false
+        setTimeout(() => void this.refreshOrdersFromCloud(), 50)
+      }
     }
   }
 
   static async saveOrder(order: SharedOrder) {
     this.init()
 
-    const isUuid = (str?: string) => Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str))
+    const isUuid = (str?: string) => Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str))
     const validId = isUuid(order.id)
       ? order.id
       : (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `ord-${Date.now()}`)
@@ -2710,17 +2917,65 @@ export class SharedPosService {
       })),
     }
 
+    const idempotencyKey = (order as any).idempotency_key || `idem_${validId}`
+    const action = (order as any).action || (normalizedOrder.status === "open" ? "send_kitchen" : "create_order")
+
+    // Persist to authoritative backend /api/orders
+    const payload = {
+      id: isUuid(validId) ? validId : undefined,
+      order_number: normalizedOrder.order_number,
+      receipt_number: normalizedOrder.receipt_number,
+      table_name: normalizedOrder.table_name || "Takeaway",
+      cashier_name: normalizedOrder.cashier_name || "Staff",
+      department: normalizedOrder.department || (normalizedOrder.ticket_source === "coffee_bill" ? "Coffee Bar" : "Juice & Food"),
+      order_type: normalizedOrder.ticket_source === "coffee_bill" ? "coffee_bar" : (isTakeaway(normalizedOrder.table_name) ? "takeaway" : "dine_in"),
+      items: normalizedOrder.items,
+      subtotal: Number(normalizedOrder.subtotal) || 0,
+      service_charge: Number(normalizedOrder.service_charge) || 0,
+      service_charge_rate: Number(normalizedOrder.service_charge_rate) || 0,
+      discount: Number(normalizedOrder.discount) || 0,
+      tax: Number(normalizedOrder.tax) || 0,
+      total: Number(normalizedOrder.total) || 0,
+      payment_method: normalizedOrder.payment_method || "cash",
+      split_payments: normalizedOrder.split_payments,
+      cash_received: Number(normalizedOrder.cash_received) || Number(normalizedOrder.total) || 0,
+      change_amount: Number(normalizedOrder.change_amount) || 0,
+      status: normalizedOrder.status || "paid",
+      notes: normalizedOrder.notes || (normalizedOrder.split_payments?.length ? JSON.stringify({ split_payments: normalizedOrder.split_payments }) : ""),
+      idempotency_key: idempotencyKey,
+      action: action,
+    }
+
+    const res = await fetch("/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}))
+      throw new Error(errJson?.error || `Order creation failed (${res.status})`)
+    }
+
+    const resData = await res.json().catch(() => ({}))
+    if (resData && resData.success === false) {
+      throw new Error(resData.error || "Order creation rejected by server.")
+    }
+
+    const committed = resData?.order || {}
+    if (committed.order_number) normalizedOrder.order_number = committed.order_number
+    if (committed.receipt_number) normalizedOrder.receipt_number = committed.receipt_number
+    if (committed.id) normalizedOrder.id = committed.id
+    if (committed.status) normalizedOrder.status = committed.status
+    if (committed.created_at) normalizedOrder.created_at = committed.created_at
+
     // Upsert into orders cache
+    normalizedOrder.stock_deducted = true
     const existingById = this.ordersCache.findIndex((o) => o.id === normalizedOrder.id)
     const existingByNum = this.ordersCache.findIndex((o) => o.order_number === normalizedOrder.order_number)
 
     if (existingById >= 0) {
       this.ordersCache[existingById] = { ...this.ordersCache[existingById], ...normalizedOrder }
-    } else if (existingByNum >= 0 && this.ordersCache[existingByNum].id !== normalizedOrder.id) {
-      const fresh = this.getNextOrderNumber()
-      normalizedOrder.order_number = fresh.orderNumber
-      normalizedOrder.receipt_number = fresh.receiptNumber
-      this.ordersCache = [normalizedOrder, ...this.ordersCache]
     } else if (existingByNum >= 0) {
       this.ordersCache[existingByNum] = { ...this.ordersCache[existingByNum], ...normalizedOrder }
     } else {
@@ -2731,21 +2986,12 @@ export class SharedPosService {
     this.emitOrders()
     this.broadcast("orders", normalizedOrder)
 
-    // Deduct products stock and recipe ingredients
+    // Deduct products stock locally to keep UI responsive
     for (const item of normalizedOrder.items) {
       const target = this.productsCache.find((p) => p.id === item.id || sameName(p.name, item.name))
       if (target) {
         const remaining = Math.max(0, target.stock - (item.quantity || 1))
         this.productsCache = this.productsCache.map((p) => (p.id === target.id ? { ...p, stock: remaining } : p))
-      }
-      const targetKey = target?.id || item.id || item.name
-      if (targetKey) {
-        await this.deductRecipeIngredients(
-          targetKey,
-          item.quantity || 1,
-          normalizedOrder.order_number,
-          normalizedOrder.id
-        )
       }
     }
     localStorage.setItem(PRODUCTS_KEY, JSON.stringify(this.productsCache))
@@ -2829,76 +3075,6 @@ export class SharedPosService {
       }
     }
 
-    // Persist to backend /api/orders
-    try {
-      const payload = {
-        id: normalizedOrder.id,
-        order_number: normalizedOrder.order_number,
-        receipt_number: normalizedOrder.receipt_number,
-        table_name: normalizedOrder.table_name,
-        cashier_name: normalizedOrder.cashier_name,
-        department: normalizedOrder.department || (normalizedOrder.ticket_source === "coffee_bill" ? "Coffee Bar" : "Juice & Food"),
-        order_type: normalizedOrder.ticket_source === "coffee_bill" ? "coffee_bar" : (isTakeaway(normalizedOrder.table_name) ? "takeaway" : "dine_in"),
-        items: normalizedOrder.items,
-        subtotal: normalizedOrder.subtotal,
-        service_charge: normalizedOrder.service_charge || 0,
-        service_charge_rate: normalizedOrder.service_charge_rate || 0,
-        discount: normalizedOrder.discount || 0,
-        tax: 0,
-        total: normalizedOrder.total,
-        payment_method: normalizedOrder.payment_method || "cash",
-        split_payments: normalizedOrder.split_payments,
-        cash_received: normalizedOrder.cash_received || normalizedOrder.total,
-        change_amount: normalizedOrder.change_amount || 0,
-        status: normalizedOrder.status,
-      }
-
-      void fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }).catch((err) => console.warn("Failed posting order to /api/orders", err))
-    } catch {}
-
-    if (isSupabaseConfigured()) {
-      try {
-        const supabase = createClient()
-        const dbPayload: any = {
-          order_number: normalizedOrder.order_number,
-          receipt_number: normalizedOrder.receipt_number,
-          table_name: normalizedOrder.table_name,
-          cashier_name: normalizedOrder.cashier_name,
-          subtotal: normalizedOrder.subtotal,
-          service_charge: normalizedOrder.service_charge,
-          discount: normalizedOrder.discount,
-          total: normalizedOrder.total,
-          payment_method: normalizedOrder.payment_method,
-          split_payments: normalizedOrder.split_payments || [],
-          cash_received: normalizedOrder.cash_received || 0,
-          change_amount: normalizedOrder.change_amount || 0,
-          status: normalizedOrder.status,
-          items: normalizedOrder.items,
-          kitchen_status: normalizedOrder.kitchen_status || "pending",
-          bar_status: normalizedOrder.bar_status || "pending",
-          notes: normalizedOrder.split_payments?.length
-            ? JSON.stringify({ split_payments: normalizedOrder.split_payments })
-            : (normalizedOrder.notes || ""),
-          created_at: normalizedOrder.created_at,
-        }
-        if (isUuid(validId)) {
-          dbPayload.id = validId
-        }
-        const { error: upsertErr } = await supabase.from("pos_orders").upsert(dbPayload, { onConflict: "order_number" })
-        if (upsertErr) {
-          console.warn("Could not upsert order to Supabase; retrying fallback without split_payments", upsertErr)
-          const fallback = { ...dbPayload }
-          delete fallback.split_payments
-          await supabase.from("pos_orders").upsert(fallback, { onConflict: "order_number" })
-        }
-      } catch (err) {
-        console.warn("Could not upsert order to Supabase; retained in local reactive store", err)
-      }
-    }
     return normalizedOrder
   }
 
@@ -2934,30 +3110,17 @@ export class SharedPosService {
 
     // Notify backend endpoint
     try {
-      void fetch(`/api/orders/${encodeURIComponent(targetOrderNum)}/ticket-status`, {
+      const res = await fetch(`/api/orders/${encodeURIComponent(targetOrderNum)}/ticket-status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ station, status }),
-      }).catch((err) => console.warn("Failed calling ticket-status endpoint", err))
-    } catch {}
-
-    if (isSupabaseConfigured()) {
-      try {
-        const payload: any = station === "bar" ? { bar_status: status } : { kitchen_status: status }
-        const updated = this.ordersCache.find((o) => o.id === orderId || o.order_number === orderId)
-        if (updated?.status === "completed") {
-          payload.status = "completed"
-        }
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId)
-        const query = matchedOrderNumber
-          ? createClient().from("pos_orders").update(payload).eq("order_number", matchedOrderNumber)
-          : isUuid
-            ? createClient().from("pos_orders").update(payload).eq("id", orderId)
-            : createClient().from("pos_orders").update(payload).eq("order_number", orderId)
-        await query
-      } catch (err) {
-        console.warn("Could not sync ticket status to cloud; updated locally", err)
+      })
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        console.warn("Failed calling ticket-status endpoint:", errJson?.error)
       }
+    } catch (patchErr) {
+      console.warn("Failed calling ticket-status endpoint:", patchErr)
     }
   }
 

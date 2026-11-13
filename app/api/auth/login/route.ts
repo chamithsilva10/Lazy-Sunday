@@ -48,7 +48,17 @@ export async function POST(request: NextRequest) {
     }
 
     const role = appUser.role_id
-    const success = NextResponse.json({ success: true, mfaRequired: false, role })
+    const success = NextResponse.json({
+      success: true,
+      mfaRequired: false,
+      role,
+      user: {
+        id: appUser.id,
+        username: appUser.username,
+        role: appUser.role_id,
+        name: appUser.full_name || appUser.username,
+      },
+    })
     const cookieOptions = {
       path: "/",
       httpOnly: true,
@@ -62,9 +72,23 @@ export async function POST(request: NextRequest) {
     success.cookies.set("pos-staff-user", appUser.username, cookieOptions)
 
     if (process.env.SESSION_COOKIE_SECRET && process.env.SESSION_COOKIE_SECRET.length >= 32) {
-      setSessionCookie(success, await createSessionMarker())
+      setSessionCookie(
+        success,
+        await createSessionMarker({
+          userId: appUser.id,
+          username: appUser.username,
+          role,
+        })
+      )
     } else {
-      success.cookies.set(SESSION_COOKIE_NAME, "local-session", cookieOptions)
+      setSessionCookie(
+        success,
+        await createSessionMarker({
+          userId: appUser.id,
+          username: appUser.username,
+          role,
+        })
+      )
     }
 
     success.headers.set("Cache-Control", "no-store")
@@ -202,7 +226,16 @@ export async function POST(request: NextRequest) {
     console.error("Successful login security event could not be recorded", auditError)
   }
 
-  const success = NextResponse.json({ success: true, mfaRequired })
+  const success = NextResponse.json({
+    success: true,
+    mfaRequired,
+    role,
+    user: {
+      id: data.user.id,
+      username: identifier,
+      role,
+    },
+  })
   sessionCookies.forEach(({ name, value, options }) => {
     success.cookies.set(name, value, {
       ...options,
@@ -212,7 +245,14 @@ export async function POST(request: NextRequest) {
     })
   })
   if (process.env.SESSION_COOKIE_SECRET && process.env.SESSION_COOKIE_SECRET.length >= 32) {
-    setSessionCookie(success, await createSessionMarker())
+    setSessionCookie(
+      success,
+      await createSessionMarker({
+        userId: data.user.id,
+        username: identifier,
+        role,
+      })
+    )
   }
   success.headers.set("Cache-Control", "no-store")
   return success
