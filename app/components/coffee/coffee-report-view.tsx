@@ -137,8 +137,8 @@ export function CoffeeReportView() {
     setSelectedPayment("all")
   }
 
-  // Handler to export Coffee Report in professional Excel (.xls) or Horizontal CSV (.csv) format
-  function handleDownloadCoffeeReport(format: "excel" | "csv") {
+  // Handler to export Coffee Report in professional Excel (.xlsx) or Horizontal CSV (.csv) format
+  async function handleDownloadCoffeeReport(format: "excel" | "csv") {
     if (!report.billCount) {
       toast.error("No coffee sales data to export for selected range")
       return
@@ -175,9 +175,14 @@ export function CoffeeReportView() {
     const dateSlug = new Date().toISOString().substring(0, 10)
 
     if (format === "excel") {
-      const xlsxBuffer = generateCoffeeReportExcelXml(exportData)
-      downloadFile(xlsxBuffer, `Coffee_Report_${dateSlug}.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-      toast.success("Excel Workbook (.xlsx) exported with auto-filters & horizontal ledger!")
+      try {
+        const xlsxBuffer = await generateCoffeeReportExcelXml(exportData)
+        downloadFile(xlsxBuffer, `Coffee_Report_${dateSlug}.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        toast.success("Executive Excel Workbook (.xlsx) exported successfully!")
+      } catch (err: any) {
+        console.error("Export error:", err)
+        toast.error("Failed to generate Excel file: " + (err?.message || "Unknown error"))
+      }
     } else {
       const csv = generateCoffeeReportCsv(exportData)
       downloadFile(csv, `Coffee_Report_${dateSlug}.csv`, "text/csv;charset=utf-8")

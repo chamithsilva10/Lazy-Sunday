@@ -525,8 +525,8 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
     }
   }, [products])
 
-  // Handler to export report in professional Excel (.xls) or Horizontal CSV (.csv) format
-  function handleDownloadReport(format: "excel" | "csv", stationOverride?: "all" | "bar" | "kitchen") {
+  // Handler to export report in professional Excel (.xlsx) or Horizontal CSV (.csv) format
+  async function handleDownloadReport(format: "excel" | "csv", stationOverride?: "all" | "bar" | "kitchen") {
     const station = stationOverride || exportStation || selectedStation
     const exportRep = generateReport(orders, {
       startDate: startDate || undefined,
@@ -601,9 +601,14 @@ export function ReportsView({ orders, products, onPrintReceipt }: ReportsViewPro
     const stationSlug = station !== "all" ? `_${station}` : ""
 
     if (format === "excel") {
-      const xlsxBuffer = generateSalesReportExcelXml(exportPayload)
-      downloadFile(xlsxBuffer, `Sales_Report_${dateSlug}${stationSlug}.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-      toast.success("Excel Workbook (.xlsx) exported with auto-filters & horizontal ledger!")
+      try {
+        const xlsxBuffer = await generateSalesReportExcelXml(exportPayload)
+        downloadFile(xlsxBuffer, `Sales_Report_${dateSlug}${stationSlug}.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        toast.success("Executive Excel Workbook (.xlsx) exported with branded layout & side-by-side summaries!")
+      } catch (err: any) {
+        console.error("Export error:", err)
+        toast.error("Failed to generate Excel file: " + (err?.message || "Unknown error"))
+      }
     } else {
       const csv = generateSalesReportCsv(exportPayload)
       downloadFile(csv, `Sales_Report_${dateSlug}${stationSlug}.csv`, "text/csv;charset=utf-8")
