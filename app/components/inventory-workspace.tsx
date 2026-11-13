@@ -890,7 +890,7 @@ export function InventoryWorkspace({
   async function handleClearBulkData() {
     if (
       !window.confirm(
-        "Are you sure you want to clear all bulk/demo inventory data? This will reset ingredients, recipes, grocery runs, wastage, and adjustments to a clean slate (0)."
+        "Are you sure you want to clear all inventory data? This will reset ingredients, recipes, grocery runs, wastage, and adjustments to a clean slate (0)."
       )
     )
       return
@@ -1073,7 +1073,7 @@ export function InventoryWorkspace({
               className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
               onClick={() => void handleClearBulkData()}
               disabled={busy}
-              title="Clear bulk mock data and start with clean inventory"
+              title="Clear bulk data and start with clean inventory"
             >
               <Trash2 className="mr-2 size-4" />Clear Bulk Data
             </Button>

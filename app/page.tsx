@@ -2429,9 +2429,9 @@ export default function POSPage() {
                 <span className="text-[11px] font-semibold text-[#808068] truncate hidden sm:inline">
                   Lazy Sunday
                 </span>
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#FAF5F1] border border-[#EAB8B5] text-[#808068] text-[10px] sm:text-[11px] font-semibold shrink-0">
-                  <span className="size-2 rounded-full bg-[#D67B6B] animate-pulse" />
-                  <span>DEMO SANDBOX</span>
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] sm:text-[11px] font-semibold shrink-0">
+                  <span className="size-2 rounded-full bg-emerald-500" />
+                  <span>LIVE TERMINAL</span>
                 </div>
               </div>
               <h1 className="font-serif text-base sm:text-xl font-bold leading-tight text-[#343428] truncate">
@@ -2451,30 +2451,6 @@ export default function POSPage() {
             >
               <Barcode className="size-4 text-[#808068] shrink-0" />
               <span className="hidden md:inline">Scan Barcode</span>
-            </Button>
-
-            {/* Reset Demo Data Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetDemoData}
-              title="Reset Mock Data to Initial State"
-              className="h-8 sm:h-9 gap-1.5 border-[#D67B6B]/40 text-[#D67B6B] bg-[#FAF5F1] hover:bg-[#faecea] rounded-xl px-2 sm:px-2.5 text-xs font-medium shrink-0"
-            >
-              <RotateCcw className="size-3.5 text-[#D67B6B] shrink-0" />
-              <span className="hidden lg:inline">Reset Demo</span>
-            </Button>
-
-            {/* Acceptance Test Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadAcceptanceTestScenario}
-              title="Load Test Order (Table 05)"
-              className="h-8 sm:h-9 gap-1.5 border-[#808068]/30 text-[#808068] bg-[#FAF5F1] hover:bg-[#eeeee7] rounded-xl px-2 sm:px-2.5 text-xs font-medium shrink-0"
-            >
-              <Zap className="size-3.5 text-[#D67B6B] fill-[#D67B6B] shrink-0" />
-              <span className="hidden xl:inline">Test Order</span>
             </Button>
 
             {/* User Guide Quick Button */}

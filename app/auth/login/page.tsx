@@ -110,9 +110,9 @@ export default function LoginPage() {
             </div>
 
             <div className="mb-6">
-              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#FAF5F1] px-2.5 py-0.5 text-[11px] font-semibold text-[#808068] border border-[#EAB8B5]">
-                <span className="size-2 rounded-full bg-[#D67B6B] animate-pulse" />
-                Demo Sandbox Mode • Mock Data Active
+              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
+                <span className="size-2 rounded-full bg-emerald-500" />
+                Online POS Terminal • Authoritative Database
               </div>
               <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#808068]">Staff access</p>
               <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold text-gray-900">Welcome to Lazy Sunday</h1>

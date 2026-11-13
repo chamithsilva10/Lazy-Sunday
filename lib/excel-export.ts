@@ -242,7 +242,7 @@ export async function generateSalesReportXlsx(data: SalesReportExportData): Prom
 
   wsLedger.mergeCells("M1:P1")
   const m1 = wsLedger.getCell("M1")
-  m1.value = "SAMPLE DATA"
+  m1.value = "OFFICIAL REGISTER"
   m1.font = { name: BRAND.FONT_FAMILY, size: 10, bold: true, color: { argb: BRAND.NAVY } }
   m1.alignment = { vertical: "middle", horizontal: "right" }
   wsLedger.getRow(1).height = 24
@@ -331,7 +331,7 @@ export async function generateSalesReportXlsx(data: SalesReportExportData): Prom
   wsLedger.mergeCells("L7:P7")
   const l7 = wsLedger.getCell("L7")
   const ordersList = data.orders || []
-  l7.value = `Preview: ${ordersList.length} sample orders`
+  l7.value = `Total: ${ordersList.length} orders`
   l7.font = { name: BRAND.FONT_FAMILY, size: 9.5, italic: true, color: { argb: BRAND.MUTED_TEXT } }
   l7.alignment = { vertical: "middle", horizontal: "right" }
   wsLedger.getRow(7).height = 22
@@ -496,7 +496,7 @@ export async function generateSalesReportXlsx(data: SalesReportExportData): Prom
 
   wsLedger.mergeCells(`A${sumRowIdx}:I${sumRowIdx}`)
   const sumLabel = sumRow.getCell(1)
-  sumLabel.value = `PREVIEW TOTAL · ${ordersList.length} orders`
+  sumLabel.value = `TOTAL · ${ordersList.length} orders`
   sumLabel.font = { name: BRAND.FONT_FAMILY, size: 10, bold: true, color: { argb: BRAND.NAVY } }
   sumLabel.alignment = { vertical: "middle", horizontal: "left", indent: 1 }
 
@@ -780,11 +780,11 @@ export async function generateSalesReportXlsx(data: SalesReportExportData): Prom
   applyTotalStyle(1, 5)
   applyTotalStyle(9, 16)
 
-  // Footer Note: Design concept • Illustrative data
+  // Footer Note: System export
   const footerIdx = splitTotalIdx + 2
   wsLedger.mergeCells(`L${footerIdx}:P${footerIdx}`)
   const fCell = wsLedger.getCell(`L${footerIdx}`)
-  fCell.value = "Design concept • Illustrative data"
+  fCell.value = "Lazy Sunday POS • Authoritative System Export"
   fCell.font = { name: BRAND.FONT_FAMILY, size: 9, italic: true, color: { argb: BRAND.MUTED_TEXT } }
   fCell.alignment = { vertical: "middle", horizontal: "right" }
 
