@@ -30,7 +30,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-type Table = { id: string; name: string; capacity: number; status: string }
+type Table = SharedTable
 type Reservation = {
   id: string
   customer_name: string
@@ -211,7 +211,7 @@ export function TablesWorkspace({
     const sharedBookings = SharedPosService.getBookings()
     const sharedSessions = SharedPosService.getSessions()
 
-    setTables(sharedTables.map((t) => ({ id: t.id, name: t.name, capacity: t.capacity, status: t.status })))
+    setTables(sharedTables.map((t) => ({ ...t })))
     setAllBookings(sharedBookings)
     setOrders(SharedPosService.getOrders())
     setReservations(
@@ -249,7 +249,7 @@ export function TablesWorkspace({
     setSelected((prev) => {
       if (!prev) return null
       const updated = sharedTables.find((t) => t.id === prev.id || tablesMatch(t.name, prev.name))
-      return updated ? { id: updated.id, name: updated.name, capacity: updated.capacity, status: updated.status } : prev
+      return updated ? { ...updated } : prev
     })
     setLoadError(null)
   }, [])
@@ -340,11 +340,45 @@ export function TablesWorkspace({
 
   const activeBookingFor = (table: Table) => heldBookingFor(table) || nextUpcomingBookingFor(table)
 
+  const statusFor = (table: Table): "available" | "occupied" | "reserved" | "cleaning" | "bill_requested" => {
+    // 1. First priority: active seating session (open or bill_requested)
+    const session = sessionFor(table)
+    if (session && session.status !== "closed") {
+      return session.status === "bill_requested" ? "bill_requested" : "occupied"
+    }
+
+    // 2. Second priority: active open (unpaid) dine-in order
+    const openOrder = orders.find(
+      (o) => o.status === "open" && tablesMatch(o.table_name, table.name)
+    )
+    if (openOrder) return "occupied"
+
+    // 3. Third priority: active reservation currently holding this table
+    const held = heldBookingFor(table)
+    if (held) return "reserved"
+
+    // 4. Fourth priority: table explicit status, respecting release timestamps
+    if (table.status === "occupied" || table.status === "bill_requested") {
+      if (table.releasedAt && table.occupiedAt) {
+        if (new Date(table.releasedAt).getTime() >= new Date(table.occupiedAt).getTime()) {
+          return "available"
+        }
+      }
+      return table.status
+    }
+
+    if (table.status === "cleaning" || table.status === "reserved") {
+      return table.status
+    }
+
+    return "available"
+  }
+
   const getActiveOrderForTable = (table: Table | null | undefined): SharedOrder | undefined => {
     if (!table) return undefined
     const session = sessionFor(table)
     const orderMatch = session?.notes?.match(/Order\s*#?([A-Za-z0-9-]+)/i)
-    const sessionOrderNum = orderMatch ? orderMatch[1] : (table as any).orderNumber
+    const sessionOrderNum = orderMatch ? orderMatch[1] : table.orderNumber
 
     // 1. First priority: any active "open" order directly matching this table
     const openOrder = orders.find(
@@ -360,9 +394,14 @@ export function TablesWorkspace({
       if (match) return match
     }
 
-    // 3. Third priority: most recent dine-in order (within last 6 hours) that has not been explicitly released
-    const releasedTime = (table as any).releasedAt ? new Date((table as any).releasedAt).getTime() : 0
+    // 3. Third priority: Only look for paid orders if the table is currently occupied/seated!
+    const isOccupied = (session && session.status !== "closed") || table.status === "occupied" || table.status === "bill_requested"
+    if (!isOccupied) return undefined
+
+    const releasedTime = table.releasedAt ? new Date(table.releasedAt).getTime() : 0
+    const occupiedTime = table.occupiedAt ? new Date(table.occupiedAt).getTime() : 0
     const now = Date.now()
+
     const recentOrder = orders.find((o) => {
       if (!tablesMatch(o.table_name, table.name)) return false
       if (o.status !== "open" && o.status !== "paid") return false
@@ -370,33 +409,11 @@ export function TablesWorkspace({
       const orderTime = new Date(o.created_at).getTime()
       if (now - orderTime > 6 * 60 * 60 * 1000) return false
       if (releasedTime && releasedTime >= orderTime) return false
+      if (occupiedTime && orderTime < occupiedTime - 60000) return false
       return true
     })
 
     return recentOrder
-  }
-
-  const statusFor = (table: Table): "available" | "occupied" | "reserved" | "cleaning" | "bill_requested" => {
-    const session = sessionFor(table)
-    if (session && session.status !== "closed") {
-      return session.status === "bill_requested" ? "bill_requested" : "occupied"
-    }
-
-    const activeOrder = getActiveOrderForTable(table)
-    if (activeOrder) return "occupied"
-
-    const held = heldBookingFor(table)
-    if (held) return "reserved"
-
-    if (
-      table.status === "occupied" ||
-      table.status === "bill_requested" ||
-      table.status === "cleaning" ||
-      table.status === "reserved"
-    ) {
-      return table.status as any
-    }
-    return "available"
   }
 
   const visibleTables = tables.filter((table) => {
@@ -696,7 +713,8 @@ export function TablesWorkspace({
         await SharedPosService.setTableStatus(selected.id, "bill_requested")
         toast.success(`Bill requested for ${curName}`)
       }
-      await load()
+      syncFromCache()
+      void SharedPosService.refreshFromApi(true).then(() => syncFromCache())
     } catch (err: any) {
       fail(`Could not update session: ${err.message || err}`)
     } finally {
@@ -719,7 +737,8 @@ export function TablesWorkspace({
         await SharedPosService.setTableStatus(table.id, status)
         toast.success(`${table.name} marked ${status.replace("_", " ")}`)
       }
-      await load()
+      syncFromCache()
+      void SharedPosService.refreshFromApi(true).then(() => syncFromCache())
     } catch (err: any) {
       fail(err.message || "Failed to update table")
     }

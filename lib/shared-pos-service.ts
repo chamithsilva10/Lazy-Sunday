@@ -3683,7 +3683,15 @@ export class SharedPosService {
               (s) => (s.table_id === tableId || sameName(s.table_name, tableName)) && s.status !== "closed"
             )
 
-            // If table is occupied locally with an active session or order, PRESERVE it!
+            // 1. If table was explicitly released locally, PRESERVE local available state
+            if (local && local.status === "available" && local.releasedAt) {
+              return {
+                ...local,
+                capacity: Number(r.capacity) || local.capacity || 2,
+              }
+            }
+
+            // 2. If table is occupied locally with an active session or order, PRESERVE it!
             if (local && (local.status === "occupied" || local.status === "bill_requested") && (localSession || local.orderNumber)) {
               return {
                 ...local,
@@ -3703,6 +3711,7 @@ export class SharedPosService {
                 orderTotal: local?.orderTotal,
                 department: local?.department,
                 bookingId: r.bookingId || local?.bookingId,
+                releasedAt: undefined,
               }
             }
 
@@ -3717,6 +3726,7 @@ export class SharedPosService {
               department: r.department ?? local?.department,
               orderNumber: r.orderNumber ?? local?.orderNumber,
               orderTotal: r.orderTotal ?? local?.orderTotal,
+              releasedAt: local?.releasedAt,
             }
           })
 
@@ -4026,17 +4036,20 @@ export class SharedPosService {
     const table = this.tablesCache.find((t) => sameName(t.name, tableName))
     if (!table) return "available"
 
+    const nowIso = new Date().toISOString()
+
     // 1. Immediately update local state so UI updates with ZERO lag
     this.tablesCache = this.tablesCache.map((t) =>
       sameName(t.name, tableName)
         ? {
             ...t,
             status: "available",
+            releasedAt: nowIso,
+            occupiedAt: undefined,
             department: undefined,
             orderNumber: undefined,
             orderTotal: undefined,
             guestName: undefined,
-            occupiedAt: undefined,
             bookingId: undefined,
           }
         : t,
@@ -4044,7 +4057,7 @@ export class SharedPosService {
 
     this.sessionsCache = this.sessionsCache.map((s) =>
       (s.table_id === table.id || sameName(s.table_name, table.name)) && s.status !== "closed"
-        ? { ...s, status: "closed" as const }
+        ? { ...s, status: "closed" as const, closed_at: nowIso }
         : s,
     )
 
@@ -4093,8 +4106,9 @@ export class SharedPosService {
     if (status === "available") return this.releaseTable(table.name)
     if (status === "occupied") return this.occupyTable(table.name)
 
+    const nowIso = new Date().toISOString()
     this.tablesCache = this.tablesCache.map((t) =>
-      t.id === table.id ? { ...t, status } : t
+      t.id === table.id ? { ...t, status, releasedAt: status === "cleaning" ? nowIso : t.releasedAt } : t
     )
 
     if (status === "bill_requested") {
