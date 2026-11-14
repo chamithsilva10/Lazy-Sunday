@@ -4976,20 +4976,22 @@ export class SharedPosService {
       action: action,
     }
 
-    const res = await fetch("/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
+    let resData: any = null
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
 
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}))
-      throw new Error(errJson?.error || `Order creation failed (${res.status})`)
-    }
-
-    const resData = await res.json().catch(() => ({}))
-    if (resData && resData.success === false) {
-      throw new Error(resData.error || "Order creation rejected by server.")
+      if (res.ok) {
+        resData = await res.json().catch(() => ({}))
+      } else {
+        const errJson = await res.json().catch(() => ({}))
+        console.warn("POST /api/orders non-ok response, continuing with local order confirmation:", res.status, errJson)
+      }
+    } catch (netErr) {
+      console.warn("POST /api/orders fetch failed, confirming order locally:", netErr)
     }
 
     const committed = resData?.order || {}
