@@ -1674,7 +1674,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "/uploads/prod_1794637814975_5gmi8.jpg",
-    "stock": 100,
+    "stock": 45,
     "description": "Short, concentrated espresso extraction with a sweet, rich profile.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1693,7 +1693,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "/uploads/prod_1794639566380_84t95.jpg",
-    "stock": 100,
+    "stock": 55,
     "description": "Full-bodied single origin espresso shot with thick golden crema.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1712,7 +1712,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "https://images.unsplash.com/photo-1551030173-122aabc4489c?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 32,
     "description": "Double shot espresso poured over hot or iced mineral water.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1731,7 +1731,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "https://images.unsplash.com/photo-1577968897966-3d4325b36b61?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 28,
     "description": "Velvety textured micro-foam over a double ristretto shot.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1749,7 +1749,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 38,
     "description": "Harmonious balance of espresso, steamed milk, and airy foam.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1767,7 +1767,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "/latte-coffee.png",
-    "stock": 100,
+    "stock": 42,
     "description": "Smooth espresso with gently steamed milk and a light foam cap.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1785,7 +1785,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 24,
     "description": "Espresso blended with artisanal dark chocolate and steamed milk.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1803,7 +1803,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 15,
     "description": "Single-origin pour over filter brew showcasing delicate florals and fruit notes.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1822,7 +1822,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 19,
     "description": "Ceremonial grade Japanese green tea whisked with silky steamed milk.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1840,7 +1840,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 26,
     "description": "Rich melted cocoa crafted into decadent hot chocolate or iced chocolate.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1858,7 +1858,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 60,
     "description": "High-grown Nuwara Eliya whole leaf black tea with robust malty character.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1877,7 +1877,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 35,
     "description": "Clean, fresh steamed whole-leaf green tea rich in antioxidants.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1896,7 +1896,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 28,
     "description": "Soothing natural herbal infusion of sun-dried lemongrass stalks and spicy ginger.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1915,7 +1915,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Coffee & Hot Drinks",
     "category_id": "cat-coffee-hot-drinks",
     "image": "https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 22,
     "description": "Aromatic black tea brewed with crushed cardamoms, cinnamon, cloves, and milk.",
     "temperature": "hot",
     "dietary_tags": [
@@ -1933,7 +1933,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 14,
     "description": "Chilled tropical mango puree layered with iced ceremonial matcha.",
     "temperature": "iced",
     "dietary_tags": [
@@ -1952,7 +1952,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 18,
     "description": "Naturally sweet, isotonic fresh Sri Lankan thambili water served chilled.",
     "temperature": "iced",
     "dietary_tags": [
@@ -1971,7 +1971,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 30,
     "description": "Freshly squeezed garden lime with bubbly soda water and pure cane syrup.",
     "temperature": "iced",
     "dietary_tags": [
@@ -1990,7 +1990,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "https://images.unsplash.com/photo-1546173159-315724a31696?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 25,
     "description": "Crushed sweet pineapple and muddled garden mint topped with sparkling soda.",
     "temperature": "iced",
     "dietary_tags": [
@@ -2009,7 +2009,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 22,
     "description": "Tangy tropical passionfruit pulp, lime, and crisp sparkling soda.",
     "temperature": "iced",
     "dietary_tags": [
@@ -2028,7 +2028,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 16,
     "description": "Thick, creamy blend of ripe tropical mangoes, banana, and chilled coconut milk.",
     "temperature": "iced",
     "dietary_tags": [
@@ -2047,7 +2047,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 12,
     "description": "Roasted artisanal peanut butter, banana, dairy milk, and dark honey.",
     "temperature": "iced",
     "dietary_tags": [
@@ -2065,7 +2065,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "/glass-of-orange-juice.png",
-    "stock": 100,
+    "stock": 20,
     "description": "Indigenous sweet orange infused with a subtle touch of natural sea salt.",
     "temperature": "iced",
     "dietary_tags": [
@@ -2084,7 +2084,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 24,
     "description": "Fiery organic Sri Lankan ginger balanced with zesty lemon and sparkling spring water.",
     "temperature": "iced",
     "dietary_tags": [
@@ -2103,7 +2103,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "/iced-tea.png",
-    "stock": 100,
+    "stock": 26,
     "description": "Cold brewed Ceylon black tea with natural orchard peach and luscious mango.",
     "temperature": "iced",
     "dietary_tags": [
@@ -2122,7 +2122,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 15,
     "description": "Refreshing sparkling king coconut nectar with tangy lime and pinch of sea salt.",
     "temperature": "iced",
     "dietary_tags": [
@@ -2141,7 +2141,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Cold Drinks",
     "category_id": "cat-cold-drinks",
     "image": "/bottled-water.png",
-    "stock": 100,
+    "stock": 45,
     "description": "Pure chilled carbonated mineral spring water with crisp effervescence.",
     "temperature": "iced",
     "dietary_tags": [
@@ -2160,7 +2160,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Meals",
     "category_id": "cat-meals",
     "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 14,
     "description": "Sautéed button & oyster mushrooms in garlic herb cream, served with Sourdough or Hashbrowns.",
     "temperature": "none",
     "dietary_tags": [
@@ -2178,7 +2178,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Meals",
     "category_id": "cat-meals",
     "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 20,
     "description": "Crispy smoked bacon with two eggs (Scrambled / Fried) and choice of Sourdough or Hashbrowns.",
     "temperature": "none",
     "dietary_tags": [],
@@ -2194,7 +2194,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Meals",
     "category_id": "cat-meals",
     "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 16,
     "description": "Soft eggs scrambled with green chilies, shallots, curry leaves, and toasted sourdough.",
     "temperature": "none",
     "dietary_tags": [
@@ -2212,7 +2212,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Meals",
     "category_id": "cat-meals",
     "image": "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 22,
     "description": "Golden buttermilk pancake stack served with fresh tropical fruit, whipped butter, and kithul treacle.",
     "temperature": "none",
     "dietary_tags": [
@@ -2230,7 +2230,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Meals",
     "category_id": "cat-meals",
     "image": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 15,
     "description": "Herb-marinated chicken breast, garlic aioli, tomato, and baby greens on sourdough with Fries or Salad.",
     "temperature": "none",
     "dietary_tags": [],
@@ -2246,7 +2246,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Meals",
     "category_id": "cat-meals",
     "image": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 11,
     "description": "Golden shredded potato crust filled with savory smoked bacon, eggs, and aged cheddar with Fries or Salad.",
     "temperature": "none",
     "dietary_tags": [],
@@ -2262,7 +2262,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Salads",
     "category_id": "cat-salads",
     "image": "/vibrant-mixed-salad.png",
-    "stock": 100,
+    "stock": 14,
     "description": "Oven-roasted pumpkin, sweet potato, bell peppers, mixed greens, toasted pumpkin seeds, and balsamic glaze.",
     "temperature": "none",
     "dietary_tags": [
@@ -2281,7 +2281,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Salads",
     "category_id": "cat-salads",
     "image": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 18,
     "description": "Fusilli pasta tossed in fresh basil cashew pesto, cherry tomatoes, baby spinach, and parmesan shavings.",
     "temperature": "none",
     "dietary_tags": [
@@ -2299,7 +2299,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Salads",
     "category_id": "cat-salads",
     "image": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 17,
     "description": "Crisp cucumbers, spiced chickpeas, Kalamata olives, fresh herbs, and zesty lemon tahini dressing.",
     "temperature": "none",
     "dietary_tags": [
@@ -2318,7 +2318,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Bakery & Desserts",
     "category_id": "cat-bakery-desserts",
     "image": "https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 9,
     "description": "Freshly baked savory muffin loaded with baby spinach, sweet corn, and crumbled feta cheese.",
     "temperature": "none",
     "dietary_tags": [
@@ -2336,7 +2336,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Bakery & Desserts",
     "category_id": "cat-bakery-desserts",
     "image": "https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 8,
     "description": "Moist ripe banana muffin baked with dark Belgian chocolate chips and cinnamon crumble.",
     "temperature": "none",
     "dietary_tags": [
@@ -2354,7 +2354,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Bakery & Desserts",
     "category_id": "cat-bakery-desserts",
     "image": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 12,
     "description": "Traditional butter scone served warm with house-made tropical passion-mango jam and clotted cream.",
     "temperature": "none",
     "dietary_tags": [
@@ -2372,7 +2372,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Bakery & Desserts",
     "category_id": "cat-bakery-desserts",
     "image": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 10,
     "description": "Golden sharp cheddar cheese scone served with fragrant house-whipped curry leaf (karipincha) butter.",
     "temperature": "none",
     "dietary_tags": [
@@ -2390,7 +2390,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Bakery & Desserts",
     "category_id": "cat-bakery-desserts",
     "image": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80",
-    "stock": 100,
+    "stock": 16,
     "description": "Toasted rolled oats and golden syrup slice topped with spicy candied ginger icing.",
     "temperature": "none",
     "dietary_tags": [
@@ -2408,7 +2408,7 @@ export const DEFAULT_PRODUCTS: SharedProduct[] = [
     "category": "Bakery & Desserts",
     "category_id": "cat-bakery-desserts",
     "image": "/chocolate-brownie.png",
-    "stock": 100,
+    "stock": 14,
     "description": "Warm fudgy dark chocolate brownie dusted with cocoa, paired with a scoop of vanilla bean ice cream.",
     "temperature": "none",
     "dietary_tags": [
@@ -2832,7 +2832,25 @@ export class SharedPosService {
           seenIds.add(p.id)
           return true
         })
-        if (missing.length > 0 && this.isBrowser()) {
+
+        // Reconcile legacy uniform stock (100 across all products) with authentic database stock
+        const allHundred = existing.length > 0 && existing.every((p) => p.stock === 100)
+        const defStockMap = new Map(DEFAULT_PRODUCTS.map((dp) => [dp.id, dp.stock]))
+        const defNameStockMap = new Map(DEFAULT_PRODUCTS.map((dp) => [dp.name.trim().toLowerCase(), dp.stock]))
+        let cacheModified = false
+
+        this.productsCache = this.productsCache.map((p) => {
+          if (allHundred || (p.stock === 100 && !p.user_customized)) {
+            const defStock = defStockMap.get(p.id) ?? defNameStockMap.get((p.name || "").trim().toLowerCase())
+            if (defStock !== undefined && defStock !== p.stock) {
+              cacheModified = true
+              return { ...p, stock: defStock }
+            }
+          }
+          return p
+        })
+
+        if ((missing.length > 0 || cacheModified) && this.isBrowser()) {
           try {
             localStorage.setItem(PRODUCTS_KEY, JSON.stringify(this.productsCache))
           } catch {}
@@ -4677,26 +4695,39 @@ export class SharedPosService {
 
   static async adjustStock(productId: string, quantityChange: number, reason = "Stock Adjustment") {
     this.init()
-    const prod = this.productsCache.find((p) => p.id === productId)
+    const prod = this.productsCache.find((p) => p.id === productId || sameName(p.name, productId))
     if (!prod) return
 
     const newStock = Math.max(0, prod.stock + quantityChange)
-    this.productsCache = this.productsCache.map((p) => (p.id === productId ? { ...p, stock: newStock } : p))
+    this.productsCache = this.productsCache.map((p) => (p.id === prod.id ? { ...p, stock: newStock } : p))
     localStorage.setItem(PRODUCTS_KEY, JSON.stringify(this.productsCache))
     this.emitProducts()
     this.broadcast("products")
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pos_products_updated", { detail: { id: prod.id, stock: newStock } }))
+    }
 
     this.logMovement({
-      product_id: productId,
+      product_id: prod.id,
       product_name: prod.name,
       department: (prod.department as any) || "Juice & Food",
       quantity_change: quantityChange,
       reason,
     })
 
+    if (this.isBrowser()) {
+      try {
+        void fetch(`/api/products/${encodeURIComponent(prod.id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stock: newStock }),
+        }).catch((err) => console.warn("Failed syncing adjusted stock to /api/products/[id]", err))
+      } catch {}
+    }
+
     if (isSupabaseConfigured()) {
       try {
-        await createClient().from("pos_products").update({ stock: newStock }).eq("id", productId)
+        await createClient().from("pos_products").update({ stock: newStock }).eq("id", prod.id)
       } catch {}
     }
   }
@@ -5205,16 +5236,32 @@ export class SharedPosService {
     this.broadcast("orders", normalizedOrder)
 
     // Deduct products stock locally to keep UI responsive
+    let stockChanged = false
     for (const item of normalizedOrder.items) {
-      const target = this.productsCache.find((p) => p.id === item.id || sameName(p.name, item.name))
+      const target = this.productsCache.find((p) => p.id === item.id || (item as any).product_id === p.id || sameName(p.name, item.name))
       if (target) {
         const remaining = Math.max(0, target.stock - (item.quantity || 1))
         this.productsCache = this.productsCache.map((p) => (p.id === target.id ? { ...p, stock: remaining } : p))
+        stockChanged = true
+        if (this.isBrowser()) {
+          try {
+            void fetch(`/api/products/${encodeURIComponent(target.id)}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ stock: remaining }),
+            }).catch(() => {})
+          } catch {}
+        }
       }
     }
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(this.productsCache))
-    this.emitProducts()
-    this.broadcast("products")
+    if (stockChanged) {
+      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(this.productsCache))
+      this.emitProducts()
+      this.broadcast("products")
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("pos_products_updated"))
+      }
+    }
 
     // Update table occupation:
     // When someone is at the table (open order or paid dine-in), mark table occupied!

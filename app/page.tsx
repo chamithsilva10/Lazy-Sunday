@@ -1813,7 +1813,7 @@ export default function POSPage() {
       // 2. Deduct Inventory stock for sold products ONLY if not already deducted on an open tab
       if (!isPayingExisting) {
         const updatedProducts = products.map((p) => {
-          const bought = purchasedItems.find((item) => item.id === p.id)
+          const bought = purchasedItems.find((item) => item.id === p.id || (item as any).product_id === p.id || item.name?.toLowerCase() === p.name.toLowerCase())
           if (bought) {
             const remaining = Math.max(0, p.stock - bought.quantity)
             return { ...p, stock: remaining }
@@ -1821,6 +1821,9 @@ export default function POSPage() {
           return p
         })
         setProducts(updatedProducts)
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("pos_products_updated"))
+        }
 
         // Record inventory movements
         const newMovements = purchasedItems.map((item) => ({
@@ -1970,12 +1973,14 @@ export default function POSPage() {
     }
 
       // Deduct inventory locally
-      setProducts((prev) =>
-        prev.map((p) => {
-          const bought = purchasedItems.find((it) => it.id === p.id)
-          return bought ? { ...p, stock: Math.max(0, p.stock - bought.quantity) } : p
-        }),
-      )
+      const updatedProducts = products.map((p) => {
+        const bought = purchasedItems.find((it) => it.id === p.id || (it as any).product_id === p.id || it.name?.toLowerCase() === p.name.toLowerCase())
+        return bought ? { ...p, stock: Math.max(0, p.stock - bought.quantity) } : p
+      })
+      setProducts(updatedProducts)
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("pos_products_updated"))
+      }
 
       // Mark table occupied across POS, Tables, and Coffee screens
       void SharedPosService.occupyTable(selectedTable, "Juice & Food", orderNum, total)
@@ -2269,11 +2274,23 @@ export default function POSPage() {
     if (!Number.isFinite(amount) || amount === 0) return
     const nextStock = Math.max(0, product.stock + amount)
     void SharedPosService.adjustStock(product.id, amount, form.reason || "Manual adjustment")
-    const { error } = await supabase.from("pos_products").update({ stock: nextStock }).eq("id", product.id)
-    if (error) {
-      console.warn("Could not sync stock to database; updated in local state", error)
-    }
+    try {
+      void fetch(`/api/products/${encodeURIComponent(product.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stock: nextStock }),
+      }).catch(() => {})
+    } catch {}
+    try {
+      const { error } = await supabase.from("pos_products").update({ stock: nextStock }).eq("id", product.id)
+      if (error) {
+        console.warn("Could not sync stock to database; updated in local state", error)
+      }
+    } catch {}
     setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, stock: nextStock } : p)))
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pos_products_updated", { detail: { id: product.id, stock: nextStock } }))
+    }
     toast.success(`Inventory stock updated for ${product.name}`)
     setDialogType(null)
   }

@@ -81,6 +81,22 @@ export function getDemoSqliteDb() {
 
     if (!tableCheck || tableCheck.cnt === 0) {
       initSchemaAndSeed(dbInstance)
+    } else {
+      // Ensure all products have real-world database stocks rather than legacy uniform 100
+      try {
+        const allHundredCheck = dbInstance
+          .prepare("SELECT count(*) as cnt FROM pos_products WHERE stock = 100")
+          .get() as { cnt: number }
+        const totalCheck = dbInstance
+          .prepare("SELECT count(*) as cnt FROM pos_products")
+          .get() as { cnt: number }
+        if (allHundredCheck && totalCheck && allHundredCheck.cnt > 0 && allHundredCheck.cnt === totalCheck.cnt) {
+          const updateStockStmt = dbInstance.prepare("UPDATE pos_products SET stock = ? WHERE id = ?")
+          for (const p of MOCK_PRODUCTS) {
+            updateStockStmt.run(p.stock, p.id)
+          }
+        }
+      } catch {}
     }
 
     try { dbInstance.exec("ALTER TABLE pos_orders ADD COLUMN idempotency_key TEXT;") } catch {}
