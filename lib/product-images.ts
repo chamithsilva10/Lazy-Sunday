@@ -7,7 +7,7 @@
 export const PRODUCT_IMAGE_MAP: Record<string, string> = {
   // --- BAR: Coffee ---
   "Ristretto": "/uploads/prod_1794637814975_5gmi8.jpg",
-  "Espresso": "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80",
+  "Espresso": "/uploads/prod_1794639566380_84t95.jpg",
   "Long Black": "https://images.unsplash.com/photo-1551030173-122aabc4489c?auto=format&fit=crop&w=600&q=80",
   "Flat White": "https://images.unsplash.com/photo-1577968897966-3d4325b36b61?auto=format&fit=crop&w=600&q=80",
   "Cappuccino": "https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=600&q=80",
@@ -116,8 +116,9 @@ export function resolveProductImage(name: string, currentImage?: string | null, 
   if (lowerName.includes("coconut")) return "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?auto=format&fit=crop&w=600&q=80"
   if (lowerName.includes("tea")) return "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80"
   if (lowerName.includes("ristretto")) return "/uploads/prod_1794637814975_5gmi8.jpg"
+  if (lowerName.includes("espresso")) return "/uploads/prod_1794639566380_84t95.jpg"
   if (lowerName.includes("latte") || lowerName.includes("cappuccino") || lowerName.includes("flat white")) return "/latte-coffee.png"
-  if (lowerName.includes("espresso") || lowerName.includes("pour over") || lowerName.includes("black")) return "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
+  if (lowerName.includes("pour over") || lowerName.includes("black")) return "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
   if (lowerName.includes("water")) return "/bottled-water.png"
 
   // 4. Category-based fallback

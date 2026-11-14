@@ -18,7 +18,7 @@ export const INITIAL_COFFEE_PRODUCTS: CoffeeProduct[] = [
     "category": "Coffee & Hot Drinks",
     "size": "Regular",
     "price": 500,
-    "image_url": "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80",
+    "image_url": "/uploads/prod_1794639566380_84t95.jpg",
     "status": "active"
   },
   {

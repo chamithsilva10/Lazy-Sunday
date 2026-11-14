@@ -38,7 +38,7 @@ export const products: MenuProduct[] = [
     name: "Espresso",
     price: 500,
     category: "Coffee & Hot Drinks",
-    image: "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80",
+    image: "/uploads/prod_1794639566380_84t95.jpg",
     description: "Full-bodied single origin espresso shot with thick golden crema.",
     isVegan: true,
     isGlutenFree: true,
