@@ -4234,55 +4234,99 @@ export class SharedPosService {
   }
 
   private static async refreshProductsFromCloud() {
-    if (!isSupabaseConfigured() || !this.isBrowser()) return
+    if (!this.isBrowser()) return
     try {
-      const supabase = createClient()
-      const [{ data: ps }, { data: cs }] = await Promise.all([
-        supabase.from("pos_products").select("*").eq("is_archived", false).order("name"),
-        supabase.from("pos_categories").select("*").eq("is_active", true).order("sort_order"),
-      ])
-      if (Array.isArray(cs)) {
+      // 1. Fetch authoritative products from SQL API
+      let apiProds: any[] = []
+      try {
+        const aRes = await fetch("/api/products", { cache: "no-store" })
+        if (aRes.ok) {
+          const aJson = await aRes.json()
+          if (Array.isArray(aJson?.products) && aJson.products.length > 0) {
+            apiProds = aJson.products
+          }
+        }
+      } catch {}
+
+      // 2. Fetch from Supabase if configured
+      let ps: any[] = []
+      let cs: any[] = []
+      if (isSupabaseConfigured()) {
+        try {
+          const supabase = createClient()
+          const [pRes, cRes] = await Promise.all([
+            supabase.from("pos_products").select("*").eq("is_archived", false).order("name"),
+            supabase.from("pos_categories").select("*").eq("is_active", true).order("sort_order"),
+          ])
+          if (Array.isArray(pRes.data)) ps = pRes.data
+          if (Array.isArray(cRes.data)) cs = cRes.data
+        } catch {}
+      }
+
+      if (cs.length > 0) {
         this.categoriesCache = cs.map((c: any) => ({ id: String(c.id), name: c.name, sort_order: c.sort_order }))
         localStorage.setItem(CATEGORIES_KEY, JSON.stringify(this.categoriesCache))
         this.emitCategories()
       }
-      if (Array.isArray(ps)) {
+
+      const incoming = apiProds.length > 0 ? apiProds : ps
+      if (Array.isArray(incoming) && incoming.length > 0) {
         const catMap = new Map(this.categoriesCache.map((c) => [c.id, c.name]))
-        this.productsCache = ps.map((p: any) => {
-          const categoryName = catMap.get(String(p.category_id)) || p.category || "General"
+        const mappedIncoming = incoming.filter((p: any) => p.active !== false && p.is_archived !== true).map((p: any) => {
+          const categoryName = catMap.get(String(p.category_id)) || p.category_name || p.category || "General"
           const station = (p.station as "kitchen" | "bar") || determineItemStation({
             station: p.station,
-            department: p.department_override,
+            department: p.department || p.department_override,
             category: categoryName,
             name: p.name,
           })
           return {
             id: String(p.id),
             name: p.name,
-            price: Number(p.price) || 0,
+            price: Number(p.price != null ? p.price : 0),
             category: categoryName,
             category_id: p.category_id ? String(p.category_id) : undefined,
             image: p.image || "/placeholder.svg",
-            stock: Number(p.stock) || 0,
+            stock: Number(p.stock != null ? p.stock : 0),
             description: p.description || "",
             temperature: p.temperature || "none",
-            dietary_tags: p.dietary_tags || [],
-            department: p.department_override || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
+            dietary_tags: Array.isArray(p.dietary_tags) ? p.dietary_tags : [],
+            department: p.department || p.department_override || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
             station,
             active: p.active !== false,
             is_archived: p.is_archived === true,
           }
         })
+
+        // Overlay with productsCache preserving custom values
+        const cacheMap = new Map<string, SharedProduct>()
+        this.productsCache.forEach((p) => cacheMap.set(p.name.trim().toLowerCase(), p))
+        mappedIncoming.forEach((mp) => {
+          const key = mp.name.trim().toLowerCase()
+          const existing = cacheMap.get(key)
+          cacheMap.set(key, {
+            ...existing,
+            ...mp,
+            id: existing?.id || mp.id,
+            price: mp.price > 0 ? mp.price : (existing?.price ?? 0),
+            image: (mp.image && !mp.image.includes("placeholder")) ? mp.image : (existing?.image || mp.image),
+          })
+        })
+        this.productsCache = Array.from(cacheMap.values())
         localStorage.setItem(PRODUCTS_KEY, JSON.stringify(this.productsCache))
         this.emitProducts()
       }
     } catch {}
   }
 
-  static async saveProduct(product: Partial<SharedProduct> & { name: string; price: number }) {
+  static async saveProduct(product: Partial<SharedProduct> & { name: string; price: number }, originalId?: string) {
     this.init()
     const isNew = !product.id || product.id.startsWith("new-")
     const id = isNew ? "prod-" + Date.now() : product.id!
+    const targetName = (product.name || "").trim().toLowerCase()
+    const targetId = String(id)
+    const origId = originalId ? String(originalId) : ""
+
     const station = product.station || determineItemStation({
       station: product.station,
       department: product.department,
@@ -4307,13 +4351,34 @@ export class SharedPosService {
       is_archived: false,
     }
 
-    if (isNew) {
-      this.productsCache = [cleanProduct, ...this.productsCache]
-    } else {
-      this.productsCache = this.productsCache.map((p) => (p.id === id ? { ...p, ...cleanProduct } : p))
+    let matched = false
+    this.productsCache = this.productsCache.map((p) => {
+      const matchId = String(p.id) === targetId || (origId && String(p.id) === origId) || (product.id && String(p.id) === String(product.id))
+      const matchName = p.name && p.name.trim().toLowerCase() === targetName
+      if (matchId || matchName) {
+        matched = true
+        return { ...p, ...cleanProduct, id: p.id }
+      }
+      return p
+    })
+    if (!matched) {
+      if (isNew) {
+        this.productsCache = [cleanProduct, ...this.productsCache]
+      } else {
+        this.productsCache = [{ ...cleanProduct, id }, ...this.productsCache]
+      }
     }
 
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(this.productsCache))
+    // Also update DEFAULT_PRODUCTS in memory
+    DEFAULT_PRODUCTS.forEach((dp) => {
+      if (String(dp.id) === targetId || (origId && String(dp.id) === origId) || (dp.name && dp.name.trim().toLowerCase() === targetName)) {
+        Object.assign(dp, cleanProduct)
+      }
+    })
+
+    try {
+      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(this.productsCache))
+    } catch {}
     this.emitProducts()
     this.broadcast("products", cleanProduct)
 
@@ -4336,7 +4401,7 @@ export class SharedPosService {
           }),
         }).catch((err) => console.warn("Failed posting product to /api/products", err))
       } else {
-        void fetch(`/api/products/${encodeURIComponent(id)}`, {
+        void fetch(`/api/products/${encodeURIComponent(origId || id)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -4373,7 +4438,7 @@ export class SharedPosService {
             updated_at: new Date().toISOString(),
           })
         } else {
-          await supabase.from("pos_products").update({
+          const upPayload = {
             name: cleanProduct.name,
             price: cleanProduct.price,
             stock: cleanProduct.stock,
@@ -4385,7 +4450,12 @@ export class SharedPosService {
             department_override: cleanProduct.department,
             station: cleanProduct.station,
             updated_at: new Date().toISOString(),
-          }).eq("id", id)
+          }
+          if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+            await supabase.from("pos_products").update(upPayload).eq("id", id)
+          } else {
+            await supabase.from("pos_products").update(upPayload).ilike("name", cleanProduct.name)
+          }
         }
       } catch {}
     }

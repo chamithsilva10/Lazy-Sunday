@@ -18,7 +18,50 @@ import {
 import { getBrowserSession, BrowserSession } from "./client"
 
 // Local in-memory caches
-let localProducts: MockProduct[] = [...MOCK_PRODUCTS]
+let localProducts: MockProduct[] = MOCK_PRODUCTS.map((p) => ({
+  ...p,
+  active: true,
+  is_active: true,
+  is_archived: false,
+}))
+if (typeof window !== "undefined") {
+  try {
+    const raw = localStorage.getItem("pos_shared_products")
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const pMap = new Map<string, MockProduct>()
+        localProducts.forEach((p) => pMap.set((p.name || "").trim().toLowerCase(), p))
+        parsed.forEach((sp: any) => {
+          const key = (sp.name || "").trim().toLowerCase()
+          if (key) {
+            const existing = pMap.get(key)
+            pMap.set(key, {
+              ...existing,
+              id: String(sp.id || existing?.id || `prod-${Date.now()}`),
+              name: sp.name || existing?.name || "",
+              price: Number(sp.price != null ? sp.price : (existing?.price ?? 0)),
+              stock: Number(sp.stock != null ? sp.stock : (existing?.stock ?? 0)),
+              category: sp.category || existing?.category || "General",
+              category_id: String(sp.category_id || existing?.category_id || "cat-1"),
+              station: sp.station || existing?.station || "kitchen",
+              department: sp.department || existing?.department || "Juice & Food",
+              image: sp.image || existing?.image || "/placeholder.svg",
+              description: sp.description || existing?.description || "",
+              sku: existing?.sku || `SKU-${Date.now().toString().slice(-4)}`,
+              barcode: existing?.barcode || `BC-${Date.now().toString().slice(-6)}`,
+              cost_price: existing?.cost_price || 0,
+              active: sp.active !== false,
+              is_active: sp.is_active !== false,
+              is_archived: sp.is_archived === true,
+            })
+          }
+        })
+        localProducts = Array.from(pMap.values())
+      }
+    }
+  } catch {}
+}
 let localCategories: MockCategory[] = [...MOCK_CATEGORIES]
 let localTables: MockTable[] = [...MOCK_TABLES]
 let localOrders: MockOrder[] = [...MOCK_HISTORICAL_ORDERS]
@@ -59,12 +102,45 @@ class MockQueryBuilder {
   }
 
   eq(field: string, value: any) {
-    this.filters.push((item) => item[field] === value)
+    this.filters.push((item) => {
+      if (field === "is_archived" && value === false) {
+        return item.is_archived !== true
+      }
+      if ((field === "active" || field === "is_active") && value === true) {
+        return item.active !== false && item.is_active !== false
+      }
+      return item[field] === value
+    })
     return this
   }
 
   neq(field: string, value: any) {
-    this.filters.push((item) => item[field] !== value)
+    this.filters.push((item) => {
+      if (field === "is_archived" && value === true) {
+        return item.is_archived !== true
+      }
+      return item[field] !== value
+    })
+    return this
+  }
+
+  ilike(field: string, pattern: string) {
+    const clean = pattern.replace(/%/g, "").trim().toLowerCase()
+    this.filters.push((item) => String(item[field] || "").toLowerCase().includes(clean))
+    return this
+  }
+
+  or(condition: string) {
+    this.filters.push((item) => {
+      const parts = condition.split(",")
+      return parts.some((p) => {
+        const [f, op, val] = p.split(".")
+        if (!f || !op) return true
+        if (op === "eq") return String(item[f]) === String(val)
+        if (op === "ilike") return String(item[f] || "").toLowerCase().includes((val || "").toLowerCase())
+        return true
+      })
+    })
     return this
   }
 
@@ -223,14 +299,45 @@ class MockQueryBuilder {
       const updates = this.pendingUpdate
       let updatedItems: any[] = []
       if (this.tableName === "pos_products") {
+        let matched = false
         localProducts = localProducts.map((p) => {
-          if (this.filters.length === 0 || this.filters.every((f) => f(p))) {
+          const matchFilter = this.filters.length > 0 && this.filters.every((f) => f(p))
+          const matchId = updates.id && p.id === updates.id
+          const matchName = updates.name && p.name && p.name.trim().toLowerCase() === String(updates.name).trim().toLowerCase()
+          if (this.filters.length === 0 || matchFilter || matchId || matchName) {
+            matched = true
             const up = { ...p, ...updates }
             updatedItems.push(up)
             return up
           }
           return p
         })
+        if (!matched && updates.name) {
+          const newItem: MockProduct = {
+            id: updates.id || `prod-${Date.now()}`,
+            name: updates.name,
+            sku: updates.sku || `SKU-${Date.now().toString().slice(-4)}`,
+            barcode: updates.barcode || `BC-${Date.now().toString().slice(-6)}`,
+            price: Number(updates.price || 0),
+            cost_price: Number(updates.cost_price || updates.cost || 0),
+            stock: Number(updates.stock || 0),
+            category: updates.category || "General",
+            category_id: updates.category_id || "cat-1",
+            station: updates.station || "kitchen",
+            department: updates.department || "Juice & Food",
+            image: updates.image || "/placeholder.svg",
+            description: updates.description || "",
+            active: updates.active !== false && updates.is_active !== false,
+            is_archived: updates.is_archived === true,
+          }
+          localProducts.unshift(newItem)
+          updatedItems.push(newItem)
+        }
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("pos_shared_products", JSON.stringify(localProducts))
+          } catch {}
+        }
         emitMockRealtime("pos_products", { eventType: "UPDATE", new: updates })
       } else if (this.tableName === "pos_tables") {
         localTables = localTables.map((t) => {

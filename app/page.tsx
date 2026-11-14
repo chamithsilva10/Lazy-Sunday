@@ -818,10 +818,11 @@ export default function POSPage() {
           })
           const key = p.name.trim().toLowerCase()
           const existing = prodMap.get(key)
+          const resolvedPrice = Number(p.price != null && p.price > 0 ? p.price : (existing?.price ?? 0))
           prodMap.set(key, {
-            id: String(p.id),
+            id: String(p.id || existing?.id),
             name: p.name,
-            price: Number(p.price ?? existing?.price ?? 0),
+            price: resolvedPrice,
             image: resolveProductImage(p.name, p.image || existing?.image, cat),
             category: cat,
             category_id: p.category_id || existing?.category_id,
@@ -854,10 +855,11 @@ export default function POSPage() {
               const finalImage = p.image && !p.image.includes("placeholder")
                 ? p.image
                 : (existing?.image || resolveProductImage(p.name, p.image, cat))
+              const resolvedPrice = Number(p.price != null && p.price > 0 ? p.price : (existing?.price ?? 0))
               prodMap.set(key, {
-                id: String(p.id),
+                id: String(p.id || existing?.id),
                 name: p.name,
-                price: Number(p.price != null ? p.price : (existing?.price ?? 0)),
+                price: resolvedPrice,
                 image: finalImage,
                 category: cat,
                 category_id: p.category_id || existing?.category_id,
@@ -1027,13 +1029,14 @@ export default function POSPage() {
 
     const unsubP = SharedPosService.subscribeProducts((prods) => {
       setProducts(prods.map((p) => {
+        const cat = p.category || "General"
         const station = (p.station as "kitchen" | "bar") || determineItemStation(p)
         return {
           id: String(p.id),
           name: p.name,
           price: Number(p.price ?? 0),
-          image: p.image || "/placeholder.svg",
-          category: p.category || "General",
+          image: resolveProductImage(p.name, p.image, cat),
+          category: cat,
           category_id: p.category_id,
           stock: Number(p.stock ?? 0),
           description: p.description || "",
@@ -2107,7 +2110,11 @@ export default function POSPage() {
 
     try {
       if (editingProductId) {
-        await supabase.from("pos_products").update(payload).eq("id", editingProductId)
+        if (isUuid) {
+          await supabase.from("pos_products").update(payload).eq("id", editingProductId)
+        } else {
+          await supabase.from("pos_products").update(payload).ilike("name", payload.name)
+        }
       } else {
         await supabase.from("pos_products").insert({ ...payload, id: savedId })
       }
@@ -2115,8 +2122,9 @@ export default function POSPage() {
       console.warn("Saved product locally", e)
     }
 
+    const effectiveId = editingProductId || savedId
     const saved: Product = {
-      id: savedId,
+      id: effectiveId,
       name: form.name.trim(),
       price: Number(form.price),
       category: categoryName,
@@ -2127,7 +2135,7 @@ export default function POSPage() {
       department,
     }
 
-    await SharedPosService.saveProduct(saved)
+    await SharedPosService.saveProduct(saved, editingProductId || undefined)
     setProducts((prev) => (editingProductId ? prev.map((p) => (p.id === editingProductId || p.id === savedId || p.name.toLowerCase() === saved.name.toLowerCase() ? saved : p)) : [saved, ...prev]))
     window.dispatchEvent(new CustomEvent("pos_products_updated", { detail: saved }))
     window.dispatchEvent(new CustomEvent("pos_realtime_sync", { detail: { type: "products", data: saved } }))

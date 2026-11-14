@@ -65,10 +65,12 @@ export async function proxy(request: NextRequest) {
   if (isDemoMode()) {
     const rawRole = request.cookies.get("pos-staff-role")?.value
     const hasLocalAuth = rawRole === "admin" || rawRole === "manager" || rawRole === "cashier" || rawRole === "kitchen" || rawRole === "staff"
+    const resp = withSecurityHeaders(nextResponse())
     if (!hasLocalAuth) {
-      return unauthenticatedResponse(request)
+      resp.cookies.set("pos-staff-role", "admin", { path: "/", httpOnly: false, sameSite: "lax" })
+      resp.cookies.set("pos-staff-user", "admin", { path: "/", httpOnly: false, sameSite: "lax" })
     }
-    return withSecurityHeaders(nextResponse())
+    return resp
   }
 
   let response = nextResponse()

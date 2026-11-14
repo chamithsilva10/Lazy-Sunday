@@ -29,6 +29,9 @@ export interface MockProduct {
   temperature?: "hot" | "cold" | "none"
   dietary_tags?: string[]
   tax_rate?: number
+  active?: boolean
+  is_active?: boolean
+  is_archived?: boolean
 }
 
 export interface MockCustomer {
