@@ -11,6 +11,64 @@ INSERT OR REPLACE INTO roles (id, name, description, is_system) VALUES
 ('kitchen', 'Kitchen', 'View kitchen order tickets and update prep status', 1),
 ('staff', 'Staff', 'General floor staff with basic ordering permissions', 1);
 
+-- 1b. System Permissions
+INSERT OR REPLACE INTO permissions (id, code, module, name, description) VALUES
+('orders.create', 'orders.create', 'Orders', 'Create Orders', 'Initiate new dine-in, takeaway, and coffee orders'),
+('orders.view', 'orders.view', 'Orders', 'View Orders', 'Browse historical and active customer order records'),
+('orders.edit', 'orders.edit', 'Orders', 'Edit Orders', 'Modify line items, quantities, or tables on open tabs'),
+('orders.cancel', 'orders.cancel', 'Orders', 'Cancel Orders', 'Cancel active unpaid orders and release dining tables'),
+('orders.refund', 'orders.refund', 'Orders', 'Refund Orders', 'Authorize and process customer transaction refunds'),
+('payments.process', 'payments.process', 'Payments', 'Process Payment', 'Accept cash, card, and QR payments to close bills'),
+('payments.discount', 'payments.discount', 'Payments', 'Apply Discounts', 'Authorize promotional or staff discounts on bills'),
+('payments.receipt', 'payments.receipt', 'Payments', 'Print Receipts', 'Generate customer receipts and tax invoices'),
+('kitchen.view', 'kitchen.view', 'Kitchen', 'View Kitchen Queue', 'Access KOT/BOT live queues and active prep tickets'),
+('kitchen.update_status', 'kitchen.update_status', 'Kitchen', 'Update Order Status', 'Advance tickets to Preparing, Ready, and Served'),
+('products.view', 'products.view', 'Products', 'View Products', 'Browse catalog items, pricing, and menu categories'),
+('products.create', 'products.create', 'Products', 'Create Products', 'Add new beverages, dishes, and merchandise'),
+('products.edit', 'products.edit', 'Products', 'Edit Products', 'Update prices, descriptions, and category tags'),
+('products.delete', 'products.delete', 'Products', 'Delete Products', 'Archive or permanently delete products from menu'),
+('inventory.view', 'inventory.view', 'Inventory', 'View Inventory', 'Inspect ingredient levels and stock valuations'),
+('inventory.update', 'inventory.update', 'Inventory', 'Update Inventory', 'Log stock receipts, spoilage, and stocktakes'),
+('reports.view', 'reports.view', 'Reports', 'View Reports', 'Analyze daily sales, category breakdowns, and revenue'),
+('reports.export', 'reports.export', 'Reports', 'Export Reports', 'Download CSV and PDF reports for bookkeeping'),
+('users.manage', 'users.manage', 'Users & Roles', 'Manage Users', 'Create, edit, deactivate, and delete staff accounts'),
+('roles.manage', 'roles.manage', 'Users & Roles', 'Manage Roles', 'Create custom roles and customize permission matrices'),
+('settings.view', 'settings.view', 'Settings', 'View Settings', 'Inspect business profile, tax rates, and peripherals'),
+('settings.edit', 'settings.edit', 'Settings', 'Edit Settings', 'Configure tax rules, service charges, and system preferences'),
+('customers.view', 'customers.view', 'Customers & CRM', 'View Customers', 'Access customer database, points balance, and purchase history'),
+('customers.manage', 'customers.manage', 'Customers & CRM', 'Manage Customers & Credit', 'Create profiles, issue promo codes, and settle customer credit'),
+('expenses.manage', 'expenses.manage', 'Expenses', 'Manage Expenses', 'Log operational expenditures, utility bills, and supplier payments');
+
+-- 1c. Role Permissions
+INSERT OR REPLACE INTO role_permissions (role_id, permission_id) VALUES
+('admin', 'orders.create'), ('admin', 'orders.view'), ('admin', 'orders.edit'), ('admin', 'orders.cancel'), ('admin', 'orders.refund'),
+('admin', 'payments.process'), ('admin', 'payments.discount'), ('admin', 'payments.receipt'),
+('admin', 'kitchen.view'), ('admin', 'kitchen.update_status'),
+('admin', 'products.view'), ('admin', 'products.create'), ('admin', 'products.edit'), ('admin', 'products.delete'),
+('admin', 'inventory.view'), ('admin', 'inventory.update'),
+('admin', 'reports.view'), ('admin', 'reports.export'),
+('admin', 'users.manage'), ('admin', 'roles.manage'),
+('admin', 'settings.view'), ('admin', 'settings.edit'),
+('admin', 'customers.view'), ('admin', 'customers.manage'),
+('admin', 'expenses.manage'),
+('manager', 'orders.create'), ('manager', 'orders.view'), ('manager', 'orders.edit'), ('manager', 'orders.cancel'), ('manager', 'orders.refund'),
+('manager', 'payments.process'), ('manager', 'payments.discount'), ('manager', 'payments.receipt'),
+('manager', 'kitchen.view'), ('manager', 'kitchen.update_status'),
+('manager', 'products.view'), ('manager', 'products.create'), ('manager', 'products.edit'), ('manager', 'products.delete'),
+('manager', 'inventory.view'), ('manager', 'inventory.update'),
+('manager', 'reports.view'), ('manager', 'reports.export'),
+('manager', 'users.manage'),
+('manager', 'settings.view'), ('manager', 'settings.edit'),
+('manager', 'customers.view'), ('manager', 'customers.manage'),
+('manager', 'expenses.manage'),
+('cashier', 'orders.create'), ('cashier', 'orders.view'),
+('cashier', 'payments.process'), ('cashier', 'payments.receipt'),
+('cashier', 'products.view'),
+('cashier', 'customers.view'), ('cashier', 'customers.manage'),
+('cashier', 'expenses.manage'),
+('kitchen', 'kitchen.view'), ('kitchen', 'kitchen.update_status'),
+('staff', 'orders.view'), ('staff', 'products.view');
+
 -- 2. Staff Users
 INSERT OR REPLACE INTO app_users (id, username, full_name, email, password_hash, role_id, is_active) VALUES
 ('usr-001', 'admin', 'Alexa Pheloung (Administrator)', 'alexa@lazysunday.com', 'demo_hash_admin', 'admin', 1),

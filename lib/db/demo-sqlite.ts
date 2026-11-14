@@ -7,6 +7,12 @@
 import fs from "node:fs"
 import path from "node:path"
 import {
+  DEFAULT_ROLE_PERMISSIONS,
+  SYSTEM_PERMISSIONS,
+  normalizeRole,
+  getRoleDisplayName,
+} from "../rbac/permissions"
+import {
   MOCK_CATEGORIES,
   MOCK_PRODUCTS,
   MOCK_CUSTOMERS,
@@ -79,7 +85,81 @@ export function getDemoSqliteDb() {
         data_base64 TEXT NOT NULL,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS roles (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        is_system INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS permissions (
+        id TEXT PRIMARY KEY,
+        code TEXT UNIQUE NOT NULL,
+        module TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS role_permissions (
+        role_id TEXT NOT NULL,
+        permission_id TEXT NOT NULL,
+        PRIMARY KEY (role_id, permission_id),
+        FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS app_users (
+        id TEXT PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        full_name TEXT NOT NULL,
+        email TEXT,
+        password_hash TEXT,
+        role_id TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        last_login_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (role_id) REFERENCES roles(id)
+      );
     `)
+
+    // Ensure roles, permissions, and role_permissions have initial seed
+    try {
+      const rpCountCheck = dbInstance
+        .prepare("SELECT count(*) as cnt FROM role_permissions")
+        .get() as { cnt: number }
+
+      if (!rpCountCheck || rpCountCheck.cnt === 0) {
+        const insertRole = dbInstance.prepare(
+          "INSERT OR REPLACE INTO roles (id, name, description, is_system) VALUES (?, ?, ?, 1)"
+        )
+        insertRole.run("admin", "Admin", "Full administrative access across restaurant systems")
+        insertRole.run("manager", "Manager", "Store management, inventory controls, and financial reports")
+        insertRole.run("cashier", "Cashier", "Create orders, process bill payments, and view catalog")
+        insertRole.run("kitchen", "Kitchen", "View kitchen order tickets and update prep status")
+        insertRole.run("staff", "Staff", "General floor staff with basic ordering permissions")
+
+        const insertPerm = dbInstance.prepare(
+          "INSERT OR REPLACE INTO permissions (id, code, module, name, description) VALUES (?, ?, ?, ?, ?)"
+        )
+        for (const p of SYSTEM_PERMISSIONS) {
+          insertPerm.run(p.id, p.code, p.module, p.name, p.description)
+        }
+
+        const insertRp = dbInstance.prepare(
+          "INSERT OR REPLACE INTO role_permissions (role_id, permission_id) VALUES (?, ?)"
+        )
+        for (const [roleId, perms] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
+          for (const perm of perms) {
+            insertRp.run(roleId, perm)
+          }
+        }
+      }
+    } catch (rpErr) {
+      console.warn("SQLite role_permissions initial seed notice:", rpErr)
+    }
 
     // Check if tables exist, otherwise run schema & seed
     const tableCheck = dbInstance
@@ -1394,6 +1474,264 @@ export const DemoDbService = {
     } catch (err) {
       console.warn("DemoDbService.getUpload error:", err)
       return null
+    }
+  },
+
+  // =========================================================================
+  // RBAC ROLES & PERMISSIONS
+  // =========================================================================
+  getRoles(): any[] {
+    const buildFallback = () => [
+      {
+        id: "admin",
+        name: "Admin",
+        description: "Full administrative access across restaurant systems",
+        is_system: true,
+        permissions: [...DEFAULT_ROLE_PERMISSIONS.admin],
+        user_count: 1,
+      },
+      {
+        id: "manager",
+        name: "Manager",
+        description: "Store management, inventory controls, and financial reports",
+        is_system: true,
+        permissions: [...DEFAULT_ROLE_PERMISSIONS.manager],
+        user_count: 1,
+      },
+      {
+        id: "cashier",
+        name: "Cashier",
+        description: "Create orders, process bill payments, and view catalog",
+        is_system: true,
+        permissions: [...DEFAULT_ROLE_PERMISSIONS.cashier],
+        user_count: 1,
+      },
+      {
+        id: "kitchen",
+        name: "Kitchen",
+        description: "View kitchen order tickets and update prep status",
+        is_system: true,
+        permissions: [...DEFAULT_ROLE_PERMISSIONS.kitchen],
+        user_count: 1,
+      },
+      {
+        id: "staff",
+        name: "Staff",
+        description: "General floor staff with basic ordering permissions",
+        is_system: true,
+        permissions: [...DEFAULT_ROLE_PERMISSIONS.staff],
+        user_count: 1,
+      },
+    ]
+
+    const db = getDemoSqliteDb()
+    if (!db) return buildFallback()
+
+    try {
+      const roles = db.prepare("SELECT * FROM roles ORDER BY is_system DESC, name ASC").all() as any[]
+      if (!roles || roles.length === 0) return buildFallback()
+
+      let rpRows: any[] = []
+      try {
+        rpRows = db.prepare("SELECT role_id, permission_id FROM role_permissions").all() as any[]
+      } catch {}
+
+      let userCounts: any[] = []
+      try {
+        userCounts = db.prepare("SELECT role_id, count(*) as cnt FROM app_users WHERE is_active = 1 GROUP BY role_id").all() as any[]
+      } catch {}
+
+      const countMap = new Map<string, number>()
+      for (const u of userCounts) {
+        countMap.set(u.role_id, Number(u.cnt))
+      }
+
+      return roles.map((r: any) => {
+        const canonical = normalizeRole(r.name || r.id)
+        let perms = rpRows
+          .filter((rp: any) => rp.role_id === r.id || rp.role_id === canonical || rp.role_id === `role-${canonical}`)
+          .map((rp: any) => rp.permission_id)
+
+        if (perms.length === 0 && DEFAULT_ROLE_PERMISSIONS[canonical]) {
+          perms = [...DEFAULT_ROLE_PERMISSIONS[canonical]]
+        }
+
+        const userCount = countMap.get(r.id) || countMap.get(canonical) || 1
+
+        return {
+          id: r.id,
+          name: r.name,
+          description: r.description || "",
+          is_system: Boolean(r.is_system),
+          permissions: perms,
+          user_count: userCount,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        }
+      })
+    } catch (err) {
+      console.warn("DemoDbService.getRoles error:", err)
+      return buildFallback()
+    }
+  },
+
+  getRoleById(roleId: string): any | null {
+    const roles = this.getRoles()
+    const cleanId = (roleId || "").trim().toLowerCase()
+    const norm = normalizeRole(cleanId)
+    return (
+      roles.find(
+        (r: any) =>
+          r.id.toLowerCase() === cleanId ||
+          r.id.toLowerCase() === `role-${cleanId}` ||
+          `role-${r.id.toLowerCase()}` === cleanId ||
+          r.name.toLowerCase() === cleanId ||
+          normalizeRole(r.id) === norm ||
+          normalizeRole(r.name) === norm
+      ) || null
+    )
+  },
+
+  updateRolePermissions(roleId: string, permissions: string[]): any {
+    const db = getDemoSqliteDb()
+    const cleanId = (roleId || "").trim()
+    const norm = normalizeRole(cleanId)
+    const effectiveId =
+      cleanId === "role-admin" || cleanId === "admin" ? "admin"
+      : cleanId === "role-manager" || cleanId === "manager" ? "manager"
+      : cleanId === "role-cashier" || cleanId === "cashier" ? "cashier"
+      : cleanId === "role-kitchen" || cleanId === "kitchen" ? "kitchen"
+      : cleanId === "role-staff" || cleanId === "staff" ? "staff"
+      : cleanId
+
+    const validCodes = new Set(SYSTEM_PERMISSIONS.map((p) => p.code))
+    const filteredPerms = permissions.filter((p) => validCodes.has(p))
+
+    if (db) {
+      try {
+        let role = db.prepare("SELECT * FROM roles WHERE id = ? OR id = ? OR LOWER(name) = ?").get(effectiveId, cleanId, norm) as any
+        if (!role) {
+          db.prepare("INSERT OR REPLACE INTO roles (id, name, description, is_system) VALUES (?, ?, ?, 1)").run(
+            effectiveId,
+            getRoleDisplayName(norm),
+            `${getRoleDisplayName(norm)} role`,
+            1
+          )
+          role = { id: effectiveId, name: getRoleDisplayName(norm), description: "", is_system: 1 }
+        }
+
+        const targetId = role.id
+
+        db.prepare("DELETE FROM role_permissions WHERE role_id = ? OR role_id = ?").run(targetId, cleanId)
+
+        const insertStmt = db.prepare("INSERT OR REPLACE INTO role_permissions (role_id, permission_id) VALUES (?, ?)")
+        for (const p of filteredPerms) {
+          insertStmt.run(targetId, p)
+        }
+
+        try {
+          db.prepare("UPDATE roles SET updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(targetId)
+        } catch {}
+
+        return {
+          id: targetId,
+          name: role.name,
+          description: role.description || "",
+          is_system: Boolean(role.is_system),
+          permissions: filteredPerms,
+          user_count: 1,
+        }
+      } catch (err) {
+        console.warn("DemoDbService.updateRolePermissions error:", err)
+      }
+    }
+
+    return {
+      id: effectiveId,
+      name: getRoleDisplayName(norm),
+      description: "",
+      is_system: true,
+      permissions: filteredPerms,
+      user_count: 1,
+    }
+  },
+
+  createRole(params: { name: string; description?: string; permissions: string[] }): any {
+    const db = getDemoSqliteDb()
+    const name = params.name.trim()
+    const id = name.toLowerCase().replace(/[^a-z0-9_-]/g, "-") + "-" + Date.now().toString(36)
+    const validCodes = new Set(SYSTEM_PERMISSIONS.map((p) => p.code))
+    const filteredPerms = (params.permissions || []).filter((p) => validCodes.has(p))
+
+    if (db) {
+      try {
+        db.prepare("INSERT INTO roles (id, name, description, is_system) VALUES (?, ?, ?, 0)").run(
+          id,
+          name,
+          params.description || ""
+        )
+        const insertStmt = db.prepare("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)")
+        for (const p of filteredPerms) {
+          insertStmt.run(id, p)
+        }
+      } catch (err) {
+        console.warn("DemoDbService.createRole db error:", err)
+      }
+    }
+
+    return {
+      id,
+      name,
+      description: params.description || "",
+      is_system: false,
+      permissions: filteredPerms,
+      user_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+  },
+
+  updateRole(id: string, params: { name?: string; description?: string }): any {
+    const db = getDemoSqliteDb()
+    const existing = this.getRoleById(id)
+    if (!existing) throw new Error("Role not found.")
+
+    const nextName = params.name !== undefined ? params.name.trim() : existing.name
+    const nextDesc = params.description !== undefined ? params.description.trim() : existing.description
+
+    if (db) {
+      try {
+        db.prepare("UPDATE roles SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(
+          nextName,
+          nextDesc,
+          existing.id
+        )
+      } catch (err) {
+        console.warn("DemoDbService.updateRole db error:", err)
+      }
+    }
+
+    return {
+      ...existing,
+      name: nextName,
+      description: nextDesc,
+      updated_at: new Date().toISOString(),
+    }
+  },
+
+  deleteRole(id: string): void {
+    const db = getDemoSqliteDb()
+    const existing = this.getRoleById(id)
+    if (!existing) throw new Error("Role not found.")
+    if (existing.is_system) throw new Error(`System role "${existing.name}" cannot be deleted.`)
+
+    if (db) {
+      try {
+        db.prepare("DELETE FROM role_permissions WHERE role_id = ?").run(existing.id)
+        db.prepare("DELETE FROM roles WHERE id = ?").run(existing.id)
+      } catch (err) {
+        console.warn("DemoDbService.deleteRole db error:", err)
+      }
     }
   },
 }

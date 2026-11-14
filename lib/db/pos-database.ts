@@ -2,6 +2,7 @@ import pg from "pg"
 import crypto from "node:crypto"
 import { isDemoMode } from "../config/demo"
 import { DemoDbService, getDemoSqliteDb } from "./demo-sqlite"
+import { DEFAULT_ROLE_PERMISSIONS, normalizeRole } from "../rbac/permissions"
 
 const { Pool } = pg
 
@@ -1445,31 +1446,8 @@ export const PosDatabase = {
   // ROLES & USERS (RBAC)
   // =========================================================================
   async getRoles(): Promise<any[]> {
-    const fallbackRoles = () => {
-      const db = getDemoSqliteDb()
-      if (db) {
-        try {
-          const roles = db.prepare("SELECT * FROM roles").all() as any[]
-          if (roles.length > 0) {
-            return roles.map((r) => ({
-              ...r,
-              is_system: Boolean(r.is_system),
-              permissions: [],
-              user_count: 1,
-            }))
-          }
-        } catch {}
-      }
-      return [
-        { id: "role-admin", name: "admin", description: "Full system administration", is_system: true, permissions: ["*"], user_count: 1 },
-        { id: "role-manager", name: "manager", description: "Store manager", is_system: true, permissions: ["pos.*"], user_count: 1 },
-        { id: "role-cashier", name: "cashier", description: "Cashier staff", is_system: true, permissions: ["pos.orders"], user_count: 1 },
-        { id: "role-kitchen", name: "kitchen", description: "Kitchen display system", is_system: true, permissions: ["kitchen.view"], user_count: 1 },
-      ]
-    }
-
     if (!isPgActive()) {
-      return fallbackRoles()
+      return DemoDbService.getRoles()
     }
     try {
       const pool = getPgPool()
@@ -1478,8 +1456,12 @@ export const PosDatabase = {
       const usersRes = await pool.query("SELECT role_id FROM app_users WHERE is_active = true")
 
       return rolesRes.rows.map((r: any) => {
-        const perms = rpRes.rows.filter((rp: any) => rp.role_id === r.id).map((rp: any) => rp.permission_id)
-        const userCount = usersRes.rows.filter((u: any) => u.role_id === r.id).length
+        const canonical = normalizeRole(r.name || r.id)
+        let perms = rpRes.rows.filter((rp: any) => rp.role_id === r.id || rp.role_id === canonical).map((rp: any) => rp.permission_id)
+        if (perms.length === 0 && DEFAULT_ROLE_PERMISSIONS[canonical]) {
+          perms = [...DEFAULT_ROLE_PERMISSIONS[canonical]]
+        }
+        const userCount = usersRes.rows.filter((u: any) => u.role_id === r.id || u.role_id === canonical).length || 1
         return {
           id: r.id,
           name: r.name,
@@ -1493,7 +1475,7 @@ export const PosDatabase = {
       })
     } catch (err) {
       console.warn("PosDatabase.getRoles fallback:", err)
-      return fallbackRoles()
+      return DemoDbService.getRoles()
     }
   },
 
@@ -1507,8 +1489,11 @@ export const PosDatabase = {
         } catch {}
       }
       return [
-        { id: "user-admin", username: "admin", full_name: "System Admin", role_id: "role-admin", is_active: true },
-        { id: "user-cashier", username: "cashier", full_name: "Cashier Staff", role_id: "role-cashier", is_active: true },
+        { id: "user-admin", username: "admin", full_name: "Alexa Pheloung (Administrator)", role_id: "admin", is_active: true },
+        { id: "user-manager", username: "manager", full_name: "Elena Rostova (Store Manager)", role_id: "manager", is_active: true },
+        { id: "user-cashier", username: "cashier", full_name: "Alex Rivera (Head Cashier)", role_id: "cashier", is_active: true },
+        { id: "user-kitchen", username: "kitchen", full_name: "Marco Silva (Head Chef)", role_id: "kitchen", is_active: true },
+        { id: "user-staff", username: "staff", full_name: "Floor Waiter", role_id: "staff", is_active: true },
       ]
     }
 
@@ -1555,7 +1540,7 @@ export const PosDatabase = {
           id: `user-${clean}`,
           username: clean,
           full_name: clean.charAt(0).toUpperCase() + clean.slice(1),
-          role_id: `role-${clean}`,
+          role_id: clean,
           is_active: true,
         }
       }

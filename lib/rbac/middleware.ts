@@ -67,7 +67,19 @@ export async function authorizeRequest(
   // 3. Resolve role and permissions
   const role = user.role || (await RbacService.getRoleById(user.role_id))
   const normRole = normalizeRole(role?.name || user.role_id)
-  const permissions = role?.permissions || []
+  let permissions = role?.permissions || []
+
+  // Overlay cookie overrides for immediate serverless propagation
+  try {
+    const cookieVal = request.cookies.get("pos_role_permissions_overrides")?.value
+    if (cookieVal) {
+      const overrides: Record<string, string[]> = JSON.parse(decodeURIComponent(cookieVal))
+      const custom = overrides[role?.id || ""] || overrides[normRole] || overrides[user.role_id]
+      if (Array.isArray(custom)) {
+        permissions = custom
+      }
+    }
+  } catch {}
 
   // 4. Verify permission if required
   if (requiredPermission) {

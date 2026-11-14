@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeRequest } from "@/lib/rbac/middleware"
 import { RbacService } from "@/lib/rbac/rbac-service"
+import { normalizeRole } from "@/lib/rbac/permissions"
 import { writeSecurityAudit } from "@/lib/coffee/security"
 
 export const dynamic = "force-dynamic"
@@ -16,7 +17,24 @@ export async function GET(request: NextRequest) {
   const auth = await authorizeRequest(request, "roles.manage")
   if (!auth.allowed) return auth.response!
 
-  const roles = await RbacService.getRoles()
+  let roles = await RbacService.getRoles()
+
+  // Overlay cookie overrides if present (ensuring instant cross-lambda sync in serverless)
+  try {
+    const cookieVal = request.cookies.get("pos_role_permissions_overrides")?.value
+    if (cookieVal) {
+      const overrides: Record<string, string[]> = JSON.parse(decodeURIComponent(cookieVal))
+      roles = roles.map((r) => {
+        const canonical = normalizeRole(r.name || r.id)
+        const customPerms = overrides[r.id] || overrides[canonical] || overrides[`role-${canonical}`]
+        if (Array.isArray(customPerms)) {
+          return { ...r, permissions: customPerms }
+        }
+        return r
+      })
+    }
+  } catch {}
+
   return NextResponse.json(
     { roles },
     { headers: { "Cache-Control": "no-store" } }

@@ -51,10 +51,27 @@ export async function GET(request: NextRequest) {
   const role = await RbacService.getRoleById(roleId)
   const canonicalRole = normalizeRole(role?.name || roleId)
   const roleLabel = getRoleDisplayName(canonicalRole)
-  const permissions =
+  let permissions =
     role?.permissions && role.permissions.length > 0
       ? role.permissions
       : (DEFAULT_ROLE_PERMISSIONS[canonicalRole] || [])
+
+  // If permissions only contained legacy single wildcards, expand to full granular list
+  if (permissions.length === 1 && (permissions[0] === "*" || permissions[0] === "pos.*")) {
+    permissions = DEFAULT_ROLE_PERMISSIONS[canonicalRole] || []
+  }
+
+  // Overlay cookie overrides for instant cross-lambda sync in serverless
+  try {
+    const cookieVal = request.cookies.get("pos_role_permissions_overrides")?.value
+    if (cookieVal) {
+      const overrides: Record<string, string[]> = JSON.parse(decodeURIComponent(cookieVal))
+      const custom = overrides[role?.id || ""] || overrides[canonicalRole] || overrides[roleId]
+      if (Array.isArray(custom)) {
+        permissions = custom
+      }
+    }
+  } catch {}
 
   const supabase = createStaffSupabaseClient(request)
   const defaultJwt = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "local-pos-auth-token"

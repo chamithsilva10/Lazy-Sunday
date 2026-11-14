@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeRequest } from "@/lib/rbac/middleware"
 import { RbacService } from "@/lib/rbac/rbac-service"
+import { normalizeRole } from "@/lib/rbac/permissions"
 import { writeSecurityAudit } from "@/lib/coffee/security"
 
 export const dynamic = "force-dynamic"
@@ -42,7 +43,28 @@ export async function PUT(
       console.warn("Security audit log write failed", auditErr)
     }
 
-    return NextResponse.json({ success: true, role })
+    // Set cookie override so every serverless lambda and cold start immediately reflects the update
+    let overrides: Record<string, string[]> = {}
+    try {
+      const existingCookie = request.cookies.get("pos_role_permissions_overrides")?.value
+      if (existingCookie) {
+        overrides = JSON.parse(decodeURIComponent(existingCookie))
+      }
+    } catch {}
+
+    const norm = normalizeRole(role.name || role.id)
+    overrides[role.id] = parsed.data.permissions
+    overrides[norm] = parsed.data.permissions
+    overrides[`role-${norm}`] = parsed.data.permissions
+
+    const response = NextResponse.json({ success: true, role })
+    response.cookies.set("pos_role_permissions_overrides", encodeURIComponent(JSON.stringify(overrides)), {
+      path: "/",
+      sameSite: "lax",
+      maxAge: 31536000,
+    })
+
+    return response
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to update role permissions." },

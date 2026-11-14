@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { usePermissions } from "@/hooks/use-permissions"
 import { SharedPosService } from "@/lib/shared-pos-service"
+import { normalizeRole } from "@/lib/rbac/permissions"
 
 interface Permission {
   id: string
@@ -79,14 +80,18 @@ export function RoleManagementView() {
 
       if (rolesRes.ok) {
         const rData = await rolesRes.json()
-        setRoles(rData.roles || [])
+        const fetchedRoles: Role[] = rData.roles || []
+        setRoles(fetchedRoles)
         // Set permissions for currently selected role
-        const active = (rData.roles || []).find((r: Role) => r.id === selectedRoleId)
+        const active = fetchedRoles.find(
+          (r: Role) => r.id === selectedRoleId || normalizeRole(r.id) === normalizeRole(selectedRoleId)
+        )
         if (active) {
+          setSelectedRoleId(active.id)
           setCurrentPermissions(new Set(active.permissions || []))
-        } else if (rData.roles && rData.roles.length > 0) {
-          setSelectedRoleId(rData.roles[0].id)
-          setCurrentPermissions(new Set(rData.roles[0].permissions || []))
+        } else if (fetchedRoles.length > 0) {
+          setSelectedRoleId(fetchedRoles[0].id)
+          setCurrentPermissions(new Set(fetchedRoles[0].permissions || []))
         }
       }
 
@@ -170,7 +175,10 @@ export function RoleManagementView() {
   }
 
   const handleSavePermissions = async () => {
-    const role = roles.find((r) => r.id === selectedRoleId)
+    const role =
+      roles.find(
+        (r) => r.id === selectedRoleId || normalizeRole(r.id) === normalizeRole(selectedRoleId)
+      ) || roles[0]
     if (!role) return
 
     setSaving(true)
@@ -185,10 +193,19 @@ export function RoleManagementView() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to update permissions.")
 
+      // Optimistically update roles list so permissions count immediately updates
+      setRoles((prev) =>
+        prev.map((r) =>
+          r.id === role.id || normalizeRole(r.id) === normalizeRole(role.id)
+            ? { ...r, permissions: permsArray }
+            : r
+        )
+      )
+
       toast.success(`Permissions saved for role "${role.name}"! Takes effect immediately.`)
       // Refresh context
       await refreshPermissions()
-      await loadData()
+      await loadData(true)
       SharedPosService.broadcastRbac()
     } catch (err: any) {
       toast.error(err.message || "Failed to save permissions.")
@@ -290,7 +307,10 @@ export function RoleManagementView() {
     }
   }
 
-  const activeRole = roles.find((r) => r.id === selectedRoleId) || roles[0]
+  const activeRole =
+    roles.find(
+      (r) => r.id === selectedRoleId || normalizeRole(r.id) === normalizeRole(selectedRoleId)
+    ) || roles[0]
 
   return (
     <div className="space-y-6">

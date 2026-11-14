@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js"
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto"
 import { isDemoMode } from "../config/demo"
 import { PosDatabase } from "../db/pos-database"
+import { DemoDbService } from "../db/demo-sqlite"
 import {
   AppUser,
   DEFAULT_ROLE_PERMISSIONS,
@@ -244,15 +245,29 @@ export class RbacService {
     }
 
     const id = name.toLowerCase().replace(/[^a-z0-9_-]/g, "-") + "-" + Date.now().toString(36)
+    const validCodes = new Set(SYSTEM_PERMISSIONS.map((p) => p.code))
+    const filteredPerms = (params.permissions || []).filter((p) => validCodes.has(p))
+
     const newRole: Role = {
       id,
       name,
       description: params.description?.trim() || "",
       is_system: false,
-      permissions: params.permissions || [],
+      permissions: filteredPerms,
       user_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+    }
+
+    // Persist in SQLite
+    try {
+      DemoDbService.createRole({
+        name: newRole.name,
+        description: newRole.description,
+        permissions: filteredPerms,
+      })
+    } catch (err) {
+      console.warn("DemoDbService.createRole error:", err)
     }
 
     const supabase = getSupabaseAdminClient()
@@ -291,6 +306,13 @@ export class RbacService {
     const duplicate = allRoles.find((r) => r.name.toLowerCase() === nextName.toLowerCase() && r.id !== id)
     if (duplicate) throw new Error(`Role name "${nextName}" is already in use.`)
 
+    // Persist in SQLite
+    try {
+      DemoDbService.updateRole(role.id, { name: nextName, description: params.description })
+    } catch (err) {
+      console.warn("DemoDbService.updateRole error:", err)
+    }
+
     const supabase = getSupabaseAdminClient()
     if (supabase) {
       await supabase
@@ -303,7 +325,7 @@ export class RbacService {
         .eq("id", id)
     }
 
-    const localIdx = localRoles.findIndex((r) => r.id === id)
+    const localIdx = localRoles.findIndex((r) => r.id === id || r.id === role.id)
     if (localIdx >= 0) {
       localRoles[localIdx].name = nextName
       if (params.description !== undefined) {
@@ -324,27 +346,37 @@ export class RbacService {
     const validCodes = new Set(SYSTEM_PERMISSIONS.map((p) => p.code))
     const filteredPerms = permissions.filter((p) => validCodes.has(p))
 
+    // Persist in SQLite
+    try {
+      DemoDbService.updateRolePermissions(role.id, filteredPerms)
+    } catch (err) {
+      console.warn("DemoDbService.updateRolePermissions error:", err)
+    }
+
     const supabase = getSupabaseAdminClient()
     if (supabase) {
       // Atomic replace in role_permissions
-      await supabase.from("role_permissions").delete().eq("role_id", roleId)
+      await supabase.from("role_permissions").delete().eq("role_id", role.id)
       if (filteredPerms.length > 0) {
         const rows = filteredPerms.map((p) => ({
-          role_id: roleId,
+          role_id: role.id,
           permission_id: p,
         }))
         await supabase.from("role_permissions").insert(rows)
       }
     }
 
-    const localIdx = localRoles.findIndex((r) => r.id === roleId)
+    const norm = normalizeRole(role.id)
+    const localIdx = localRoles.findIndex(
+      (r) => r.id === roleId || r.id === role.id || normalizeRole(r.id) === norm
+    )
     if (localIdx >= 0) {
       localRoles[localIdx].permissions = filteredPerms
       localRoles[localIdx].updated_at = new Date().toISOString()
       return localRoles[localIdx]
     }
 
-    return { ...role, permissions: filteredPerms }
+    return { ...role, permissions: filteredPerms, updated_at: new Date().toISOString() }
   }
 
   static async deleteRole(roleId: string): Promise<void> {
@@ -357,14 +389,21 @@ export class RbacService {
       throw new Error(`Cannot delete role "${role.name}" because it is currently assigned to ${role.user_count} user(s). Reassign them first.`)
     }
 
+    // Persist in SQLite
+    try {
+      DemoDbService.deleteRole(role.id)
+    } catch (err) {
+      console.warn("DemoDbService.deleteRole error:", err)
+    }
+
     const supabase = getSupabaseAdminClient()
     if (supabase) {
-      await supabase.from("role_permissions").delete().eq("role_id", roleId)
-      await supabase.from("roles").delete().eq("id", roleId)
+      await supabase.from("role_permissions").delete().eq("role_id", role.id)
+      await supabase.from("roles").delete().eq("id", role.id)
     }
 
     if (g.__rbac_roles) {
-      const idx = g.__rbac_roles.findIndex((r) => r.id === roleId)
+      const idx = g.__rbac_roles.findIndex((r) => r.id === role.id || r.id === roleId)
       if (idx >= 0) g.__rbac_roles.splice(idx, 1)
     }
   }
