@@ -385,7 +385,7 @@ const ADJUSTMENTS_KEY = "pos_shared_adjustments"
 const EXPENSES_KEY = "pos_shared_expenses"
 const BRANCHES_KEY = "pos_shared_branches"
 const ACTIVE_BRANCH_KEY = "pos_shared_active_branch"
-const POLL_MS = 60000
+const POLL_MS = 5000
 
 export const DEFAULT_TABLES: SharedTable[] = [
   { id: "tbl-1", name: "Table 1", capacity: 2, status: "available" },
@@ -3487,8 +3487,14 @@ export class SharedPosService {
   }
 
   private static startCloudRealtime() {
-    if (!this.isBrowser() || this.timer || !isSupabaseConfigured()) return
+    if (!this.isBrowser() || this.timer) return
     void this.refresh()
+    void this.refreshOrdersFromCloud()
+    this.timer = setInterval(() => {
+      void this.refresh()
+      void this.refreshOrdersFromCloud()
+    }, POLL_MS)
+    if (!isSupabaseConfigured()) return
     void this.refreshIngredientsFromCloud()
     void this.refreshRecipesFromCloud()
     const supabase = createClient()
@@ -3543,10 +3549,6 @@ export class SharedPosService {
         .on("postgres_changes", { event: "*", schema: "public", table: "role_permissions" }, () => this.broadcastRbac())
         .subscribe()
     } catch {}
-    this.timer = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") return
-      void this.refresh()
-    }, POLL_MS)
   }
 
   // --- Subscriptions --------------------------------------------------------
@@ -5218,22 +5220,15 @@ export class SharedPosService {
       action: action,
     }
 
-    let resData: any = null
-    try {
-      const res = await fetch("/api/orders", {
+    const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
 
-      if (res.ok) {
-        resData = await res.json().catch(() => ({}))
-      } else {
-        const errJson = await res.json().catch(() => ({}))
-        console.warn("POST /api/orders non-ok response, continuing with local order confirmation:", res.status, errJson)
-      }
-    } catch (netErr) {
-      console.warn("POST /api/orders fetch failed, confirming order locally:", netErr)
+    const resData = await res.json().catch(() => null)
+    if (!res.ok || !resData?.success || !resData?.order?.id || !resData.order.order_number) {
+      throw new Error(resData?.error || "Order could not be saved. Check the connection and try again.")
     }
 
     const committed = resData?.order || {}

@@ -39,6 +39,11 @@ jobs:
       - name: Run POS Architectural Test Suite
         run: node scripts/verify-pos-suite.mjs
 
+      - name: Verify authorization boundaries and order save failures
+        run: |
+          node scripts/test-access-boundaries.mjs
+          node scripts/test-pos-save-sync.mjs
+
       - name: Run Multi-Station Inventory & Recipe Suite
         run: node scripts/verify-inventory-suite.mjs
 
