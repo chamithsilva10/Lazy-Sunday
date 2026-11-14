@@ -1,5 +1,7 @@
 import pg from "pg"
 import crypto from "node:crypto"
+import { isDemoMode } from "../config/demo"
+import { DemoDbService } from "./demo-sqlite"
 
 const { Pool } = pg
 
@@ -840,151 +842,252 @@ export const PosDatabase = {
     activeOnly?: boolean
     search?: string
   }): Promise<any[]> {
-    const pool = getPgPool()
-    let query = `
-      SELECT
-        p.id,
-        p.name,
-        p.price,
-        p.cost,
-        p.stock,
-        p.category_id,
-        p.image,
-        p.description,
-        p.temperature,
-        p.dietary_tags,
-        p.department_override,
-        p.station,
-        p.active,
-        p.is_archived,
-        p.sort_order,
-        p.created_at,
-        p.updated_at,
-        c.name as category_name
-      FROM pos_products p
-      LEFT JOIN pos_categories c ON p.category_id = c.id
-      WHERE p.is_archived = false
-    `
-    const params: any[] = []
-    let pIdx = 1
-
-    if (filters?.activeOnly) {
-      query += ` AND p.active = true`
-    }
-    if (filters?.station && filters.station !== "all") {
-      query += ` AND p.station = $${pIdx++}`
-      params.push(filters.station)
+    if (isDemoMode()) {
+      return DemoDbService.getProducts(filters)
     }
 
-    query += ` ORDER BY p.sort_order ASC, p.name ASC`
-    const res = await pool.query(query, params)
+    try {
+      const pool = getPgPool()
+      let query = `
+        SELECT
+          p.id,
+          p.name,
+          p.price,
+          p.cost,
+          p.stock,
+          p.category_id,
+          p.image,
+          p.description,
+          p.temperature,
+          p.dietary_tags,
+          p.department_override,
+          p.station,
+          p.active,
+          p.is_archived,
+          p.sort_order,
+          p.created_at,
+          p.updated_at,
+          c.name as category_name
+        FROM pos_products p
+        LEFT JOIN pos_categories c ON p.category_id = c.id
+        WHERE p.is_archived = false
+      `
+      const params: any[] = []
+      let pIdx = 1
 
-    let products = res.rows.map((p: any) => ({
-      id: String(p.id),
-      name: p.name,
-      price: Number(p.price) || 0,
-      cost: Number(p.cost) || 0,
-      stock: Number(p.stock) || 0,
-      category: p.category_name || "General",
-      category_id: p.category_id,
-      image: p.image || "/placeholder.svg",
-      description: p.description || "",
-      temperature: p.temperature || "none",
-      dietary_tags: Array.isArray(p.dietary_tags) ? p.dietary_tags : [],
-      department: p.department_override || (p.station === "bar" ? "Coffee Bar" : "Juice & Food"),
-      station: p.station || "kitchen",
-      active: p.active !== false,
-      track_stock: p.track_stock !== false,
-      updated_at: p.updated_at,
-    }))
+      if (filters?.activeOnly) {
+        query += ` AND p.active = true`
+      }
+      if (filters?.station && filters.station !== "all") {
+        query += ` AND p.station = $${pIdx++}`
+        params.push(filters.station)
+      }
 
-    if (filters?.category && filters.category !== "All") {
-      products = products.filter((p) => p.category.toLowerCase() === filters.category!.toLowerCase())
+      query += ` ORDER BY p.sort_order ASC, p.name ASC`
+      const res = await pool.query(query, params)
+
+      let products = res.rows.map((p: any) => ({
+        id: String(p.id),
+        name: p.name,
+        price: Number(p.price) || 0,
+        cost: Number(p.cost) || 0,
+        cost_price: Number(p.cost) || 0,
+        stock: Number(p.stock) || 0,
+        category: p.category_name || "General",
+        category_name: p.category_name || "General",
+        category_id: p.category_id,
+        image: p.image || "/placeholder.svg",
+        description: p.description || "",
+        temperature: p.temperature || "none",
+        dietary_tags: Array.isArray(p.dietary_tags) ? p.dietary_tags : [],
+        department: p.department_override || (p.station === "bar" ? "Coffee Bar" : "Juice & Food"),
+        station: p.station || "kitchen",
+        active: p.active !== false,
+        track_stock: p.track_stock !== false,
+        updated_at: p.updated_at,
+      }))
+
+      if (filters?.category && filters.category !== "All") {
+        products = products.filter((p) => p.category.toLowerCase() === filters.category!.toLowerCase())
+      }
+      if (filters?.search) {
+        const s = filters.search.toLowerCase()
+        products = products.filter((p) => p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s))
+      }
+
+      return products
+    } catch (err) {
+      console.warn("PosDatabase.getProducts Postgres fallback to DemoDbService:", err)
+      return DemoDbService.getProducts(filters)
     }
-    if (filters?.search) {
-      const s = filters.search.toLowerCase()
-      products = products.filter((p) => p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s))
-    }
-
-    return products
   },
 
   async getProductById(id: string): Promise<any | null> {
-    const pool = getPgPool()
-    const res = await pool.query("SELECT * FROM pos_products WHERE id = $1 AND is_archived = false", [id])
-    return res.rows[0] || null
+    if (isDemoMode()) {
+      return DemoDbService.getProductById(id)
+    }
+
+    try {
+      const pool = getPgPool()
+      let res
+      if (isUuid(id)) {
+        res = await pool.query("SELECT * FROM pos_products WHERE id = $1 AND is_archived = false", [id])
+      } else {
+        res = await pool.query("SELECT * FROM pos_products WHERE (name = $1 OR sku = $1) AND is_archived = false LIMIT 1", [id])
+      }
+      if (res.rows[0]) return res.rows[0]
+    } catch (err) {
+      console.warn("PosDatabase.getProductById Postgres fallback:", err)
+    }
+    return DemoDbService.getProductById(id)
   },
 
   async createProduct(data: any): Promise<any> {
-    const pool = getPgPool()
-    const id = data.id || crypto.randomUUID()
-    const nowIso = new Date().toISOString()
-    const res = await pool.query(`
-      INSERT INTO pos_products (
-        id, name, price, cost, stock, category_id, station, image,
-        description, temperature, dietary_tags, department_override,
-        active, track_stock, is_archived, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, false, $15, $15)
-      RETURNING *
-    `, [
-      id,
-      data.name,
-      data.price,
-      data.cost || 0,
-      data.stock || 50,
-      data.category_id || null,
-      data.station || "kitchen",
-      data.image || "/placeholder.svg",
-      data.description || "",
-      data.temperature || "none",
-      data.dietary_tags || [],
-      data.department || (data.station === "bar" ? "Coffee Bar" : "Juice & Food"),
-      data.active !== false,
-      data.track_stock !== false,
-      nowIso,
-    ])
-    return res.rows[0]
+    let sqliteCreated = null
+    try {
+      sqliteCreated = DemoDbService.createProduct(data)
+    } catch (err) {
+      console.warn("DemoDbService.createProduct warning:", err)
+    }
+
+    if (!isDemoMode()) {
+      try {
+        const pool = getPgPool()
+        const id = data.id && isUuid(data.id) ? data.id : crypto.randomUUID()
+        const nowIso = new Date().toISOString()
+        const res = await pool.query(`
+          INSERT INTO pos_products (
+            id, name, price, cost, stock, category_id, station, image,
+            description, temperature, dietary_tags, department_override,
+            active, track_stock, is_archived, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, false, $15, $15)
+          RETURNING *
+        `, [
+          id,
+          data.name,
+          data.price,
+          data.cost || data.cost_price || 0,
+          data.stock || 50,
+          data.category_id && isUuid(data.category_id) ? data.category_id : null,
+          data.station || "kitchen",
+          data.image || "/placeholder.svg",
+          data.description || "",
+          data.temperature || "none",
+          data.dietary_tags || [],
+          data.department || data.department_override || (data.station === "bar" ? "Coffee Bar" : "Juice & Food"),
+          data.active !== false,
+          data.track_stock !== false,
+          nowIso,
+        ])
+        if (res.rows[0]) return res.rows[0]
+      } catch (err) {
+        console.warn("PosDatabase.createProduct Postgres fallback:", err)
+      }
+    }
+
+    return sqliteCreated
   },
 
   async updateProduct(id: string, updates: any): Promise<any | null> {
-    const pool = getPgPool()
-    const setClauses: string[] = ["updated_at = now()"]
-    const params: any[] = []
-    let pIdx = 1
-
-    for (const [key, val] of Object.entries(updates)) {
-      if (key === "id" || key === "created_at") continue
-      const col = key === "department" ? "department_override" : key
-      setClauses.push(`${col} = $${pIdx++}`)
-      params.push(val)
+    // 1. Always update SQLite database so local / demo mode is fully authoritative
+    let sqliteUpdated = null
+    try {
+      sqliteUpdated = DemoDbService.updateProduct(id, updates)
+    } catch (err) {
+      console.warn("DemoDbService.updateProduct warning:", err)
     }
 
-    params.push(id)
-    const query = `
-      UPDATE pos_products
-      SET ${setClauses.join(", ")}
-      WHERE id = $${pIdx}
-      RETURNING *
-    `
-    const res = await pool.query(query, params)
-    return res.rows[0] || null
+    // 2. Also update Postgres if not strictly isolated demo mode or if Postgres pool is available
+    if (!isDemoMode()) {
+      try {
+        const pool = getPgPool()
+        const setClauses: string[] = ["updated_at = now()"]
+        const params: any[] = []
+        let pIdx = 1
+
+        for (const [key, val] of Object.entries(updates)) {
+          if (key === "id" || key === "created_at" || key === "category_name" || key === "cost_price") continue
+          if (key === "category_id" && val && !isUuid(val)) continue
+          const col = key === "department" ? "department_override" : key === "cost" ? "cost" : key
+          setClauses.push(`${col} = $${pIdx++}`)
+          params.push(val)
+        }
+
+        params.push(id)
+        let query = ""
+        if (isUuid(id)) {
+          query = `
+            UPDATE pos_products
+            SET ${setClauses.join(", ")}
+            WHERE id = $${pIdx}
+            RETURNING *
+          `
+        } else {
+          query = `
+            UPDATE pos_products
+            SET ${setClauses.join(", ")}
+            WHERE name = $${pIdx} OR sku = $${pIdx}
+            RETURNING *
+          `
+        }
+        const res = await pool.query(query, params)
+        if (res.rows[0]) return res.rows[0]
+      } catch (err) {
+        console.warn("PosDatabase.updateProduct Postgres fallback:", err)
+      }
+    }
+
+    return sqliteUpdated
   },
 
   async deleteProduct(id: string): Promise<any | null> {
-    const pool = getPgPool()
-    const res = await pool.query(`
-      UPDATE pos_products
-      SET is_archived = true, active = false, updated_at = now()
-      WHERE id = $1
-      RETURNING *
-    `, [id])
-    return res.rows[0] || null
+    let sqliteDeleted = null
+    try {
+      sqliteDeleted = DemoDbService.deleteProduct(id)
+    } catch (err) {
+      console.warn("DemoDbService.deleteProduct warning:", err)
+    }
+
+    if (!isDemoMode()) {
+      try {
+        const pool = getPgPool()
+        let query = ""
+        if (isUuid(id)) {
+          query = `
+            UPDATE pos_products
+            SET is_archived = true, active = false, updated_at = now()
+            WHERE id = $1
+            RETURNING *
+          `
+        } else {
+          query = `
+            UPDATE pos_products
+            SET is_archived = true, active = false, updated_at = now()
+            WHERE name = $1 OR sku = $1
+            RETURNING *
+          `
+        }
+        const res = await pool.query(query, [id])
+        if (res.rows[0]) return res.rows[0]
+      } catch (err) {
+        console.warn("PosDatabase.deleteProduct Postgres fallback:", err)
+      }
+    }
+
+    return sqliteDeleted ? { success: true, id } : null
   },
 
   async getCategories(): Promise<any[]> {
-    const pool = getPgPool()
-    const res = await pool.query("SELECT * FROM pos_categories WHERE is_active = true ORDER BY sort_order ASC")
-    return res.rows
+    if (isDemoMode()) {
+      return DemoDbService.getCategories()
+    }
+    try {
+      const pool = getPgPool()
+      const res = await pool.query("SELECT * FROM pos_categories WHERE is_active = true ORDER BY sort_order ASC")
+      return res.rows
+    } catch {
+      return DemoDbService.getCategories()
+    }
   },
 
   // =========================================================================

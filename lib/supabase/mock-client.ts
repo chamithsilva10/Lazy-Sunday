@@ -44,6 +44,8 @@ class MockQueryBuilder {
   private sortAsc = true
   private limitCount: number | null = null
   private selectedFields: string[] | null = null
+  private pendingUpdate: any = null
+  private pendingDelete = false
 
   constructor(tableName: string) {
     this.tableName = tableName
@@ -206,65 +208,87 @@ class MockQueryBuilder {
     return { data: Array.isArray(records) ? arr : arr[0], error: null }
   }
 
-  async update(updates: any) {
-    if (this.tableName === "pos_products") {
-      localProducts = localProducts.map((p) => {
-        if (this.filters.every((f) => f(p))) {
-          return { ...p, ...updates }
-        }
-        return p
-      })
-      emitMockRealtime("pos_products", { eventType: "UPDATE", new: updates })
-    } else if (this.tableName === "pos_tables") {
-      localTables = localTables.map((t) => {
-        if (this.filters.every((f) => f(t))) {
-          return { ...t, ...updates }
-        }
-        return t
-      })
-      emitMockRealtime("pos_tables", { eventType: "UPDATE", new: updates })
-    } else if (this.tableName === "pos_orders") {
-      localOrders = localOrders.map((o) => {
-        if (this.filters.every((f) => f(o))) {
-          return { ...o, ...updates }
-        }
-        return o
-      })
-      emitMockRealtime("pos_orders", { eventType: "UPDATE", new: updates })
-    } else if (this.tableName === "table_sessions") {
-      localSessions = localSessions.map((s) => {
-        if (this.filters.every((f) => f(s))) {
-          return { ...s, ...updates }
-        }
-        return s
-      })
-      emitMockRealtime("table_sessions", { eventType: "UPDATE", new: updates })
-    } else if (this.tableName === "reservations") {
-      localReservations = localReservations.map((b) => {
-        if (this.filters.every((f) => f(b))) {
-          return { ...b, ...updates }
-        }
-        return b
-      })
-      emitMockRealtime("reservations", { eventType: "UPDATE", new: updates })
-    }
-    return { data: updates, error: null }
+  update(updates: any) {
+    this.pendingUpdate = updates
+    return this
   }
 
-  async delete() {
-    if (this.tableName === "pos_products") {
-      localProducts = localProducts.filter((p) => !this.filters.every((f) => f(p)))
-    } else if (this.tableName === "pos_tables") {
-      localTables = localTables.filter((t) => !this.filters.every((f) => f(t)))
-    } else if (this.tableName === "table_sessions") {
-      localSessions = localSessions.filter((s) => !this.filters.every((f) => f(s)))
-    } else if (this.tableName === "reservations") {
-      localReservations = localReservations.filter((b) => !this.filters.every((f) => f(b)))
-    }
-    return { data: null, error: null }
+  delete() {
+    this.pendingDelete = true
+    return this
   }
 
   private async execute() {
+    if (this.pendingUpdate) {
+      const updates = this.pendingUpdate
+      let updatedItems: any[] = []
+      if (this.tableName === "pos_products") {
+        localProducts = localProducts.map((p) => {
+          if (this.filters.length === 0 || this.filters.every((f) => f(p))) {
+            const up = { ...p, ...updates }
+            updatedItems.push(up)
+            return up
+          }
+          return p
+        })
+        emitMockRealtime("pos_products", { eventType: "UPDATE", new: updates })
+      } else if (this.tableName === "pos_tables") {
+        localTables = localTables.map((t) => {
+          if (this.filters.length === 0 || this.filters.every((f) => f(t))) {
+            const up = { ...t, ...updates }
+            updatedItems.push(up)
+            return up
+          }
+          return t
+        })
+        emitMockRealtime("pos_tables", { eventType: "UPDATE", new: updates })
+      } else if (this.tableName === "pos_orders") {
+        localOrders = localOrders.map((o) => {
+          if (this.filters.length === 0 || this.filters.every((f) => f(o))) {
+            const up = { ...o, ...updates }
+            updatedItems.push(up)
+            return up
+          }
+          return o
+        })
+        emitMockRealtime("pos_orders", { eventType: "UPDATE", new: updates })
+      } else if (this.tableName === "table_sessions") {
+        localSessions = localSessions.map((s) => {
+          if (this.filters.length === 0 || this.filters.every((f) => f(s))) {
+            const up = { ...s, ...updates }
+            updatedItems.push(up)
+            return up
+          }
+          return s
+        })
+        emitMockRealtime("table_sessions", { eventType: "UPDATE", new: updates })
+      } else if (this.tableName === "reservations") {
+        localReservations = localReservations.map((b) => {
+          if (this.filters.length === 0 || this.filters.every((f) => f(b))) {
+            const up = { ...b, ...updates }
+            updatedItems.push(up)
+            return up
+          }
+          return b
+        })
+        emitMockRealtime("reservations", { eventType: "UPDATE", new: updates })
+      }
+      return { data: updatedItems.length > 0 ? updatedItems : [updates], error: null }
+    }
+
+    if (this.pendingDelete) {
+      if (this.tableName === "pos_products") {
+        localProducts = localProducts.filter((p) => !this.filters.every((f) => f(p)))
+      } else if (this.tableName === "pos_tables") {
+        localTables = localTables.filter((t) => !this.filters.every((f) => f(t)))
+      } else if (this.tableName === "table_sessions") {
+        localSessions = localSessions.filter((s) => !this.filters.every((f) => f(s)))
+      } else if (this.tableName === "reservations") {
+        localReservations = localReservations.filter((b) => !this.filters.every((f) => f(b)))
+      }
+      return { data: null, error: null }
+    }
+
     let source: any[] = []
     if (this.tableName === "pos_products") {
       source = [...localProducts]

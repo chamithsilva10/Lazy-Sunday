@@ -830,6 +830,47 @@ export default function POSPage() {
           })
         })
       }
+
+      // 3. Overlay authoritative products directly from SQL database API (SQLite / Postgres)
+      try {
+        const pRes = await fetch("/api/products", { cache: "no-store" })
+        if (pRes.ok) {
+          const pJson = await pRes.json()
+          if (Array.isArray(pJson?.products) && pJson.products.length > 0) {
+            pJson.products.forEach((p: any) => {
+              const cat = categoryById.get(String(p.category_id)) || p.category || p.category_name || "General"
+              const station = (p.station as "kitchen" | "bar") || determineItemStation({
+                station: p.station,
+                department: p.department || p.department_override,
+                category: cat,
+                name: p.name,
+              })
+              const key = p.name.trim().toLowerCase()
+              const existing = prodMap.get(key)
+              const finalImage = p.image && !p.image.includes("placeholder")
+                ? p.image
+                : (existing?.image || resolveProductImage(p.name, p.image, cat))
+              prodMap.set(key, {
+                id: String(p.id),
+                name: p.name,
+                price: Number(p.price != null ? p.price : (existing?.price ?? 0)),
+                image: finalImage,
+                category: cat,
+                category_id: p.category_id || existing?.category_id,
+                stock: Number(p.stock != null ? p.stock : (existing?.stock ?? 0)),
+                description: p.description || existing?.description || "",
+                temperature: p.temperature || existing?.temperature || "none",
+                dietary_tags: Array.isArray(p.dietary_tags) ? p.dietary_tags : (existing?.dietary_tags || []),
+                department: p.department || p.department_override || existing?.department || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
+                station,
+              })
+            })
+          }
+        }
+      } catch (err) {
+        console.warn("loadData /api/products fetch error:", err)
+      }
+
       const uniqueById = new Map<string, Product>()
       Array.from(prodMap.values()).forEach((p) => {
         const safeId = uniqueById.has(p.id) ? `${p.id}-${p.name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()}` : p.id
@@ -2010,43 +2051,32 @@ export default function POSPage() {
       price: Number(form.price),
       stock: Number(form.stock) || 0,
       image: productImage,
-      category_id: isUuid ? catId : null,
+      category_id: catId || null,
+      category: categoryName,
+      category_name: categoryName,
       active: true,
       is_active: true,
       is_archived: false,
       station,
+      department,
       department_override: department,
     }
 
     let savedId = editingProductId || `prod-${Date.now()}`
     try {
       if (editingProductId) {
-        await fetch(`/api/products/${encodeURIComponent(editingProductId)}`, {
+        const res = await fetch(`/api/products/${encodeURIComponent(editingProductId)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: form.name.trim(),
-            price: Number(form.price),
-            stock: Number(form.stock) || 0,
-            image: productImage,
-            category_id: isUuid ? catId : null,
-            station,
-            department,
-          }),
+          body: JSON.stringify(payload),
         })
+        const data = await res.json()
+        if (data?.product?.id) savedId = String(data.product.id)
       } else {
         const res = await fetch("/api/products", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: form.name.trim(),
-            price: Number(form.price),
-            stock: Number(form.stock) || 0,
-            image: productImage,
-            category_id: isUuid ? catId : null,
-            station,
-            department,
-          }),
+          body: JSON.stringify(payload),
         })
         const data = await res.json()
         if (data?.product?.id) savedId = String(data.product.id)
@@ -2056,12 +2086,10 @@ export default function POSPage() {
     }
 
     try {
-      const query = editingProductId
-        ? supabase.from("pos_products").update(payload).eq("id", editingProductId).select("id,name,price,image,stock,category_id").single()
-        : supabase.from("pos_products").insert(payload).select("id,name,price,image,stock,category_id").single()
-      const { data, error } = await query
-      if (data && !error && data.id) {
-        savedId = String(data.id)
+      if (editingProductId) {
+        await supabase.from("pos_products").update(payload).eq("id", editingProductId)
+      } else {
+        await supabase.from("pos_products").insert({ ...payload, id: savedId })
       }
     } catch (e) {
       console.warn("Saved product locally", e)
@@ -2074,13 +2102,13 @@ export default function POSPage() {
       category: categoryName,
       image: productImage,
       stock: Number(form.stock) || 0,
-      category_id: isUuid ? catId : (form.category_id || undefined),
+      category_id: catId || undefined,
       station,
       department,
     }
 
     await SharedPosService.saveProduct(saved)
-    setProducts((prev) => (editingProductId ? prev.map((p) => (p.id === editingProductId ? saved : p)) : [saved, ...prev]))
+    setProducts((prev) => (editingProductId ? prev.map((p) => (p.id === editingProductId || p.id === savedId || p.name.toLowerCase() === saved.name.toLowerCase() ? saved : p)) : [saved, ...prev]))
     window.dispatchEvent(new CustomEvent("pos_products_updated", { detail: saved }))
     window.dispatchEvent(new CustomEvent("pos_realtime_sync", { detail: { type: "products", data: saved } }))
     toast.success(editingProductId ? "Product updated successfully" : "Product added successfully")

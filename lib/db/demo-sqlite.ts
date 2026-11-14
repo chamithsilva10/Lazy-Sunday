@@ -145,27 +145,242 @@ function findTableInDb(db: any, idOrName: string): any {
 }
 
 export const DemoDbService = {
-  getProducts(): MockProduct[] {
+  getProducts(filters?: { category?: string; station?: string; activeOnly?: boolean; search?: string }): MockProduct[] {
     const db = getDemoSqliteDb()
     if (!db) return MOCK_PRODUCTS
-    const rows = db.prepare("SELECT * FROM pos_products WHERE is_archived = 0 AND active = 1 ORDER BY name").all()
-    return rows.map((r: any) => ({
+
+    let query = "SELECT * FROM pos_products WHERE is_archived = 0"
+    const params: any[] = []
+
+    if (filters?.activeOnly) {
+      query += " AND active = 1"
+    }
+    if (filters?.station && filters.station !== "all") {
+      query += " AND station = ?"
+      params.push(filters.station)
+    }
+
+    query += " ORDER BY name ASC"
+    const rows = db.prepare(query).all(...params) as any[]
+
+    let prods = rows.map((r: any) => ({
       id: r.id,
       name: r.name,
       sku: r.sku,
       barcode: r.barcode,
       price: Number(r.price),
       cost_price: Number(r.cost_price || 0),
+      cost: Number(r.cost_price || 0),
       stock: Number(r.stock || 0),
       category: r.category_name,
+      category_name: r.category_name,
       category_id: r.category_id,
       station: r.station as "bar" | "kitchen",
       department: r.department,
       image: r.image,
       description: r.description || "",
-      temperature: r.temperature,
-      dietary_tags: typeof r.dietary_tags === "string" ? JSON.parse(r.dietary_tags || "[]") : [],
+      temperature: r.temperature || "none",
+      dietary_tags: typeof r.dietary_tags === "string" ? JSON.parse(r.dietary_tags || "[]") : (Array.isArray(r.dietary_tags) ? r.dietary_tags : []),
+      active: r.active === 1,
+      is_archived: r.is_archived === 1,
+      updated_at: r.updated_at,
     }))
+
+    if (filters?.category && filters.category !== "All") {
+      const c = filters.category.toLowerCase()
+      prods = prods.filter((p: any) => p.category?.toLowerCase() === c || p.category_id === filters.category)
+    }
+    if (filters?.search) {
+      const s = filters.search.toLowerCase()
+      prods = prods.filter((p: any) => p.name?.toLowerCase().includes(s) || p.category?.toLowerCase().includes(s) || p.sku?.toLowerCase().includes(s))
+    }
+
+    return prods
+  },
+
+  getProductById(idOrName: string): any | null {
+    const db = getDemoSqliteDb()
+    if (!db || !idOrName) return null
+    const row = db.prepare(
+      "SELECT * FROM pos_products WHERE (id = ? OR name = ? COLLATE NOCASE OR sku = ?) AND is_archived = 0 LIMIT 1"
+    ).get(idOrName, idOrName, idOrName) as any
+    if (!row) return null
+    return {
+      id: row.id,
+      name: row.name,
+      sku: row.sku,
+      barcode: row.barcode,
+      price: Number(row.price),
+      cost: Number(row.cost_price || 0),
+      cost_price: Number(row.cost_price || 0),
+      stock: Number(row.stock || 0),
+      category: row.category_name,
+      category_name: row.category_name,
+      category_id: row.category_id,
+      station: row.station,
+      department: row.department,
+      image: row.image,
+      description: row.description || "",
+      temperature: row.temperature || "none",
+      dietary_tags: typeof row.dietary_tags === "string" ? JSON.parse(row.dietary_tags || "[]") : (Array.isArray(row.dietary_tags) ? row.dietary_tags : []),
+      active: Boolean(row.active),
+      is_archived: Boolean(row.is_archived),
+      updated_at: row.updated_at,
+    }
+  },
+
+  updateProduct(idOrName: string, updates: any): any | null {
+    const db = getDemoSqliteDb()
+    if (!db || !idOrName) return null
+
+    // Look up existing product by ID, name, or SKU
+    const existing = db.prepare(
+      "SELECT * FROM pos_products WHERE id = ? OR name = ? COLLATE NOCASE OR sku = ? LIMIT 1"
+    ).get(idOrName, idOrName, idOrName) as any
+    if (!existing) return null
+
+    const setClauses: string[] = ["updated_at = CURRENT_TIMESTAMP"]
+    const params: any[] = []
+
+    if (updates.name !== undefined) {
+      setClauses.push("name = ?")
+      params.push(String(updates.name).trim())
+    }
+    if (updates.price !== undefined) {
+      setClauses.push("price = ?")
+      params.push(Number(updates.price) || 0)
+    }
+    if (updates.cost !== undefined || updates.cost_price !== undefined) {
+      setClauses.push("cost_price = ?")
+      params.push(Number(updates.cost ?? updates.cost_price ?? 0))
+    }
+    if (updates.stock !== undefined) {
+      setClauses.push("stock = ?")
+      params.push(Number(updates.stock) || 0)
+    }
+    if (updates.image !== undefined || updates.image_url !== undefined) {
+      const img = String(updates.image ?? updates.image_url ?? "").trim()
+      setClauses.push("image = ?")
+      params.push(img)
+    }
+    if (updates.category_id !== undefined) {
+      setClauses.push("category_id = ?")
+      params.push(updates.category_id || null)
+    }
+    if (updates.category_name !== undefined || updates.category !== undefined) {
+      setClauses.push("category_name = ?")
+      params.push(String(updates.category_name ?? updates.category ?? "").trim())
+    }
+    if (updates.station !== undefined) {
+      setClauses.push("station = ?")
+      params.push(updates.station)
+    }
+    if (updates.department !== undefined || updates.department_override !== undefined) {
+      setClauses.push("department = ?")
+      params.push(updates.department ?? updates.department_override)
+    }
+    if (updates.description !== undefined) {
+      setClauses.push("description = ?")
+      params.push(String(updates.description).trim())
+    }
+    if (updates.temperature !== undefined) {
+      setClauses.push("temperature = ?")
+      params.push(updates.temperature)
+    }
+    if (updates.dietary_tags !== undefined) {
+      setClauses.push("dietary_tags = ?")
+      params.push(typeof updates.dietary_tags === "string" ? updates.dietary_tags : JSON.stringify(updates.dietary_tags || []))
+    }
+    if (updates.active !== undefined || updates.is_active !== undefined) {
+      setClauses.push("active = ?")
+      params.push((updates.active ?? updates.is_active) ? 1 : 0)
+    }
+    if (updates.is_archived !== undefined) {
+      setClauses.push("is_archived = ?")
+      params.push(updates.is_archived ? 1 : 0)
+    }
+
+    params.push(existing.id)
+    const sql = `UPDATE pos_products SET ${setClauses.join(", ")} WHERE id = ?`
+    db.prepare(sql).run(...params)
+
+    return this.getProductById(existing.id)
+  },
+
+  createProduct(data: any): any {
+    const db = getDemoSqliteDb()
+    const id = data.id || `prod-${Date.now()}`
+    const sku = data.sku || `LS-CUSTOM-${Date.now().toString().slice(-4)}`
+    const barcode = data.barcode || `890${Date.now().toString().slice(-9)}`
+    const price = Number(data.price) || 0
+    const costPrice = Number(data.cost ?? data.cost_price ?? 0)
+    const stock = Number(data.stock) || 0
+    const categoryName = data.category_name || data.category || "General"
+    const categoryId = data.category_id || null
+    const station = data.station || "kitchen"
+    const department = data.department || data.department_override || (station === "bar" ? "Coffee Bar" : "Juice & Food")
+    const image = data.image || data.image_url || "/placeholder.svg"
+    const description = data.description || ""
+    const temperature = data.temperature || "none"
+    const dietaryTags = typeof data.dietary_tags === "string" ? data.dietary_tags : JSON.stringify(data.dietary_tags || [])
+
+    if (db) {
+      db.prepare(`
+        INSERT INTO pos_products (
+          id, name, sku, barcode, category_id, category_name, price, cost_price, stock,
+          station, department, image, description, temperature, dietary_tags, is_archived, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)
+      `).run(
+        id,
+        data.name.trim(),
+        sku,
+        barcode,
+        categoryId,
+        categoryName,
+        price,
+        costPrice,
+        stock,
+        station,
+        department,
+        image,
+        description,
+        temperature,
+        dietaryTags
+      )
+    }
+
+    return this.getProductById(id) || {
+      id,
+      name: data.name.trim(),
+      price,
+      cost_price: costPrice,
+      cost: costPrice,
+      stock,
+      category: categoryName,
+      category_name: categoryName,
+      category_id: categoryId,
+      station,
+      department,
+      image,
+      description,
+      temperature,
+      dietary_tags: Array.isArray(data.dietary_tags) ? data.dietary_tags : [],
+      active: true,
+      is_archived: false,
+    }
+  },
+
+  deleteProduct(idOrName: string): boolean {
+    const db = getDemoSqliteDb()
+    if (!db || !idOrName) return false
+    try {
+      db.prepare(
+        "UPDATE pos_products SET is_archived = 1, active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? OR name = ? COLLATE NOCASE"
+      ).run(idOrName, idOrName)
+      return true
+    } catch {
+      return false
+    }
   },
 
   updateProductStock(productId: string, newStock: number): boolean {

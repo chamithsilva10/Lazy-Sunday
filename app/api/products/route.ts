@@ -10,15 +10,19 @@ const productCreateSchema = z.object({
   name: z.string().trim().min(1).max(150),
   price: z.coerce.number().finite().min(0).max(1000000),
   cost: z.coerce.number().finite().min(0).default(0),
+  cost_price: z.coerce.number().finite().min(0).optional(),
   stock: z.coerce.number().int().min(0).default(50),
-  category_id: z.string().uuid().nullable().optional(),
-  category: z.string().trim().max(80).optional(),
+  category_id: z.string().nullable().optional(),
+  category: z.string().trim().max(120).optional(),
+  category_name: z.string().trim().max(120).optional(),
   station: z.enum(["kitchen", "bar", "none"]).optional(),
   image: z.string().trim().max(5000000).optional(),
+  image_url: z.string().trim().max(5000000).optional(),
   description: z.string().trim().max(1000).optional(),
   temperature: z.enum(["hot", "iced", "cold", "none"]).default("none"),
   dietary_tags: z.array(z.string()).default([]),
   department: z.string().trim().max(80).optional(),
+  department_override: z.string().trim().max(80).optional(),
   active: z.boolean().default(true),
   track_stock: z.boolean().default(true),
 })
@@ -50,7 +54,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Invalid request origin." }, { status: 403 })
   }
 
-  const auth = await authorizeStaff(request, "admin")
+  const auth = await authorizeStaff(request, "cashier")
   if (auth.status !== 200 || !auth.identity) {
     return NextResponse.json(
       { success: false, error: auth.status === 401 ? "Authentication required." : "Forbidden." },
@@ -69,33 +73,42 @@ export async function POST(request: NextRequest) {
       name,
       price,
       cost,
+      cost_price,
       stock,
       category_id,
       category,
+      category_name,
       station,
       image,
+      image_url,
       description,
       temperature,
       dietary_tags,
       department,
+      department_override,
       active,
       track_stock,
     } = parsed.data
 
-    const determinedStation = station || determineItemStation({ name, category, department })
+    const effectiveCategory = category_name || category
+    const effectiveDepartment = department || department_override
+    const determinedStation = station || determineItemStation({ name, category: effectiveCategory, department: effectiveDepartment })
 
     const product = await PosDatabase.createProduct({
       name,
       price: Number(price),
-      cost: Number(cost),
+      cost: Number(cost_price ?? cost ?? 0),
+      cost_price: Number(cost_price ?? cost ?? 0),
       stock: Number(stock),
       category_id: category_id || null,
+      category_name: effectiveCategory || "General",
+      category: effectiveCategory || "General",
       station: determinedStation,
-      image: image?.trim() || "/placeholder.svg",
+      image: image?.trim() || image_url?.trim() || "/placeholder.svg",
       description: description?.trim() || "",
       temperature,
       dietary_tags,
-      department: department || (determinedStation === "bar" ? "Coffee Bar" : "Juice & Food"),
+      department: effectiveDepartment || (determinedStation === "bar" ? "Coffee Bar" : "Juice & Food"),
       active,
       track_stock,
     })

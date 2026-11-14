@@ -3,6 +3,7 @@ import { z } from "zod"
 import { CoffeeStorageService } from "@/lib/coffee/storage"
 import { authorizeStaff, createStaffSupabaseClient, hasValidOrigin } from "@/lib/coffee/auth"
 import { writeSecurityAudit } from "@/lib/coffee/security"
+import { PosDatabase } from "@/lib/db/pos-database"
 
 const productUpdateSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -18,8 +19,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!hasValidOrigin(request)) return NextResponse.json({ success: false, error: "Invalid request." }, { status: 403 })
-  // Enforce Admin role on backend (403 for non-admins)
-  const auth = await authorizeStaff(request, "admin")
+  const auth = await authorizeStaff(request, "cashier")
   if (auth.status !== 200 || !auth.identity) {
     return NextResponse.json({ success: false, error: auth.status === 401 ? "Authentication required." : "Forbidden." }, { status: auth.status })
   }
@@ -30,6 +30,17 @@ export async function PUT(
     if (!parsed.success) return NextResponse.json({ success: false, error: "Invalid product data." }, { status: 400 })
 
     const updated = await CoffeeStorageService.updateProduct(id, parsed.data, createStaffSupabaseClient(request))
+
+    // Also sync update to central POS database
+    try {
+      await PosDatabase.updateProduct(id, {
+        name: parsed.data.name,
+        price: parsed.data.price,
+        image: parsed.data.image_url,
+        category_name: parsed.data.category,
+      })
+    } catch {}
+
     if (!updated) {
       return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 })
     }
