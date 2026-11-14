@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { normalizeRole } from "@/lib/rbac/permissions"
+import { normalizeRole, type CanonicalRole } from "@/lib/rbac/permissions"
 import {
   SharedPosService,
   type SharedIngredient,
@@ -236,7 +236,7 @@ export function InventoryWorkspace({
 }: {
   supabase: SupabaseClient
   products: Product[]
-  role: "admin" | "cashier"
+  role: CanonicalRole
 }) {
   // Allow operators and staff to manage stock, recipes, and grocery runs seamlessly
   const canManage = true

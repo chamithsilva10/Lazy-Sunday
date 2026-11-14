@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { refreshSessionMarker, setSessionCookie, verifyAndExtractSession, SESSION_COOKIE_NAME } from "@/lib/coffee/session"
 import { isDemoMode } from "@/lib/config/demo"
 
-const publicPaths = new Set(["/auth/login", "/api/auth/login", "/api/auth/demo", "/api/auth/session", "/menu", "/api/tables", "/api/tables/bookings"])
-const publicGetPrefixes = ["/api/coffee/products", "/api/coffee/bills", "/api/products", "/api/tables", "/api/tables/bookings"]
+const publicPaths = new Set(["/auth/login", "/api/auth/login", "/api/auth/demo", "/api/auth/session", "/menu"])
+const publicGetPrefixes = ["/api/coffee/products", "/api/coffee/bills", "/api/products"]
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 

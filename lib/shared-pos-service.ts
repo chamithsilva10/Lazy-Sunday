@@ -14,6 +14,7 @@ export interface SharedTable {
   orderTotal?: number
   guestName?: string
   occupiedAt?: string
+  releasedAt?: string
   bookingId?: string
 }
 

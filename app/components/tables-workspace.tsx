@@ -28,7 +28,7 @@ import { SharedPosService, tablesMatch, normalizeTableName, type SharedOrder, ty
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { canManageTables, normalizeRole } from "@/lib/rbac/permissions"
+import { canManageTables, normalizeRole, type CanonicalRole } from "@/lib/rbac/permissions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 type Table = SharedTable
@@ -139,7 +139,7 @@ export function TablesWorkspace({
   onStartOrder,
   onNavigateToBooked,
 }: {
-  role?: "admin" | "cashier"
+  role?: CanonicalRole
   initialTab?: "floor" | "bookings"
   onStartOrder?: (tableName: string) => void
   onNavigateToBooked?: () => void
