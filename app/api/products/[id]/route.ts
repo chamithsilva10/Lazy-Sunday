@@ -94,18 +94,20 @@ async function handleProductUpdate(
       department: parsed.data.department || parsed.data.department_override,
     }
 
+    const existingBefore = await PosDatabase.getProductById(id)
+    const fallbackStock = existingBefore?.stock ?? 0
     const updated = await PosDatabase.updateProduct(id, payload)
     const resultProduct = updated || {
       id,
-      name: payload.name || id,
-      price: payload.price ?? 0,
-      image: payload.image || payload.image_url || "/placeholder.svg",
-      stock: payload.stock ?? 50,
-      category: payload.category || payload.category_name || "General",
-      category_name: payload.category_name || payload.category || "General",
-      category_id: payload.category_id || null,
-      station: payload.station || "bar",
-      department: payload.department || "Coffee Bar",
+      name: payload.name || existingBefore?.name || id,
+      price: payload.price ?? existingBefore?.price ?? 0,
+      image: payload.image || payload.image_url || existingBefore?.image || "/placeholder.svg",
+      stock: payload.stock !== undefined ? Number(payload.stock) : fallbackStock,
+      category: payload.category || payload.category_name || existingBefore?.category || "General",
+      category_name: payload.category_name || payload.category || existingBefore?.category_name || "General",
+      category_id: payload.category_id || existingBefore?.category_id || null,
+      station: payload.station || existingBefore?.station || "bar",
+      department: payload.department || existingBefore?.department || "Coffee Bar",
       active: payload.active !== false && payload.is_active !== false,
       is_archived: payload.is_archived === true,
       updated_at: new Date().toISOString(),
@@ -120,18 +122,30 @@ async function handleProductUpdate(
         try { overrides = JSON.parse(decodeURIComponent(rawCookie)) } catch {}
       }
       const overrideData: Record<string, any> = {
-        price: resultProduct.price,
-        stock: resultProduct.stock,
-        updated_at: new Date().toISOString(),
+        price: Number(resultProduct.price),
+        stock: Number(resultProduct.stock),
+        updated_at: resultProduct.updated_at || new Date().toISOString(),
       }
-      if (resultProduct.image && !resultProduct.image.startsWith("data:") && resultProduct.image.length < 500) {
+      if (resultProduct.image && !resultProduct.image.startsWith("data:") && resultProduct.image.length < 150) {
         overrideData.image = resultProduct.image
       }
       overrides[id] = overrideData
       if (resultProduct.name) {
         overrides[resultProduct.name.trim().toLowerCase()] = overrideData
       }
-      res.cookies.set("pos_product_overrides", encodeURIComponent(JSON.stringify(overrides)), {
+
+      let cookieStr = JSON.stringify(overrides)
+      if (cookieStr.length > 3500) {
+        const keys = Object.keys(overrides)
+        if (keys.length > 20) {
+          const pruned: Record<string, any> = {}
+          keys.slice(-20).forEach((k) => { pruned[k] = overrides[k] })
+          overrides = pruned
+          cookieStr = JSON.stringify(overrides)
+        }
+      }
+
+      res.cookies.set("pos_product_overrides", encodeURIComponent(cookieStr), {
         path: "/",
         maxAge: 86400 * 30,
         sameSite: "lax",

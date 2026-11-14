@@ -2833,22 +2833,29 @@ export class SharedPosService {
           return true
         })
 
-        // Reconcile legacy uniform stock (100 across all products) with authentic database stock
-        const allHundred = existing.length > 0 && existing.every((p) => p.stock === 100)
-        const defStockMap = new Map(DEFAULT_PRODUCTS.map((dp) => [dp.id, dp.stock]))
-        const defNameStockMap = new Map(DEFAULT_PRODUCTS.map((dp) => [dp.name.trim().toLowerCase(), dp.stock]))
+        // One-time migration: reconcile legacy uniform stock (100 across all products) with authentic database stock
+        const migrationKey = "pos_stock_seeded_v3"
+        const hasMigrated = this.isBrowser() && localStorage.getItem(migrationKey) === "true"
         let cacheModified = false
 
-        this.productsCache = this.productsCache.map((p) => {
-          if (allHundred || (p.stock === 100 && !p.user_customized)) {
-            const defStock = defStockMap.get(p.id) ?? defNameStockMap.get((p.name || "").trim().toLowerCase())
-            if (defStock !== undefined && defStock !== p.stock) {
-              cacheModified = true
-              return { ...p, stock: defStock }
-            }
+        if (!hasMigrated && this.isBrowser()) {
+          const allHundred = existing.length > 0 && existing.every((p) => Number(p.stock) === 100)
+          if (allHundred) {
+            const defStockMap = new Map(DEFAULT_PRODUCTS.map((dp) => [dp.id, dp.stock]))
+            const defNameStockMap = new Map(DEFAULT_PRODUCTS.map((dp) => [dp.name.trim().toLowerCase(), dp.stock]))
+            this.productsCache = this.productsCache.map((p) => {
+              const defStock = defStockMap.get(p.id) ?? defNameStockMap.get((p.name || "").trim().toLowerCase())
+              if (defStock !== undefined) {
+                cacheModified = true
+                return { ...p, stock: defStock }
+              }
+              return p
+            })
           }
-          return p
-        })
+          try {
+            localStorage.setItem(migrationKey, "true")
+          } catch {}
+        }
 
         if ((missing.length > 0 || cacheModified) && this.isBrowser()) {
           try {
@@ -4487,14 +4494,26 @@ export class SharedPosService {
             }
           }
 
+          let finalStock = mp.stock
+          if (existing?.updated_at && mp.updated_at) {
+            const existingTime = new Date(existing.updated_at).getTime()
+            const incomingTime = new Date(mp.updated_at).getTime()
+            if (existingTime > incomingTime) {
+              finalStock = existing.stock
+            }
+          } else if (existing?.stock !== undefined && (mp.stock === undefined || mp.stock === null)) {
+            finalStock = existing.stock
+          }
+
           cacheMap.set(key, {
             ...existing,
             ...mp,
             id: existing?.id || mp.id,
             price: finalPrice,
             image: finalImage,
+            stock: finalStock,
             user_customized: existing?.user_customized,
-            updated_at: existing?.updated_at || mp.updated_at,
+            updated_at: existing?.updated_at && mp.updated_at && new Date(existing.updated_at).getTime() > new Date(mp.updated_at).getTime() ? existing.updated_at : (mp.updated_at || existing?.updated_at),
           })
         })
         this.productsCache = Array.from(cacheMap.values())
@@ -4519,6 +4538,9 @@ export class SharedPosService {
       name: product.name,
     })
     const department = product.department || (station === "bar" ? "Coffee Bar" : "Juice & Food")
+    const prevItem = this.productsCache.find((p) => String(p.id) === targetId || (origId && String(p.id) === origId) || (p.name && p.name.trim().toLowerCase() === targetName))
+    const parsedStock = product.stock !== undefined && !isNaN(Number(product.stock)) ? Math.max(0, parseInt(String(product.stock), 10)) : (prevItem?.stock ?? 0)
+
     const cleanProduct: SharedProduct = {
       id,
       name: product.name.trim(),
@@ -4526,7 +4548,7 @@ export class SharedPosService {
       category: product.category || (station === "bar" ? "Fresh Juices" : "Mains"),
       category_id: product.category_id,
       image: product.image || "/latte-coffee.png",
-      stock: Number(product.stock) || 20,
+      stock: parsedStock,
       description: product.description || "",
       temperature: product.temperature || "none",
       dietary_tags: product.dietary_tags || [],
@@ -4536,6 +4558,16 @@ export class SharedPosService {
       is_archived: false,
       user_customized: true,
       updated_at: new Date().toISOString(),
+    }
+
+    if (prevItem && prevItem.stock !== cleanProduct.stock) {
+      this.logMovement({
+        product_id: cleanProduct.id,
+        product_name: cleanProduct.name,
+        department: (cleanProduct.department as any) || "Coffee Bar",
+        quantity_change: cleanProduct.stock - prevItem.stock,
+        reason: "Product catalog edit",
+      })
     }
 
     let matched = false

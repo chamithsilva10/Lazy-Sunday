@@ -939,6 +939,17 @@ export default function POSPage() {
                 }
               }
 
+              let resolvedStock = Number(p.stock != null ? p.stock : (existing?.stock ?? 0))
+              if (existing?.updated_at && p.updated_at) {
+                const existingTime = new Date(existing.updated_at).getTime()
+                const serverTime = new Date(p.updated_at).getTime()
+                if (existingTime > serverTime) {
+                  resolvedStock = existing.stock
+                }
+              } else if (existing?.user_customized && existing.stock !== undefined && (p.stock === null || p.stock === undefined)) {
+                resolvedStock = existing.stock
+              }
+
               prodMap.set(key, {
                 id: String(p.id || existing?.id),
                 name: p.name,
@@ -946,14 +957,14 @@ export default function POSPage() {
                 image: resolvedImage,
                 category: cat,
                 category_id: p.category_id || existing?.category_id,
-                stock: Number(p.stock != null ? p.stock : (existing?.stock ?? 0)),
+                stock: resolvedStock,
                 description: p.description || existing?.description || "",
                 temperature: p.temperature || existing?.temperature || "none",
                 dietary_tags: Array.isArray(p.dietary_tags) ? p.dietary_tags : (existing?.dietary_tags || []),
                 department: p.department || p.department_override || existing?.department || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
                 station,
-                user_customized: existing?.user_customized,
-                updated_at: existing?.updated_at || p.updated_at,
+                user_customized: existing?.user_customized || p.user_customized,
+                updated_at: existing?.updated_at && p.updated_at && new Date(existing.updated_at).getTime() > new Date(p.updated_at).getTime() ? existing.updated_at : (p.updated_at || existing?.updated_at),
               })
             })
           }
@@ -2163,10 +2174,13 @@ export default function POSPage() {
       }
     }
 
+    const editingProduct = editingProductId ? products.find((p) => p.id === editingProductId) : null
+    const parsedStock = form.stock !== "" && !isNaN(Number(form.stock)) ? Math.max(0, parseInt(form.stock, 10)) : (editingProduct?.stock ?? 0)
+
     const payload = {
       name: form.name.trim(),
       price: Number(form.price),
-      stock: Number(form.stock) || 0,
+      stock: parsedStock,
       image: productImage,
       category_id: catId || null,
       category: categoryName,
@@ -2187,23 +2201,30 @@ export default function POSPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
-        if (res.ok) {
-          const data = await res.json().catch(() => ({}))
-          if (data?.product?.id) savedId = String(data.product.id)
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          toast.error(errData?.error || "Failed to update product on server.")
+          return
         }
+        const data = await res.json().catch(() => ({}))
+        if (data?.product?.id) savedId = String(data.product.id)
       } else {
         const res = await fetch("/api/products", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
-        if (res.ok) {
-          const data = await res.json().catch(() => ({}))
-          if (data?.product?.id) savedId = String(data.product.id)
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          toast.error(errData?.error || "Failed to create product on server.")
+          return
         }
+        const data = await res.json().catch(() => ({}))
+        if (data?.product?.id) savedId = String(data.product.id)
       }
-    } catch (e) {
-      console.warn("Saved product via API", e)
+    } catch (e: any) {
+      toast.error(e?.message || "Network error while saving product.")
+      return
     }
 
     try {
@@ -2221,18 +2242,19 @@ export default function POSPage() {
     }
 
     const effectiveId = editingProductId || savedId
+    const nowIso = new Date().toISOString()
     const saved: Product = {
       id: effectiveId,
       name: form.name.trim(),
       price: Number(form.price),
       category: categoryName,
       image: productImage,
-      stock: Number(form.stock) || 0,
+      stock: parsedStock,
       category_id: catId || undefined,
       station,
       department,
       user_customized: true,
-      updated_at: new Date().toISOString(),
+      updated_at: nowIso,
     }
 
     await SharedPosService.saveProduct(saved, editingProductId || undefined)
@@ -2273,23 +2295,31 @@ export default function POSPage() {
   async function adjustStock(product: Product, amount: number) {
     if (!Number.isFinite(amount) || amount === 0) return
     const nextStock = Math.max(0, product.stock + amount)
-    void SharedPosService.adjustStock(product.id, amount, form.reason || "Manual adjustment")
+    const nowIso = new Date().toISOString()
     try {
-      void fetch(`/api/products/${encodeURIComponent(product.id)}`, {
+      const res = await fetch(`/api/products/${encodeURIComponent(product.id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stock: nextStock }),
-      }).catch(() => {})
-    } catch {}
-    try {
-      const { error } = await supabase.from("pos_products").update({ stock: nextStock }).eq("id", product.id)
-      if (error) {
-        console.warn("Could not sync stock to database; updated in local state", error)
+      })
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        toast.error(errJson?.error || "Failed to adjust stock on server")
+        return
       }
+    } catch (e: any) {
+      toast.error(e?.message || "Network error adjusting stock")
+      return
+    }
+
+    void SharedPosService.adjustStock(product.id, amount, form.reason || "Manual adjustment")
+    try {
+      await supabase.from("pos_products").update({ stock: nextStock, updated_at: nowIso }).eq("id", product.id)
     } catch {}
-    setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, stock: nextStock } : p)))
+
+    setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, stock: nextStock, user_customized: true, updated_at: nowIso } : p)))
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("pos_products_updated", { detail: { id: product.id, stock: nextStock } }))
+      window.dispatchEvent(new CustomEvent("pos_products_updated", { detail: { id: product.id, stock: nextStock, updated_at: nowIso } }))
     }
     toast.success(`Inventory stock updated for ${product.name}`)
     setDialogType(null)
