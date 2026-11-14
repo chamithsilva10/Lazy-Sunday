@@ -5,6 +5,7 @@ import { Coffee, Plus, Search, Edit2, Trash2, ShieldAlert, Camera, Upload, Check
 import { CoffeeProduct, CoffeeStatus } from "@/lib/coffee/types"
 import { CoffeeStorageService } from "@/lib/coffee/storage"
 import { SharedPosService } from "@/lib/shared-pos-service"
+import { compressImageFile } from "@/lib/image-compress"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,28 +39,36 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const dataUrl = reader.result as string
+    try {
+      // 1. Client-side compress down to max 480x480 (~20-30KB) to prevent 413 Content Too Large
+      const { dataUrl, blob } = await compressImageFile(file, 480, 0.8)
       setFormData((f) => ({ ...f, image_url: dataUrl }))
 
       try {
         const data = new FormData()
-        data.append("file", file)
+        data.append("file", blob, file.name.replace(/\.[^/.]+$/, ".jpg"))
         const res = await fetch("/api/upload", {
           method: "POST",
           body: data,
         })
-        const json = await res.json()
-        if (json?.success && json?.url) {
-          setFormData((f) => ({ ...f, image_url: json.url }))
-          toast.success("Photo uploaded successfully")
+        if (res.ok) {
+          const json = await res.json().catch(() => ({}))
+          if (json?.success && json?.url) {
+            setFormData((f) => ({ ...f, image_url: json.url }))
+            toast.success("Photo uploaded successfully")
+          } else {
+            toast.info("Photo loaded")
+          }
+        } else {
+          toast.info("Photo loaded")
         }
       } catch {
         toast.info("Photo loaded")
       }
+    } catch (compressErr) {
+      console.warn("Coffee image compression failed", compressErr)
+      toast.error("Failed to process image file")
     }
-    reader.readAsDataURL(file)
   }
 
   // Form states

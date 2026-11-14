@@ -119,11 +119,13 @@ async function handleProductUpdate(
       if (rawCookie) {
         try { overrides = JSON.parse(decodeURIComponent(rawCookie)) } catch {}
       }
-      const overrideData = {
+      const overrideData: Record<string, any> = {
         price: resultProduct.price,
         stock: resultProduct.stock,
-        image: resultProduct.image,
         updated_at: new Date().toISOString(),
+      }
+      if (resultProduct.image && !resultProduct.image.startsWith("data:") && resultProduct.image.length < 500) {
+        overrideData.image = resultProduct.image
       }
       overrides[id] = overrideData
       if (resultProduct.name) {

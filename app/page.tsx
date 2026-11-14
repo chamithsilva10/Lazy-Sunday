@@ -86,6 +86,7 @@ import { determineItemStation, isBarItem, isKitchenItem } from "@/lib/station-ro
 import { useSharedTables } from "@/hooks/use-shared-tables"
 import type { CoffeeBill } from "@/lib/coffee/types"
 import { resolveProductImage } from "@/lib/product-images"
+import { compressImageFile } from "@/lib/image-compress"
 
 type View =
   | "Dashboard"
@@ -672,33 +673,39 @@ export default function POSPage() {
     if (!file) return
 
     setIsUploadingImage(true)
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const dataUrl = reader.result as string
+    try {
+      // 1. Client-side compress down to max 480x480 (~20-30KB) to prevent 413 Content Too Large
+      const { dataUrl, blob } = await compressImageFile(file, 480, 0.8)
       setForm((f) => ({ ...f, image: dataUrl }))
 
       try {
         const formData = new FormData()
-        formData.append("file", file)
+        formData.append("file", blob, file.name.replace(/\.[^/.]+$/, ".jpg"))
         const res = await fetch("/api/upload", {
           method: "POST",
           body: formData,
         })
-        const data = await res.json()
-        if (data?.success && data?.url) {
-          setForm((f) => ({ ...f, image: data.url }))
-          toast.success("Photo uploaded successfully")
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}))
+          if (data?.success && data?.url) {
+            setForm((f) => ({ ...f, image: data.url }))
+            toast.success("Photo uploaded successfully")
+          } else {
+            toast.info("Photo loaded")
+          }
         } else {
           toast.info("Photo loaded")
         }
       } catch (err) {
         console.warn("Upload fallback to dataUrl", err)
         toast.info("Photo loaded")
-      } finally {
-        setIsUploadingImage(false)
       }
+    } catch (compressErr) {
+      console.warn("Image compression failed", compressErr)
+      toast.error("Failed to process image file")
+    } finally {
+      setIsUploadingImage(false)
     }
-    reader.readAsDataURL(file)
   }
 
   function handleBarcodeScan(scannedCode: string) {
@@ -2078,9 +2085,11 @@ export default function POSPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ dataUrl: productImage }),
         })
-        const upJson = await upRes.json()
-        if (upJson?.success && upJson?.url) {
-          productImage = upJson.url
+        if (upRes.ok) {
+          const upJson = await upRes.json().catch(() => ({}))
+          if (upJson?.success && upJson?.url) {
+            productImage = upJson.url
+          }
         }
       } catch (e) {
         console.warn("Could not convert dataUrl to uploaded image", e)
@@ -2111,16 +2120,20 @@ export default function POSPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
-        const data = await res.json()
-        if (data?.product?.id) savedId = String(data.product.id)
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}))
+          if (data?.product?.id) savedId = String(data.product.id)
+        }
       } else {
         const res = await fetch("/api/products", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
-        const data = await res.json()
-        if (data?.product?.id) savedId = String(data.product.id)
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}))
+          if (data?.product?.id) savedId = String(data.product.id)
+        }
       }
     } catch (e) {
       console.warn("Saved product via API", e)

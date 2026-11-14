@@ -4401,11 +4401,13 @@ export class SharedPosService {
         if (match && match[1]) {
           try { curOverrides = JSON.parse(decodeURIComponent(match[1])) } catch {}
         }
-        const oData = {
+        const oData: Record<string, any> = {
           price: cleanProduct.price,
           stock: cleanProduct.stock,
-          image: cleanProduct.image,
           updated_at: cleanProduct.updated_at,
+        }
+        if (cleanProduct.image && !cleanProduct.image.startsWith("data:") && cleanProduct.image.length < 500) {
+          oData.image = cleanProduct.image
         }
         curOverrides[id] = oData
         if (cleanProduct.name) {

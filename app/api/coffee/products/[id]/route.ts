@@ -55,10 +55,12 @@ export async function PUT(
       if (rawCookie) {
         try { overrides = JSON.parse(decodeURIComponent(rawCookie)) } catch {}
       }
-      const overrideData = {
+      const overrideData: Record<string, any> = {
         price: parsed.data.price,
-        image: parsed.data.image_url,
         updated_at: new Date().toISOString(),
+      }
+      if (parsed.data.image_url && !parsed.data.image_url.startsWith("data:") && parsed.data.image_url.length < 500) {
+        overrideData.image = parsed.data.image_url
       }
       overrides[id] = overrideData
       if (parsed.data.name) {
