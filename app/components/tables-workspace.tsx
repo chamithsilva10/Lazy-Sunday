@@ -340,30 +340,7 @@ export function TablesWorkspace({
 
   const activeBookingFor = (table: Table) => heldBookingFor(table) || nextUpcomingBookingFor(table)
 
-  const statusFor = (table: Table): "available" | "occupied" | "reserved" | "cleaning" | "bill_requested" => {
-    const session = sessionFor(table)
-    if (session && session.status !== "closed") {
-      return session.status === "bill_requested" ? "bill_requested" : "occupied"
-    }
-
-    const hasOpenOrder = orders.some((o) => o.status === "open" && tablesMatch(o.table_name, table.name))
-    if (hasOpenOrder) return "occupied"
-
-    const held = heldBookingFor(table)
-    if (held) return "reserved"
-
-    if (
-      table.status === "occupied" ||
-      table.status === "bill_requested" ||
-      table.status === "cleaning" ||
-      table.status === "reserved"
-    ) {
-      return table.status as any
-    }
-    return "available"
-  }
-
-  const getActiveOrderForTable = (table: Table | null | undefined) => {
+  const getActiveOrderForTable = (table: Table | null | undefined): SharedOrder | undefined => {
     if (!table) return undefined
     const session = sessionFor(table)
     const orderMatch = session?.notes?.match(/Order\s*#?([A-Za-z0-9-]+)/i)
@@ -383,25 +360,43 @@ export function TablesWorkspace({
       if (match) return match
     }
 
-    // 3. Third priority: most recent dine-in order for this table
-    const tStatus = statusFor(table)
-    if (tStatus === "occupied" || tStatus === "bill_requested" || (table as any).status === "occupied" || !!session) {
-      const sessionTime = session?.seated_at ? new Date(session.seated_at).getTime() : 0
-      return orders.find((o) => {
-        if (!tablesMatch(o.table_name, table.name)) return false
-        if (o.status !== "open" && o.status !== "paid") return false
-        if (sessionTime && o.created_at) {
-          const orderTime = new Date(o.created_at).getTime()
-          return orderTime >= sessionTime - 4 * 60 * 60 * 1000
-        }
-        if (o.created_at) {
-          const orderTime = new Date(o.created_at).getTime()
-          return Date.now() - orderTime <= 8 * 60 * 60 * 1000
-        }
-        return true
-      })
+    // 3. Third priority: most recent dine-in order (within last 6 hours) that has not been explicitly released
+    const releasedTime = (table as any).releasedAt ? new Date((table as any).releasedAt).getTime() : 0
+    const now = Date.now()
+    const recentOrder = orders.find((o) => {
+      if (!tablesMatch(o.table_name, table.name)) return false
+      if (o.status !== "open" && o.status !== "paid") return false
+      if (!o.created_at) return true
+      const orderTime = new Date(o.created_at).getTime()
+      if (now - orderTime > 6 * 60 * 60 * 1000) return false
+      if (releasedTime && releasedTime >= orderTime) return false
+      return true
+    })
+
+    return recentOrder
+  }
+
+  const statusFor = (table: Table): "available" | "occupied" | "reserved" | "cleaning" | "bill_requested" => {
+    const session = sessionFor(table)
+    if (session && session.status !== "closed") {
+      return session.status === "bill_requested" ? "bill_requested" : "occupied"
     }
-    return undefined
+
+    const activeOrder = getActiveOrderForTable(table)
+    if (activeOrder) return "occupied"
+
+    const held = heldBookingFor(table)
+    if (held) return "reserved"
+
+    if (
+      table.status === "occupied" ||
+      table.status === "bill_requested" ||
+      table.status === "cleaning" ||
+      table.status === "reserved"
+    ) {
+      return table.status as any
+    }
+    return "available"
   }
 
   const visibleTables = tables.filter((table) => {
@@ -718,7 +713,7 @@ export function TablesWorkspace({
         const newStatus = await SharedPosService.releaseTable(table.name)
         toast.success(`${table.name} released (now ${newStatus || "available"})`)
       } else if (status === "occupied") {
-        await SharedPosService.seatWalkIn(table.name, { customer_name: "Walk-in" })
+        await SharedPosService.occupyTable(table.name, "Juice & Food", undefined, undefined, "Dine-in Guest")
         toast.success(`${table.name} marked occupied`)
       } else {
         await SharedPosService.setTableStatus(table.id, status)

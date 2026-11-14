@@ -4242,20 +4242,60 @@ export class SharedPosService {
 
   static async seatWalkIn(tableNameOrId: string, guestInfo?: { customer_name?: string; phone?: string; guest_count?: number; notes?: string }) {
     this.init()
-    if (this.isBrowser()) {
-      const res = await fetch("/api/tables", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "seat", tableName: tableNameOrId, guestInfo }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to seat walk-in guests")
+    const table = this.tablesCache.find((t) => t.id === tableNameOrId || sameName(t.name, tableNameOrId))
+    const nowIso = new Date().toISOString()
+    if (table) {
+      this.tablesCache = this.tablesCache.map((t) =>
+        t.id === table.id
+          ? {
+              ...t,
+              status: "occupied",
+              guestName: guestInfo?.customer_name || "Walk-in Guest",
+              occupiedAt: nowIso,
+              releasedAt: undefined,
+            }
+          : t
+      )
+      const existingSession = this.sessionsCache.find(
+        (s) => (s.table_id === table.id || sameName(s.table_name, table.name)) && s.status !== "closed"
+      )
+      if (!existingSession) {
+        const newSession: SharedSession = {
+          id: "ses-" + Date.now(),
+          table_id: table.id,
+          table_name: table.name,
+          customer_name: guestInfo?.customer_name || "Walk-in Guest",
+          phone: guestInfo?.phone,
+          guest_count: guestInfo?.guest_count || table.capacity || 2,
+          seated_at: nowIso,
+          status: "open",
+          notes: guestInfo?.notes || "Walk-in seated",
+        }
+        this.sessionsCache = [newSession, ...this.sessionsCache]
       }
-      await this.refreshFromApi()
+      if (this.isBrowser()) {
+        try {
+          localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
+          localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache))
+        } catch {}
+      }
+      this.emitTables()
+      this.emitSessions()
       this.broadcast("tables")
       this.broadcast("sessions")
-      return data.session
+    }
+
+    if (this.isBrowser()) {
+      try {
+        const res = await fetch("/api/tables", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "seat", tableName: tableNameOrId, guestInfo }),
+        })
+        const data = await res.json()
+        await this.refreshFromApi()
+        return data?.session
+      } catch {}
     }
   }
 

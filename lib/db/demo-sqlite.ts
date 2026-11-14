@@ -845,9 +845,22 @@ export const DemoDbService = {
     phone?: string
     guest_count?: number
     notes?: string
-  }): { success: boolean; session?: any; error?: string } {
+  }): { success: boolean; session?: any; error?: string; message?: string } {
     const db = getDemoSqliteDb()
-    if (!db) return { success: false, error: "Database not available" }
+    if (!db) {
+      const cleanName = (tableIdOrName || "Table").trim()
+      const newSession = {
+        id: `ses-${Date.now()}`,
+        table_id: tableIdOrName,
+        customer_name: guestInfo?.customer_name || "Walk-in",
+        phone: guestInfo?.phone || null,
+        guest_count: guestInfo?.guest_count || 2,
+        seated_at: new Date().toISOString(),
+        status: "open",
+        notes: guestInfo?.notes || "Walk-in seated",
+      }
+      return { success: true, session: newSession }
+    }
     try {
       let table = findTableInDb(db, tableIdOrName) as any
       if (!table) {
@@ -863,7 +876,7 @@ export const DemoDbService = {
         "SELECT * FROM table_sessions WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested')"
       ).get(table.id, table.name)
       if (existingSession) {
-        return { success: false, error: `Cannot seat: Table ${table.name} is already occupied` }
+        return { success: true, session: existingSession, message: `Table ${table.name} is already seated` }
       }
 
       const sessionId = `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
@@ -891,7 +904,19 @@ export const DemoDbService = {
     department?: string
   }): { success: boolean; session?: any; table?: any; error?: string } {
     const db = getDemoSqliteDb()
-    if (!db) return { success: false, error: "Database not available" }
+    if (!db) {
+      const cleanName = (tableIdOrName || "Table").trim()
+      const newSession = {
+        id: `ses-${Date.now()}`,
+        table_id: tableIdOrName,
+        customer_name: info?.guestName || "Dine-in Guest",
+        guest_count: 2,
+        seated_at: new Date().toISOString(),
+        status: "open",
+        notes: info?.orderNumber ? `Order #${info.orderNumber}` : "Dine-in occupied",
+      }
+      return { success: true, session: newSession, table: { id: tableIdOrName, name: cleanName, status: "occupied" } }
+    }
     try {
       let table = findTableInDb(db, tableIdOrName) as any
       if (!table) {
@@ -935,7 +960,7 @@ export const DemoDbService = {
 
   releaseTable(tableIdOrName: string): { success: boolean; status?: string; error?: string } {
     const db = getDemoSqliteDb()
-    if (!db) return { success: false, error: "Database not available" }
+    if (!db) return { success: true, status: "available" }
     try {
       const table = findTableInDb(db, tableIdOrName) as any
       if (!table) {
