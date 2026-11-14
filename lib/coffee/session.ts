@@ -86,7 +86,8 @@ export async function verifyAndExtractSession(
       const issuedAt = Number(parsed.iat)
       const lastActivity = Number(parsed.act)
       if (!Number.isSafeInteger(issuedAt) || !Number.isSafeInteger(lastActivity)) return null
-      if (issuedAt > now || lastActivity > now) return null
+      // Allow 60s clock skew for multi-core / worker synchronization
+      if (issuedAt > now + 60_000 || lastActivity > now + 60_000) return null
       if (now - issuedAt > absoluteTimeoutMs || now - lastActivity > idleTimeoutMs) return null
 
       return {
@@ -108,7 +109,7 @@ export async function verifyAndExtractSession(
   const issuedAt = Number(issuedValue)
   const lastActivity = Number(activityValue)
   if (!Number.isSafeInteger(issuedAt) || !Number.isSafeInteger(lastActivity)) return null
-  if (issuedAt > now || lastActivity > now || now - issuedAt > absoluteTimeoutMs || now - lastActivity > idleTimeoutMs) return null
+  if (issuedAt > now + 60_000 || lastActivity > now + 60_000 || now - issuedAt > absoluteTimeoutMs || now - lastActivity > idleTimeoutMs) return null
   const payload = `${issuedAt}.${lastActivity}`
   if (!(await verify(payload, signature))) return null
 

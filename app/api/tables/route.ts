@@ -27,6 +27,11 @@ export async function POST(req: Request) {
     const { action, tableId, tableName, status, guestInfo, orderNumber, orderTotal, guestName, department } = body
     const targetId = tableId || tableName
 
+    // Takeaway or Delivery orders do not occupy physical floor dining tables
+    if (!targetId || targetId.toLowerCase().includes("takeaway") || targetId.toLowerCase().includes("delivery")) {
+      return NextResponse.json({ success: true, status: "available", message: "Takeaway/delivery does not occupy physical tables." })
+    }
+
     if (action === "occupy") {
       if (!targetId) {
         return NextResponse.json({ success: false, error: "Table identifier is required" }, { status: 400 })

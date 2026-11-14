@@ -14,7 +14,7 @@ const productCreateSchema = z.object({
   category_id: z.string().uuid().nullable().optional(),
   category: z.string().trim().max(80).optional(),
   station: z.enum(["kitchen", "bar", "none"]).optional(),
-  image: z.string().trim().max(2048).optional(),
+  image: z.string().trim().max(5000000).optional(),
   description: z.string().trim().max(1000).optional(),
   temperature: z.enum(["hot", "iced", "cold", "none"]).default("none"),
   dietary_tags: z.array(z.string()).default([]),

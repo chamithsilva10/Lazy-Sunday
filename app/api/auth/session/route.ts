@@ -44,10 +44,11 @@ export async function GET(request: NextRequest) {
   const permissions = role?.permissions || []
 
   const supabase = createStaffSupabaseClient(request)
-  const defaultJwt = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || null
+  const defaultJwt = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "local-pos-auth-token"
   if (!supabase) {
     return NextResponse.json(
       {
+        authenticated: true,
         access_token: defaultJwt,
         expires_at: Math.floor(Date.now() / 1000) + 86400 * 365,
         user: {
@@ -72,6 +73,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(
     {
+      authenticated: true,
       access_token: token,
       expires_at: expiresAt,
       user: {

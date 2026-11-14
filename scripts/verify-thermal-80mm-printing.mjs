@@ -38,8 +38,8 @@ assert(
   "thermal-printer.ts must support Kitchen Order Ticket (KOT)"
 )
 assert(
-  thermalPrinterSrc.includes("ABC COFFEE"),
-  "thermal-printer.ts must default to ABC COFFEE branding matching reference receipt"
+  thermalPrinterSrc.includes("LAZY SUNDAY"),
+  "thermal-printer.ts must default to LAZY SUNDAY branding"
 )
 assert(
   thermalPrinterSrc.includes("SPECIALTY COFFEE"),
@@ -86,8 +86,8 @@ assert(
   "components/ui/pos-receipt.tsx must include print:w-[72mm]"
 )
 assert(
-  posReceiptSrc.includes("ABC COFFEE"),
-  "components/ui/pos-receipt.tsx must support ABC COFFEE header"
+  posReceiptSrc.includes("LAZY SUNDAY"),
+  "components/ui/pos-receipt.tsx must support LAZY SUNDAY header"
 )
 assert(
   posReceiptSrc.includes("Good coffee. Good day."),

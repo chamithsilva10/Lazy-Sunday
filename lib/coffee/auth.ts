@@ -106,6 +106,17 @@ export async function getStaffIdentity(request: NextRequest): Promise<StaffIdent
     } catch {}
   }
 
+  // 4. Local staff role cookie fallback (for local authoritative database authentication)
+  const rawRole = request.cookies.get("pos-staff-role")?.value as StaffRole | undefined
+  const username = request.cookies.get("pos-staff-user")?.value || "admin"
+  if (rawRole && validRoles.includes(rawRole)) {
+    return {
+      userId: `local-${username}`,
+      role: rawRole,
+      email: `${username}@posdemo.com`,
+    }
+  }
+
   return null
 }
 

@@ -52,7 +52,7 @@ export interface ThermalTicketOrder {
 }
 
 /**
- * Print modern 80mm Guest Bill, Tax Invoice, or Customer Receipt matching minimalist ABC Coffee design
+ * Print modern 80mm Guest Bill, Tax Invoice, or Customer Receipt matching minimalist Lazy Sunday design
  */
 export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBill = false) {
   if (!orderData) return
@@ -63,9 +63,9 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
     return
   }
 
-  const brandName = orderData.brand_name || "ABC COFFEE"
-  const brandSubtitle = orderData.brand_subtitle || "SPECIALTY COFFEE"
-  const brandAddress = orderData.brand_address || "123, Main Street"
+  const brandName = orderData.brand_name || "LAZY SUNDAY"
+  const brandSubtitle = orderData.brand_subtitle || "RESTAURANT & BAR"
+  const brandAddress = orderData.brand_address || "Tel: +94 76 912 9153"
   const currency = orderData.currency || "LKR"
 
   const d = new Date(orderData.created_at || Date.now())
@@ -206,18 +206,13 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
       </head>
       <body>
         <div style="text-align: center; margin-bottom: 10px;">
-          <!-- Sleek Tilted Coffee Bean Icon -->
-          <svg width="26" height="30" viewBox="0 0 100 100" fill="#000" style="display: block; margin: 0 auto 6px auto; transform: rotate(-22deg);">
-            <path d="M48,8 C28,10 14,28 14,50 C14,64 22,78 34,88 C38,82 40,72 40,62 C40,46 32,36 38,22 C41,15 45,10 48,8 Z" />
-            <path d="M54,8 C56,12 58,18 56,26 C52,40 60,50 60,66 C60,76 56,86 52,92 C72,88 86,72 86,50 C86,30 72,12 54,8 Z" />
-          </svg>
           <div style="font-size: 19px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #000; margin-top: 2px;">
             ${brandName}
           </div>
           <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: #000; margin-top: 4px;">
             ${brandSubtitle}
           </div>
-          <div style="font-size: 10px; color: #333; margin-top: 4px; letter-spacing: 0.05em;">
+          <div style="font-size: 10px; color: #333; margin-top: 4px; letter-spacing: 0.05em; font-weight: 500;">
             ${brandAddress}
           </div>
         </div>
@@ -316,7 +311,7 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
 }
 
 /**
- * Print modern 80mm Kitchen (KOT) or Bar (BOT) Order Ticket matching minimalist ABC Coffee design
+ * Print modern 80mm Kitchen (KOT) or Bar (BOT) Order Ticket matching minimalist Lazy Sunday design
  */
 export function printTicketSlipDoc(
   order: ThermalTicketOrder,
@@ -333,9 +328,9 @@ export function printTicketSlipDoc(
     return
   }
 
-  const brandName = order.brand_name || "ABC COFFEE"
+  const brandName = order.brand_name || "LAZY SUNDAY"
   const stationTitle = station === "bar" ? "BAR ORDER TICKET" : "KITCHEN ORDER TICKET"
-  const brandAddress = order.brand_address || "123, Main Street"
+  const brandAddress = order.brand_address || "Tel: +94 76 912 9153"
 
   const d = new Date(order.created_at || Date.now())
   const day = d.getDate().toString().padStart(2, "0")
@@ -371,20 +366,14 @@ export function printTicketSlipDoc(
 
   const totalItems = order.items.reduce((s, i) => s + (i.quantity || 1), 0)
 
-  const iconSvg = station === "bar"
+  const iconSvg = station === "kitchen"
     ? `
-      <!-- Sleek Tilted Coffee Bean Icon -->
-      <svg width="26" height="30" viewBox="0 0 100 100" fill="#000" style="display: block; margin: 0 auto 6px auto; transform: rotate(-22deg);">
-        <path d="M48,8 C28,10 14,28 14,50 C14,64 22,78 34,88 C38,82 40,72 40,62 C40,46 32,36 38,22 C41,15 45,10 48,8 Z" />
-        <path d="M54,8 C56,12 58,18 56,26 C52,40 60,50 60,66 C60,76 56,86 52,92 C72,88 86,72 86,50 C86,30 72,12 54,8 Z" />
-      </svg>
-    `
-    : `
       <!-- Sleek Restaurant Cutlery Icon -->
       <svg width="26" height="26" viewBox="0 0 24 24" fill="#000" style="display: block; margin: 0 auto 6px auto;">
         <path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>
       </svg>
     `
+    : ""
 
   popup.document.write(`
     <!DOCTYPE html>

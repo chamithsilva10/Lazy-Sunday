@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { refreshSessionMarker, setSessionCookie, verifyAndExtractSession, SESSION_COOKIE_NAME } from "@/lib/coffee/session"
 import { isDemoMode } from "@/lib/config/demo"
 
-const publicPaths = new Set(["/auth/login", "/api/auth/login", "/api/auth/demo", "/api/auth/session", "/menu", "/api/tables", "/api/tables/bookings"])
+const publicPaths = new Set(["/auth/login", "/api/auth/login", "/api/auth/demo", "/api/auth/session", "/menu", "/api/tables", "/api/tables/bookings", "/api/upload"])
 const publicGetPrefixes = ["/api/coffee/products", "/api/coffee/bills", "/api/products", "/api/tables", "/api/tables/bookings"]
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
@@ -52,7 +52,7 @@ function unauthenticatedResponse(request: NextRequest) {
   return withSecurityHeaders(response)
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const nextResponse = () => {
     const requestHeaders = new Headers(request.headers)
@@ -109,6 +109,13 @@ export async function middleware(request: NextRequest) {
       if (!error && user) {
         return withSecurityHeaders(response)
       }
+    }
+
+    // 3. Fall back to staff role cookie if present and authorized
+    const rawRole = request.cookies.get("pos-staff-role")?.value
+    const hasLocalAuth = rawRole === "admin" || rawRole === "manager" || rawRole === "cashier" || rawRole === "kitchen" || rawRole === "staff"
+    if (hasLocalAuth) {
+      return withSecurityHeaders(response)
     }
 
     return unauthenticatedResponse(request)

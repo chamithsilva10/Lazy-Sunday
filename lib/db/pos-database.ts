@@ -446,10 +446,15 @@ export const PosDatabase = {
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
-      const table = await this.findTable(tableIdOrName)
+      let table = await this.findTable(tableIdOrName)
       if (!table) {
-        await client.query("ROLLBACK")
-        return { success: false, error: `Table '${tableIdOrName}' not found.` }
+        const cleanName = tableIdOrName ? String(tableIdOrName).trim() : "Table"
+        const newId = crypto.randomUUID()
+        const inserted = await client.query(
+          "INSERT INTO pos_tables (id, name, capacity, status, current_order_id) VALUES ($1, $2, 4, 'occupied', NULL) RETURNING *",
+          [newId, cleanName]
+        )
+        table = inserted.rows[0]
       }
 
       const existingSession = (await client.query(
@@ -498,10 +503,15 @@ export const PosDatabase = {
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
-      const table = await this.findTable(tableIdOrName)
+      let table = await this.findTable(tableIdOrName)
       if (!table) {
-        await client.query("ROLLBACK")
-        return { success: false, error: `Table '${tableIdOrName}' not found.` }
+        const cleanName = tableIdOrName ? String(tableIdOrName).trim() : "Table"
+        const newId = crypto.randomUUID()
+        const inserted = await client.query(
+          "INSERT INTO pos_tables (id, name, capacity, status, current_order_id) VALUES ($1, $2, 4, 'occupied', NULL) RETURNING *",
+          [newId, cleanName]
+        )
+        table = inserted.rows[0]
       }
 
       const existingSession = (await client.query(
@@ -541,10 +551,15 @@ export const PosDatabase = {
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
-      const table = await this.findTable(tableIdOrName)
+      let table = await this.findTable(tableIdOrName)
       if (!table) {
-        await client.query("ROLLBACK")
-        return { success: false, error: `Table '${tableIdOrName}' not found.` }
+        const cleanName = tableIdOrName ? String(tableIdOrName).trim() : "Table"
+        const newId = crypto.randomUUID()
+        const inserted = await client.query(
+          "INSERT INTO pos_tables (id, name, capacity, status, current_order_id) VALUES ($1, $2, 4, 'occupied', NULL) RETURNING *",
+          [newId, cleanName]
+        )
+        table = inserted.rows[0]
       }
 
       await client.query(
@@ -565,8 +580,17 @@ export const PosDatabase = {
 
   async updateTableStatus(tableIdOrName: string, status: string): Promise<boolean> {
     const pool = getPgPool()
-    const table = await this.findTable(tableIdOrName)
-    if (!table) return false
+    let table = await this.findTable(tableIdOrName)
+    if (!table) {
+      const cleanName = tableIdOrName ? String(tableIdOrName).trim() : "Table"
+      const newId = crypto.randomUUID()
+      const inserted = await pool.query(
+        "INSERT INTO pos_tables (id, name, capacity, status, current_order_id) VALUES ($1, $2, 4, $3, NULL) RETURNING *",
+        [newId, cleanName, status]
+      )
+      table = inserted.rows[0]
+      return true
+    }
     await pool.query("UPDATE pos_tables SET status = $1 WHERE id = $2", [status, table.id])
     return true
   },

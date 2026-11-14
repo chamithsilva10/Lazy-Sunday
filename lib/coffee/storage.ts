@@ -4,176 +4,239 @@ import { createStaffSupabaseClient } from "./auth"
 
 export const INITIAL_COFFEE_PRODUCTS: CoffeeProduct[] = [
   {
-    id: "cof-prod-1",
-    name: "Espresso Single",
-    category: "Espresso",
-    size: "Single",
-    price: 550,
-    image_url: "/latte-coffee.png",
-    status: "active",
+    "id": "c-prod-101",
+    "name": "Ristretto",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 500,
+    "image_url": "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-2",
-    name: "Espresso Double",
-    category: "Espresso",
-    size: "Double",
-    price: 750,
-    image_url: "/latte-coffee.png",
-    status: "active",
+    "id": "c-prod-102",
+    "name": "Espresso",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 500,
+    "image_url": "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-3",
-    name: "Caffe Latte",
-    category: "Milk Coffee",
-    size: "Regular",
-    price: 850,
-    image_url: "/latte-coffee.png",
-    status: "active",
+    "id": "c-prod-103",
+    "name": "Long Black",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 650,
+    "image_url": "https://images.unsplash.com/photo-1551030173-122aabc4489c?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-4",
-    name: "Cappuccino",
-    category: "Milk Coffee",
-    size: "Regular",
-    price: 800,
-    image_url: "/latte-coffee.png",
-    status: "active",
+    "id": "c-prod-104",
+    "name": "Flat White",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 750,
+    "image_url": "https://images.unsplash.com/photo-1577968897966-3d4325b36b61?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-5",
-    name: "Flat White",
-    category: "Milk Coffee",
-    size: "Regular",
-    price: 850,
-    image_url: "/latte-coffee.png",
-    status: "active",
+    "id": "c-prod-105",
+    "name": "Cappuccino",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 750,
+    "image_url": "https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-6",
-    name: "Americano",
-    category: "Black Coffee",
-    size: "Large",
-    price: 650,
-    image_url: "/latte-coffee.png",
-    status: "active",
+    "id": "c-prod-106",
+    "name": "Latte",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 800,
+    "image_url": "/latte-coffee.png",
+    "status": "active"
   },
   {
-    id: "cof-prod-7",
-    name: "Caramel Macchiato",
-    category: "Specialty",
-    size: "Large",
-    price: 950,
-    image_url: "/latte-coffee.png",
-    status: "active",
+    "id": "c-prod-107",
+    "name": "Mocha",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 950,
+    "image_url": "https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-8",
-    name: "Iced Vanilla Latte",
-    category: "Cold Coffee",
-    size: "Large",
-    price: 950,
-    image_url: "/iced-tea.png",
-    status: "active",
+    "id": "c-prod-108",
+    "name": "V60 Pour Over",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 1100,
+    "image_url": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-9",
-    name: "Cold Brew Reserve",
-    category: "Cold Coffee",
-    size: "Regular",
-    price: 900,
-    image_url: "/iced-tea.png",
-    status: "active",
+    "id": "c-prod-109",
+    "name": "Matcha Latte",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 950,
+    "image_url": "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-10",
-    name: "Seasonal Mocha Frappe",
-    category: "Blended",
-    size: "Large",
-    price: 1100,
-    image_url: "/ice-cream-sundae.png",
-    status: "inactive",
+    "id": "c-prod-110",
+    "name": "Chocolate",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 900,
+    "image_url": "https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-11",
-    name: "Mocha",
-    category: "Hot Coffee",
-    size: "Regular",
-    price: 1200,
-    image_url: "/latte-coffee.png",
-    status: "active",
+    "id": "c-prod-111",
+    "name": "Ceylon Breakfast",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 400,
+    "image_url": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-12",
-    name: "Bumble Coffee",
-    category: "Specialty",
-    size: "Regular",
-    price: 1200,
-    image_url: "/latte-coffee.png",
-    status: "active",
+    "id": "c-prod-112",
+    "name": "Green Tea",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 450,
+    "image_url": "https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-13",
-    name: "Espresso Tonic",
-    category: "Specialty",
-    size: "Regular",
-    price: 1000,
-    image_url: "/iced-tea.png",
-    status: "active",
+    "id": "c-prod-113",
+    "name": "Ginger & Lemongrass",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 450,
+    "image_url": "https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-14",
-    name: "Matcha Latte",
-    category: "Cold Coffee",
-    size: "Regular",
-    price: 800,
-    image_url: "/iced-tea.png",
-    status: "active",
+    "id": "c-prod-114",
+    "name": "Chai",
+    "category": "Coffee & Hot Drinks",
+    "size": "Regular",
+    "price": 650,
+    "image_url": "https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-15",
-    name: "Iced Cappuccino",
-    category: "Cold Coffee",
-    size: "Regular",
-    price: 800,
-    image_url: "/iced-tea.png",
-    status: "active",
+    "id": "c-prod-115",
+    "name": "Mango Matcha",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 1050,
+    "image_url": "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-16",
-    name: "Iced Latte",
-    category: "Cold Coffee",
-    size: "Regular",
-    price: 900,
-    image_url: "/iced-tea.png",
-    status: "active",
+    "id": "c-prod-116",
+    "name": "King Coconut",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 450,
+    "image_url": "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-17",
-    name: "Iced Americano",
-    category: "Cold Coffee",
-    size: "Regular",
-    price: 700,
-    image_url: "/iced-tea.png",
-    status: "active",
+    "id": "c-prod-117",
+    "name": "House Lime Soda",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 650,
+    "image_url": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-18",
-    name: "Iced Matcha Latte",
-    category: "Cold Coffee",
-    size: "Regular",
-    price: 1000,
-    image_url: "/iced-tea.png",
-    status: "active",
+    "id": "c-prod-118",
+    "name": "House Pineapple & Mint Soda",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 750,
+    "image_url": "https://images.unsplash.com/photo-1546173159-315724a31696?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
   {
-    id: "cof-prod-19",
-    name: "Coffee V60",
-    category: "Specialty",
-    size: "Regular",
-    price: 1100,
-    image_url: "/latte-coffee.png",
-    status: "active",
+    "id": "c-prod-119",
+    "name": "Passion Soda",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 750,
+    "image_url": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
   },
+  {
+    "id": "c-prod-120",
+    "name": "Mango Smoothie",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 950,
+    "image_url": "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
+  },
+  {
+    "id": "c-prod-121",
+    "name": "Peanut Butter Shake",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 1100,
+    "image_url": "https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
+  },
+  {
+    "id": "c-prod-122",
+    "name": "Pani Dodang & Sea Salt",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 750,
+    "image_url": "/glass-of-orange-juice.png",
+    "status": "active"
+  },
+  {
+    "id": "c-prod-123",
+    "name": "Ginger Lemonade",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 750,
+    "image_url": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
+  },
+  {
+    "id": "c-prod-124",
+    "name": "Peach & Mango Iced Tea",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 800,
+    "image_url": "/iced-tea.png",
+    "status": "active"
+  },
+  {
+    "id": "c-prod-125",
+    "name": "Salted Coconut & Lime Sparkling",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 800,
+    "image_url": "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?auto=format&fit=crop&w=600&q=80",
+    "status": "active"
+  },
+  {
+    "id": "c-prod-126",
+    "name": "Sparkling Water",
+    "category": "Cold Drinks",
+    "size": "Regular",
+    "price": 500,
+    "image_url": "/bottled-water.png",
+    "status": "active"
+  }
 ]
 
 const LOCAL_PRODUCTS_KEY = "pos_coffee_products"
@@ -181,7 +244,7 @@ const LOCAL_BILLS_KEY = "pos_coffee_bills"
 const LOCAL_COUNTER_KEY = "pos_coffee_bill_counter"
 
 // Memory cache for server-side route handlers or offline execution
-let memoryProducts: CoffeeProduct[] = [...INITIAL_COFFEE_PRODUCTS]
+let memoryProducts: CoffeeProduct[] = []
 let memoryBills: CoffeeBill[] = []
 let memoryCounter = 1001
 
@@ -210,9 +273,9 @@ export class CoffeeStorageService {
     if (this.isBrowser()) {
       try {
         const local = localStorage.getItem(LOCAL_PRODUCTS_KEY)
-        if (local) {
+        if (local !== null) {
           const parsed = JSON.parse(local)
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed
+          if (Array.isArray(parsed)) return parsed
         }
       } catch {}
     }

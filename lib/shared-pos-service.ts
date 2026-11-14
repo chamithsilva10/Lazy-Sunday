@@ -402,169 +402,2021 @@ export const DEFAULT_TABLES: SharedTable[] = [
 ]
 
 export const DEFAULT_CATEGORIES: SharedCategory[] = [
-  { id: "cat-tea", name: "Tea", sort_order: 1 },
-  { id: "cat-hot-coffee", name: "Hot Coffee", sort_order: 2 },
-  { id: "cat-cold-coffee", name: "Cold Coffee", sort_order: 3 },
-  { id: "cat-coffee", name: "Coffee & Tea", sort_order: 4 },
-  { id: "cat-juices", name: "Fresh Juices", sort_order: 5 },
-  { id: "cat-smoothies", name: "Smoothies & Shakes", sort_order: 6 },
-  { id: "cat-beverages", name: "Beverages", sort_order: 7 },
-  { id: "cat-morning-breath", name: "Morning Breath", sort_order: 8 },
-  { id: "cat-mains", name: "Mains", sort_order: 9 },
-  { id: "cat-mains-sandwiches", name: "Mains & Sandwiches", sort_order: 10 },
-  { id: "cat-handheld", name: "Handheld", sort_order: 11 },
-  { id: "cat-appetizer", name: "Appetizer", sort_order: 12 },
-  { id: "cat-salad", name: "Salad", sort_order: 13 },
-  { id: "cat-soup", name: "Soup", sort_order: 14 },
-  { id: "cat-trendy-catchy", name: "Trendy and Catchy", sort_order: 15 },
-  { id: "cat-snacks", name: "Snacks & Bites", sort_order: 16 },
-  { id: "cat-desserts", name: "Desserts", sort_order: 17 },
-  { id: "cat-addons", name: "Add-ons", sort_order: 18 },
+  {
+    "id": "cat-coffee-hot-drinks",
+    "name": "Coffee & Hot Drinks",
+    "sort_order": 1
+  },
+  {
+    "id": "cat-cold-drinks",
+    "name": "Cold Drinks",
+    "sort_order": 2
+  },
+  {
+    "id": "cat-meals",
+    "name": "Meals",
+    "sort_order": 3
+  },
+  {
+    "id": "cat-salads",
+    "name": "Salads",
+    "sort_order": 4
+  },
+  {
+    "id": "cat-bakery-desserts",
+    "name": "Bakery & Desserts",
+    "sort_order": 5
+  }
 ]
 
 export const DEFAULT_INGREDIENT_CATEGORIES: SharedIngredientCategory[] = [
-  { id: "eab0bccf-7b81-46e4-bb72-660737351286", name: "Coffee & Tea", sort_order: 11 },
-  { id: "c082d036-cfc7-48a6-9545-a2b4fe312af3", name: "Dairy", sort_order: 20 },
-  { id: "2f6447ed-18e0-413b-88c4-4319526d1c74", name: "Produce", sort_order: 30 },
-  { id: "c9b2ba48-f806-4114-b274-c48f884972d6", name: "Dry Goods", sort_order: 40 },
-  { id: "32a8a941-541f-49e5-a638-7fe49fe4ea25", name: "Meat & Seafood", sort_order: 51 },
-  { id: "65ff45b9-9ff0-40df-8945-9c4e9706162b", name: "Beverages", sort_order: 61 },
-  { id: "d7671ae1-cc7c-40c0-a947-a78019b41925", name: "Packaging", sort_order: 70 },
-  { id: "59f18c82-5aa9-4a18-83d7-d5c2ef71f3fe", name: "Cleaning", sort_order: 80 },
+  {
+    "id": "ing-cat-coffee-tea",
+    "name": "Coffee & Teas",
+    "sort_order": 1
+  },
+  {
+    "id": "ing-cat-dairy",
+    "name": "Dairy & Alternatives",
+    "sort_order": 2
+  },
+  {
+    "id": "ing-cat-beverages",
+    "name": "Beverages & Sodas",
+    "sort_order": 3
+  },
+  {
+    "id": "ing-cat-produce",
+    "name": "Produce & Fresh Herbs",
+    "sort_order": 4
+  },
+  {
+    "id": "ing-cat-meat",
+    "name": "Meat & Poultry",
+    "sort_order": 5
+  },
+  {
+    "id": "ing-cat-bakery-dry",
+    "name": "Bakery & Dry Goods",
+    "sort_order": 6
+  }
 ]
 
-export const DEFAULT_INGREDIENTS: SharedIngredient[] = []
+export const DEFAULT_INGREDIENTS: SharedIngredient[] = [
+  {
+    "id": "ing-espresso-beans",
+    "name": "Espresso Coffee Beans",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 15000,
+    "reorder_level_base": 3000,
+    "category_id": "ing-cat-coffee-tea"
+  },
+  {
+    "id": "ing-v60-beans",
+    "name": "Single Origin V60 Coffee Beans",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 5000,
+    "reorder_level_base": 1000,
+    "category_id": "ing-cat-coffee-tea"
+  },
+  {
+    "id": "ing-matcha-powder",
+    "name": "Ceremonial Matcha Powder",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "g",
+    "current_stock_base": 2000,
+    "reorder_level_base": 500,
+    "category_id": "ing-cat-coffee-tea"
+  },
+  {
+    "id": "ing-cocoa-powder",
+    "name": "Artisanal Cocoa / Chocolate",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 5000,
+    "reorder_level_base": 1000,
+    "category_id": "ing-cat-coffee-tea"
+  },
+  {
+    "id": "ing-black-tea",
+    "name": "Ceylon Breakfast Tea Leaves",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 3000,
+    "reorder_level_base": 500,
+    "category_id": "ing-cat-coffee-tea"
+  },
+  {
+    "id": "ing-green-tea",
+    "name": "Green Tea Leaves",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 2000,
+    "reorder_level_base": 400,
+    "category_id": "ing-cat-coffee-tea"
+  },
+  {
+    "id": "ing-lemongrass-ginger",
+    "name": "Dried Lemongrass & Ginger",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 2000,
+    "reorder_level_base": 400,
+    "category_id": "ing-cat-coffee-tea"
+  },
+  {
+    "id": "ing-chai-spices",
+    "name": "Chai Spice Blend",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 2500,
+    "reorder_level_base": 500,
+    "category_id": "ing-cat-coffee-tea"
+  },
+  {
+    "id": "ing-cow-milk",
+    "name": "Fresh Cow Milk",
+    "dimension": "volume",
+    "base_unit": "ml",
+    "default_purchase_unit": "l",
+    "current_stock_base": 40000,
+    "reorder_level_base": 10000,
+    "category_id": "ing-cat-dairy"
+  },
+  {
+    "id": "ing-oat-milk",
+    "name": "Oat Milk",
+    "dimension": "volume",
+    "base_unit": "ml",
+    "default_purchase_unit": "l",
+    "current_stock_base": 20000,
+    "reorder_level_base": 5000,
+    "category_id": "ing-cat-dairy"
+  },
+  {
+    "id": "ing-coconut-milk",
+    "name": "Coconut Milk",
+    "dimension": "volume",
+    "base_unit": "ml",
+    "default_purchase_unit": "l",
+    "current_stock_base": 15000,
+    "reorder_level_base": 4000,
+    "category_id": "ing-cat-dairy"
+  },
+  {
+    "id": "ing-butter",
+    "name": "Salted Butter",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 5000,
+    "reorder_level_base": 1500,
+    "category_id": "ing-cat-dairy"
+  },
+  {
+    "id": "ing-ice-cream",
+    "name": "Vanilla Bean Ice Cream",
+    "dimension": "volume",
+    "base_unit": "ml",
+    "default_purchase_unit": "l",
+    "current_stock_base": 8000,
+    "reorder_level_base": 2000,
+    "category_id": "ing-cat-dairy"
+  },
+  {
+    "id": "ing-cheddar",
+    "name": "Aged Cheddar Cheese",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 4000,
+    "reorder_level_base": 1000,
+    "category_id": "ing-cat-dairy"
+  },
+  {
+    "id": "ing-feta",
+    "name": "Feta Cheese",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 3000,
+    "reorder_level_base": 800,
+    "category_id": "ing-cat-dairy"
+  },
+  {
+    "id": "ing-soda-water",
+    "name": "Soda Water",
+    "dimension": "volume",
+    "base_unit": "ml",
+    "default_purchase_unit": "l",
+    "current_stock_base": 30000,
+    "reorder_level_base": 8000,
+    "category_id": "ing-cat-beverages"
+  },
+  {
+    "id": "ing-sozo-pani-dodang",
+    "name": "SOZO Pani Dodang & Sea Salt",
+    "dimension": "count",
+    "base_unit": "pcs",
+    "default_purchase_unit": "pcs",
+    "current_stock_base": 48,
+    "reorder_level_base": 12,
+    "category_id": "ing-cat-beverages"
+  },
+  {
+    "id": "ing-sozo-ginger-lemonade",
+    "name": "SOZO Ginger Lemonade",
+    "dimension": "count",
+    "base_unit": "pcs",
+    "default_purchase_unit": "pcs",
+    "current_stock_base": 48,
+    "reorder_level_base": 12,
+    "category_id": "ing-cat-beverages"
+  },
+  {
+    "id": "ing-sozo-iced-tea",
+    "name": "SOZO Peach & Mango Iced Tea",
+    "dimension": "count",
+    "base_unit": "pcs",
+    "default_purchase_unit": "pcs",
+    "current_stock_base": 48,
+    "reorder_level_base": 12,
+    "category_id": "ing-cat-beverages"
+  },
+  {
+    "id": "ing-sozo-salted-coconut",
+    "name": "SOZO Salted Coconut & Lime Sparkling",
+    "dimension": "count",
+    "base_unit": "pcs",
+    "default_purchase_unit": "pcs",
+    "current_stock_base": 48,
+    "reorder_level_base": 12,
+    "category_id": "ing-cat-beverages"
+  },
+  {
+    "id": "ing-sozo-sparkling-water",
+    "name": "SOZO Sparkling Water",
+    "dimension": "count",
+    "base_unit": "pcs",
+    "default_purchase_unit": "pcs",
+    "current_stock_base": 60,
+    "reorder_level_base": 15,
+    "category_id": "ing-cat-beverages"
+  },
+  {
+    "id": "ing-king-coconuts",
+    "name": "Fresh King Coconuts",
+    "dimension": "count",
+    "base_unit": "pcs",
+    "default_purchase_unit": "pcs",
+    "current_stock_base": 35,
+    "reorder_level_base": 10,
+    "category_id": "ing-cat-produce"
+  },
+  {
+    "id": "ing-limes",
+    "name": "Fresh Limes",
+    "dimension": "count",
+    "base_unit": "pcs",
+    "default_purchase_unit": "pcs",
+    "current_stock_base": 80,
+    "reorder_level_base": 20,
+    "category_id": "ing-cat-produce"
+  },
+  {
+    "id": "ing-pineapples",
+    "name": "Fresh Pineapples",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 8000,
+    "reorder_level_base": 2000,
+    "category_id": "ing-cat-produce"
+  },
+  {
+    "id": "ing-mint",
+    "name": "Fresh Mint Leaves",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "g",
+    "current_stock_base": 1000,
+    "reorder_level_base": 300,
+    "category_id": "ing-cat-produce"
+  },
+  {
+    "id": "ing-passionfruit",
+    "name": "Passionfruit Pulp",
+    "dimension": "volume",
+    "base_unit": "ml",
+    "default_purchase_unit": "l",
+    "current_stock_base": 5000,
+    "reorder_level_base": 1500,
+    "category_id": "ing-cat-produce"
+  },
+  {
+    "id": "ing-mangoes",
+    "name": "Ripe Mangoes",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 10000,
+    "reorder_level_base": 2500,
+    "category_id": "ing-cat-produce"
+  },
+  {
+    "id": "ing-bananas",
+    "name": "Fresh Bananas",
+    "dimension": "count",
+    "base_unit": "pcs",
+    "default_purchase_unit": "pcs",
+    "current_stock_base": 50,
+    "reorder_level_base": 15,
+    "category_id": "ing-cat-produce"
+  },
+  {
+    "id": "ing-mushrooms",
+    "name": "Button & Oyster Mushrooms",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 4000,
+    "reorder_level_base": 1000,
+    "category_id": "ing-cat-produce"
+  },
+  {
+    "id": "ing-mixed-greens",
+    "name": "Salad Mixed Greens",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 3500,
+    "reorder_level_base": 1000,
+    "category_id": "ing-cat-produce"
+  },
+  {
+    "id": "ing-karipincha",
+    "name": "Fresh Curry Leaves (Karipincha)",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "g",
+    "current_stock_base": 800,
+    "reorder_level_base": 200,
+    "category_id": "ing-cat-produce"
+  },
+  {
+    "id": "ing-bacon",
+    "name": "Smoked Bacon Rashers",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 6000,
+    "reorder_level_base": 1500,
+    "category_id": "ing-cat-meat"
+  },
+  {
+    "id": "ing-chicken",
+    "name": "Chicken Breast Fillets",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 8000,
+    "reorder_level_base": 2000,
+    "category_id": "ing-cat-meat"
+  },
+  {
+    "id": "ing-eggs",
+    "name": "Farm Fresh Eggs",
+    "dimension": "count",
+    "base_unit": "pcs",
+    "default_purchase_unit": "pcs",
+    "current_stock_base": 120,
+    "reorder_level_base": 30,
+    "category_id": "ing-cat-meat"
+  },
+  {
+    "id": "ing-sourdough",
+    "name": "Sourdough Bread Slices",
+    "dimension": "count",
+    "base_unit": "pcs",
+    "default_purchase_unit": "pcs",
+    "current_stock_base": 60,
+    "reorder_level_base": 15,
+    "category_id": "ing-cat-bakery-dry"
+  },
+  {
+    "id": "ing-hashbrowns",
+    "name": "Hashbrown Patties",
+    "dimension": "count",
+    "base_unit": "pcs",
+    "default_purchase_unit": "pcs",
+    "current_stock_base": 50,
+    "reorder_level_base": 15,
+    "category_id": "ing-cat-bakery-dry"
+  },
+  {
+    "id": "ing-fries",
+    "name": "French Fries",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 10000,
+    "reorder_level_base": 2500,
+    "category_id": "ing-cat-bakery-dry"
+  },
+  {
+    "id": "ing-fusilli",
+    "name": "Fusilli Pasta",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 5000,
+    "reorder_level_base": 1500,
+    "category_id": "ing-cat-bakery-dry"
+  },
+  {
+    "id": "ing-chickpeas",
+    "name": "Cooked Chickpeas",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 4000,
+    "reorder_level_base": 1000,
+    "category_id": "ing-cat-bakery-dry"
+  },
+  {
+    "id": "ing-pesto",
+    "name": "Basil Pesto Sauce",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 2500,
+    "reorder_level_base": 600,
+    "category_id": "ing-cat-bakery-dry"
+  },
+  {
+    "id": "ing-peanut-butter",
+    "name": "Peanut Butter",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 3000,
+    "reorder_level_base": 800,
+    "category_id": "ing-cat-bakery-dry"
+  },
+  {
+    "id": "ing-rolled-oats",
+    "name": "Rolled Oats",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 5000,
+    "reorder_level_base": 1000,
+    "category_id": "ing-cat-bakery-dry"
+  },
+  {
+    "id": "ing-choc-chips",
+    "name": "Dark Chocolate Chips",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 4000,
+    "reorder_level_base": 1000,
+    "category_id": "ing-cat-bakery-dry"
+  },
+  {
+    "id": "ing-pancake-mix",
+    "name": "Pancake Flour & Batter Mix",
+    "dimension": "weight",
+    "base_unit": "g",
+    "default_purchase_unit": "kg",
+    "current_stock_base": 6000,
+    "reorder_level_base": 1500,
+    "category_id": "ing-cat-bakery-dry"
+  }
+]
 
-export const DEFAULT_RECIPES: Record<string, SharedRecipeItem[]> = {}
+export const DEFAULT_RECIPES: Record<string, SharedRecipeItem[]> = {
+  "prod-101": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    }
+  ],
+  "Ristretto": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    }
+  ],
+  "prod-102": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    }
+  ],
+  "Espresso": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    }
+  ],
+  "prod-103": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    }
+  ],
+  "Long Black": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    }
+  ],
+  "prod-104": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 180
+    }
+  ],
+  "Flat White": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 180
+    }
+  ],
+  "prod-105": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 160
+    }
+  ],
+  "Cappuccino": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 160
+    }
+  ],
+  "prod-106": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 220
+    }
+  ],
+  "Latte": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 220
+    }
+  ],
+  "prod-107": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    },
+    {
+      "ingredient_id": "ing-cocoa-powder",
+      "quantity_base": 30
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 200
+    }
+  ],
+  "Mocha": [
+    {
+      "ingredient_id": "ing-espresso-beans",
+      "quantity_base": 18
+    },
+    {
+      "ingredient_id": "ing-cocoa-powder",
+      "quantity_base": 30
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 200
+    }
+  ],
+  "prod-108": [
+    {
+      "ingredient_id": "ing-v60-beans",
+      "quantity_base": 15
+    }
+  ],
+  "V60 Pour Over": [
+    {
+      "ingredient_id": "ing-v60-beans",
+      "quantity_base": 15
+    }
+  ],
+  "prod-109": [
+    {
+      "ingredient_id": "ing-matcha-powder",
+      "quantity_base": 5
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 200
+    }
+  ],
+  "Matcha Latte": [
+    {
+      "ingredient_id": "ing-matcha-powder",
+      "quantity_base": 5
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 200
+    }
+  ],
+  "prod-110": [
+    {
+      "ingredient_id": "ing-cocoa-powder",
+      "quantity_base": 40
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 220
+    }
+  ],
+  "Chocolate": [
+    {
+      "ingredient_id": "ing-cocoa-powder",
+      "quantity_base": 40
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 220
+    }
+  ],
+  "prod-111": [
+    {
+      "ingredient_id": "ing-black-tea",
+      "quantity_base": 3
+    }
+  ],
+  "Ceylon Breakfast": [
+    {
+      "ingredient_id": "ing-black-tea",
+      "quantity_base": 3
+    }
+  ],
+  "prod-112": [
+    {
+      "ingredient_id": "ing-green-tea",
+      "quantity_base": 3
+    }
+  ],
+  "Green Tea": [
+    {
+      "ingredient_id": "ing-green-tea",
+      "quantity_base": 3
+    }
+  ],
+  "prod-113": [
+    {
+      "ingredient_id": "ing-lemongrass-ginger",
+      "quantity_base": 4
+    }
+  ],
+  "Ginger & Lemongrass": [
+    {
+      "ingredient_id": "ing-lemongrass-ginger",
+      "quantity_base": 4
+    }
+  ],
+  "prod-114": [
+    {
+      "ingredient_id": "ing-chai-spices",
+      "quantity_base": 4
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 150
+    }
+  ],
+  "Chai": [
+    {
+      "ingredient_id": "ing-chai-spices",
+      "quantity_base": 4
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 150
+    }
+  ],
+  "prod-115": [
+    {
+      "ingredient_id": "ing-matcha-powder",
+      "quantity_base": 5
+    },
+    {
+      "ingredient_id": "ing-mangoes",
+      "quantity_base": 120
+    }
+  ],
+  "Mango Matcha": [
+    {
+      "ingredient_id": "ing-matcha-powder",
+      "quantity_base": 5
+    },
+    {
+      "ingredient_id": "ing-mangoes",
+      "quantity_base": 120
+    }
+  ],
+  "prod-116": [
+    {
+      "ingredient_id": "ing-king-coconuts",
+      "quantity_base": 1
+    }
+  ],
+  "King Coconut": [
+    {
+      "ingredient_id": "ing-king-coconuts",
+      "quantity_base": 1
+    }
+  ],
+  "prod-117": [
+    {
+      "ingredient_id": "ing-limes",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-soda-water",
+      "quantity_base": 200
+    }
+  ],
+  "House Lime Soda": [
+    {
+      "ingredient_id": "ing-limes",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-soda-water",
+      "quantity_base": 200
+    }
+  ],
+  "prod-118": [
+    {
+      "ingredient_id": "ing-pineapples",
+      "quantity_base": 80
+    },
+    {
+      "ingredient_id": "ing-mint",
+      "quantity_base": 5
+    },
+    {
+      "ingredient_id": "ing-soda-water",
+      "quantity_base": 180
+    }
+  ],
+  "House Pineapple & Mint Soda": [
+    {
+      "ingredient_id": "ing-pineapples",
+      "quantity_base": 80
+    },
+    {
+      "ingredient_id": "ing-mint",
+      "quantity_base": 5
+    },
+    {
+      "ingredient_id": "ing-soda-water",
+      "quantity_base": 180
+    }
+  ],
+  "prod-119": [
+    {
+      "ingredient_id": "ing-passionfruit",
+      "quantity_base": 40
+    },
+    {
+      "ingredient_id": "ing-soda-water",
+      "quantity_base": 200
+    }
+  ],
+  "Passion Soda": [
+    {
+      "ingredient_id": "ing-passionfruit",
+      "quantity_base": 40
+    },
+    {
+      "ingredient_id": "ing-soda-water",
+      "quantity_base": 200
+    }
+  ],
+  "prod-120": [
+    {
+      "ingredient_id": "ing-mangoes",
+      "quantity_base": 150
+    },
+    {
+      "ingredient_id": "ing-bananas",
+      "quantity_base": 1
+    },
+    {
+      "ingredient_id": "ing-coconut-milk",
+      "quantity_base": 100
+    }
+  ],
+  "Mango Smoothie": [
+    {
+      "ingredient_id": "ing-mangoes",
+      "quantity_base": 150
+    },
+    {
+      "ingredient_id": "ing-bananas",
+      "quantity_base": 1
+    },
+    {
+      "ingredient_id": "ing-coconut-milk",
+      "quantity_base": 100
+    }
+  ],
+  "prod-121": [
+    {
+      "ingredient_id": "ing-peanut-butter",
+      "quantity_base": 50
+    },
+    {
+      "ingredient_id": "ing-bananas",
+      "quantity_base": 1
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 200
+    }
+  ],
+  "Peanut Butter Shake": [
+    {
+      "ingredient_id": "ing-peanut-butter",
+      "quantity_base": 50
+    },
+    {
+      "ingredient_id": "ing-bananas",
+      "quantity_base": 1
+    },
+    {
+      "ingredient_id": "ing-cow-milk",
+      "quantity_base": 200
+    }
+  ],
+  "prod-122": [
+    {
+      "ingredient_id": "ing-sozo-pani-dodang",
+      "quantity_base": 1
+    }
+  ],
+  "Pani Dodang & Sea Salt": [
+    {
+      "ingredient_id": "ing-sozo-pani-dodang",
+      "quantity_base": 1
+    }
+  ],
+  "prod-123": [
+    {
+      "ingredient_id": "ing-sozo-ginger-lemonade",
+      "quantity_base": 1
+    }
+  ],
+  "Ginger Lemonade": [
+    {
+      "ingredient_id": "ing-sozo-ginger-lemonade",
+      "quantity_base": 1
+    }
+  ],
+  "prod-124": [
+    {
+      "ingredient_id": "ing-sozo-iced-tea",
+      "quantity_base": 1
+    }
+  ],
+  "Peach & Mango Iced Tea": [
+    {
+      "ingredient_id": "ing-sozo-iced-tea",
+      "quantity_base": 1
+    }
+  ],
+  "prod-125": [
+    {
+      "ingredient_id": "ing-sozo-salted-coconut",
+      "quantity_base": 1
+    }
+  ],
+  "Salted Coconut & Lime Sparkling": [
+    {
+      "ingredient_id": "ing-sozo-salted-coconut",
+      "quantity_base": 1
+    }
+  ],
+  "prod-126": [
+    {
+      "ingredient_id": "ing-sozo-sparkling-water",
+      "quantity_base": 1
+    }
+  ],
+  "Sparkling Water": [
+    {
+      "ingredient_id": "ing-sozo-sparkling-water",
+      "quantity_base": 1
+    }
+  ],
+  "prod-127": [
+    {
+      "ingredient_id": "ing-mushrooms",
+      "quantity_base": 150
+    },
+    {
+      "ingredient_id": "ing-sourdough",
+      "quantity_base": 2
+    }
+  ],
+  "Creamy Mushrooms": [
+    {
+      "ingredient_id": "ing-mushrooms",
+      "quantity_base": 150
+    },
+    {
+      "ingredient_id": "ing-sourdough",
+      "quantity_base": 2
+    }
+  ],
+  "prod-128": [
+    {
+      "ingredient_id": "ing-bacon",
+      "quantity_base": 100
+    },
+    {
+      "ingredient_id": "ing-eggs",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-sourdough",
+      "quantity_base": 2
+    }
+  ],
+  "Bacon and Eggs": [
+    {
+      "ingredient_id": "ing-bacon",
+      "quantity_base": 100
+    },
+    {
+      "ingredient_id": "ing-eggs",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-sourdough",
+      "quantity_base": 2
+    }
+  ],
+  "prod-129": [
+    {
+      "ingredient_id": "ing-eggs",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-sourdough",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-karipincha",
+      "quantity_base": 5
+    }
+  ],
+  "Sri Lankan Chili Scramble": [
+    {
+      "ingredient_id": "ing-eggs",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-sourdough",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-karipincha",
+      "quantity_base": 5
+    }
+  ],
+  "prod-130": [
+    {
+      "ingredient_id": "ing-pancake-mix",
+      "quantity_base": 150
+    },
+    {
+      "ingredient_id": "ing-butter",
+      "quantity_base": 20
+    }
+  ],
+  "Pancakes": [
+    {
+      "ingredient_id": "ing-pancake-mix",
+      "quantity_base": 150
+    },
+    {
+      "ingredient_id": "ing-butter",
+      "quantity_base": 20
+    }
+  ],
+  "prod-131": [
+    {
+      "ingredient_id": "ing-chicken",
+      "quantity_base": 180
+    },
+    {
+      "ingredient_id": "ing-sourdough",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-fries",
+      "quantity_base": 150
+    }
+  ],
+  "Grilled Chicken Sandwich": [
+    {
+      "ingredient_id": "ing-chicken",
+      "quantity_base": 180
+    },
+    {
+      "ingredient_id": "ing-sourdough",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-fries",
+      "quantity_base": 150
+    }
+  ],
+  "prod-132": [
+    {
+      "ingredient_id": "ing-hashbrowns",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-bacon",
+      "quantity_base": 60
+    },
+    {
+      "ingredient_id": "ing-eggs",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-cheddar",
+      "quantity_base": 30
+    }
+  ],
+  "Hashbrown-Crust Bacon & Egg Quiche": [
+    {
+      "ingredient_id": "ing-hashbrowns",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-bacon",
+      "quantity_base": 60
+    },
+    {
+      "ingredient_id": "ing-eggs",
+      "quantity_base": 2
+    },
+    {
+      "ingredient_id": "ing-cheddar",
+      "quantity_base": 30
+    }
+  ],
+  "prod-133": [
+    {
+      "ingredient_id": "ing-mixed-greens",
+      "quantity_base": 120
+    }
+  ],
+  "Roast Vegetable Salad": [
+    {
+      "ingredient_id": "ing-mixed-greens",
+      "quantity_base": 120
+    }
+  ],
+  "prod-134": [
+    {
+      "ingredient_id": "ing-fusilli",
+      "quantity_base": 100
+    },
+    {
+      "ingredient_id": "ing-pesto",
+      "quantity_base": 30
+    }
+  ],
+  "Pesto Pasta Salad": [
+    {
+      "ingredient_id": "ing-fusilli",
+      "quantity_base": 100
+    },
+    {
+      "ingredient_id": "ing-pesto",
+      "quantity_base": 30
+    }
+  ],
+  "prod-135": [
+    {
+      "ingredient_id": "ing-chickpeas",
+      "quantity_base": 120
+    },
+    {
+      "ingredient_id": "ing-mixed-greens",
+      "quantity_base": 60
+    }
+  ],
+  "Chickpea Salad": [
+    {
+      "ingredient_id": "ing-chickpeas",
+      "quantity_base": 120
+    },
+    {
+      "ingredient_id": "ing-mixed-greens",
+      "quantity_base": 60
+    }
+  ],
+  "prod-136": [
+    {
+      "ingredient_id": "ing-feta",
+      "quantity_base": 25
+    }
+  ],
+  "Savoury Muffin": [
+    {
+      "ingredient_id": "ing-feta",
+      "quantity_base": 25
+    }
+  ],
+  "prod-137": [
+    {
+      "ingredient_id": "ing-bananas",
+      "quantity_base": 1
+    },
+    {
+      "ingredient_id": "ing-choc-chips",
+      "quantity_base": 25
+    }
+  ],
+  "Banana Chocolate Chip Muffin": [
+    {
+      "ingredient_id": "ing-bananas",
+      "quantity_base": 1
+    },
+    {
+      "ingredient_id": "ing-choc-chips",
+      "quantity_base": 25
+    }
+  ],
+  "prod-138": [
+    {
+      "ingredient_id": "ing-butter",
+      "quantity_base": 20
+    }
+  ],
+  "Sweet Scone with Tropical Jam & Cream": [
+    {
+      "ingredient_id": "ing-butter",
+      "quantity_base": 20
+    }
+  ],
+  "prod-139": [
+    {
+      "ingredient_id": "ing-cheddar",
+      "quantity_base": 20
+    },
+    {
+      "ingredient_id": "ing-karipincha",
+      "quantity_base": 5
+    }
+  ],
+  "Cheese Scone with Karipincha Butter": [
+    {
+      "ingredient_id": "ing-cheddar",
+      "quantity_base": 20
+    },
+    {
+      "ingredient_id": "ing-karipincha",
+      "quantity_base": 5
+    }
+  ],
+  "prod-140": [
+    {
+      "ingredient_id": "ing-rolled-oats",
+      "quantity_base": 80
+    }
+  ],
+  "Oaty Ginger Slice": [
+    {
+      "ingredient_id": "ing-rolled-oats",
+      "quantity_base": 80
+    }
+  ],
+  "prod-141": [
+    {
+      "ingredient_id": "ing-cocoa-powder",
+      "quantity_base": 40
+    },
+    {
+      "ingredient_id": "ing-ice-cream",
+      "quantity_base": 100
+    }
+  ],
+  "Chocolate Brownie with Ice Cream": [
+    {
+      "ingredient_id": "ing-cocoa-powder",
+      "quantity_base": 40
+    },
+    {
+      "ingredient_id": "ing-ice-cream",
+      "quantity_base": 100
+    }
+  ]
+}
 
 export const DEFAULT_PRODUCTS: SharedProduct[] = [
-  // --- TEA ---
-  { id: "prod-tea-1", name: "Black Tea", price: 250, category: "Tea", category_id: "cat-tea", image: resolveProductImage("Black Tea", null, "Tea"), stock: 100, description: "Freshly brewed Ceylon black tea", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-tea-2", name: "Ginger Tea", price: 300, category: "Tea", category_id: "cat-tea", image: resolveProductImage("Ginger Tea", null, "Tea"), stock: 100, description: "Warm black tea infused with spicy ginger root", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-tea-3", name: "Green Tea", price: 300, category: "Tea", category_id: "cat-tea", image: resolveProductImage("Green Tea", null, "Tea"), stock: 100, description: "Delicate and cleansing steamed green tea", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-tea-4", name: "Cinnamon Tea", price: 300, category: "Tea", category_id: "cat-tea", image: resolveProductImage("Cinnamon Tea", null, "Tea"), stock: 100, description: "Fragrant Ceylon cinnamon bark tea", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-tea-5", name: "Cardamom Tea", price: 300, category: "Tea", category_id: "cat-tea", image: resolveProductImage("Cardamom Tea", null, "Tea"), stock: 100, description: "Aromatic crushed green cardamom spice tea", temperature: "hot", department: "Coffee Bar", station: "bar" },
-
-  // --- HOT COFFEE ---
-  { id: "prod-coffee-1", name: "Espresso", price: 500, category: "Hot Coffee", category_id: "cat-hot-coffee", image: resolveProductImage("Espresso", null, "Hot Coffee"), stock: 100, description: "Rich single origin espresso shot", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-coffee-2", name: "Cappuccino", price: 700, category: "Hot Coffee", category_id: "cat-hot-coffee", image: resolveProductImage("Cappuccino", null, "Hot Coffee"), stock: 100, description: "Velvety steamed milk foam with double espresso", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-coffee-3", name: "Mocha", price: 1200, category: "Hot Coffee", category_id: "cat-hot-coffee", image: resolveProductImage("Mocha", null, "Hot Coffee"), stock: 100, description: "Espresso combined with dark Dutch cocoa and milk", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-coffee-4", name: "Latte", price: 800, category: "Hot Coffee", category_id: "cat-hot-coffee", image: resolveProductImage("Latte", null, "Hot Coffee"), stock: 100, description: "Smooth espresso with silky micro-foam milk", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-coffee-5", name: "Flat White", price: 650, category: "Hot Coffee", category_id: "cat-hot-coffee", image: resolveProductImage("Flat White", null, "Hot Coffee"), stock: 100, description: "Double ristretto poured over flat velvety milk", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-coffee-6", name: "Americano", price: 600, category: "Hot Coffee", category_id: "cat-hot-coffee", image: resolveProductImage("Americano", null, "Hot Coffee"), stock: 100, description: "Espresso lengthened with hot mineral water", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-coffee-7", name: "Bumble Coffee", price: 1200, category: "Hot Coffee", category_id: "cat-hot-coffee", image: resolveProductImage("Bumble Coffee", null, "Hot Coffee"), stock: 100, description: "Signature espresso layered with fresh orange juice and caramel", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-coffee-8", name: "Espresso Tonic", price: 1000, category: "Hot Coffee", category_id: "cat-hot-coffee", image: resolveProductImage("Espresso Tonic", null, "Hot Coffee"), stock: 100, description: "Double espresso poured over crisp craft tonic water", temperature: "hot", department: "Coffee Bar", station: "bar" },
-  { id: "prod-10", name: "Espresso Single", price: 550, category: "Hot Coffee", category_id: "cat-hot-coffee", image: resolveProductImage("Espresso Single", null, "Hot Coffee"), stock: 100, department: "Coffee Bar", temperature: "hot", station: "bar" },
-  { id: "prod-11", name: "Espresso Double", price: 750, category: "Hot Coffee", category_id: "cat-hot-coffee", image: resolveProductImage("Espresso Double", null, "Hot Coffee"), stock: 100, department: "Coffee Bar", temperature: "hot", station: "bar" },
-  { id: "prod-12", name: "Caffe Latte", price: 850, category: "Hot Coffee", category_id: "cat-hot-coffee", image: resolveProductImage("Caffe Latte", null, "Hot Coffee"), stock: 100, department: "Coffee Bar", temperature: "hot", station: "bar" },
-
-  // --- COLD COFFEE ---
-  { id: "prod-cc-1", name: "Matcha Latte", price: 800, category: "Cold Coffee", category_id: "cat-cold-coffee", image: resolveProductImage("Matcha Latte", null, "Cold Coffee"), stock: 100, description: "Ceremonial grade Uji matcha whisked with iced milk", temperature: "iced", department: "Coffee Bar", station: "bar" },
-  { id: "prod-cc-2", name: "Iced Cappuccino", price: 800, category: "Cold Coffee", category_id: "cat-cold-coffee", image: resolveProductImage("Iced Cappuccino", null, "Cold Coffee"), stock: 100, description: "Chilled espresso poured over ice with thick cold foam", temperature: "iced", department: "Coffee Bar", station: "bar" },
-  { id: "prod-cc-3", name: "Iced Latte", price: 900, category: "Cold Coffee", category_id: "cat-cold-coffee", image: resolveProductImage("Iced Latte", null, "Cold Coffee"), stock: 100, description: "Classic espresso and chilled milk poured over ice cubes", temperature: "iced", department: "Coffee Bar", station: "bar" },
-  { id: "prod-cc-4", name: "Iced Americano", price: 700, category: "Cold Coffee", category_id: "cat-cold-coffee", image: resolveProductImage("Iced Americano", null, "Cold Coffee"), stock: 100, description: "Crisp iced espresso with purified cold water", temperature: "iced", department: "Coffee Bar", station: "bar" },
-  { id: "prod-cc-5", name: "Iced Matcha Latte", price: 1000, category: "Cold Coffee", category_id: "cat-cold-coffee", image: resolveProductImage("Iced Matcha Latte", null, "Cold Coffee"), stock: 100, description: "Double matcha green tea blend served ice cold", temperature: "iced", department: "Coffee Bar", station: "bar" },
-  { id: "prod-17", name: "Cold Brew Reserve", price: 900, category: "Cold Coffee", category_id: "cat-cold-coffee", image: resolveProductImage("Cold Brew Reserve", null, "Cold Coffee"), stock: 100, department: "Coffee Bar", temperature: "iced", station: "bar" },
-  { id: "prod-16", name: "Iced Lemon Tea", price: 650, category: "Cold Coffee", category_id: "cat-cold-coffee", image: resolveProductImage("Iced Lemon Tea", null, "Cold Coffee"), stock: 100, department: "Coffee Bar", temperature: "iced", station: "bar" },
-
-  // --- ADD-ONS & MODIFIERS ---
-  { id: "prod-add-1", name: "Extra Vanilla", price: 200, category: "Add-ons", category_id: "cat-addons", image: resolveProductImage("Extra Vanilla", null, "Add-ons"), stock: 100, description: "Pure Madagascar vanilla syrup pump", department: "Coffee Bar", station: "bar" },
-  { id: "prod-add-2", name: "Extra Caramel", price: 200, category: "Add-ons", category_id: "cat-addons", image: resolveProductImage("Extra Caramel", null, "Add-ons"), stock: 100, description: "Rich buttery caramel drizzle", department: "Coffee Bar", station: "bar" },
-  { id: "prod-add-3", name: "Oat Milk", price: 500, category: "Add-ons", category_id: "cat-addons", image: resolveProductImage("Oat Milk", null, "Add-ons"), stock: 100, description: "Barista blend creamy oat milk substitution", department: "Coffee Bar", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-add-4", name: "Soya Milk", price: 500, category: "Add-ons", category_id: "cat-addons", image: resolveProductImage("Soya Milk", null, "Add-ons"), stock: 100, description: "Organic non-GMO soy milk substitution", department: "Coffee Bar", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-add-5", name: "Almond Milk", price: 500, category: "Add-ons", category_id: "cat-addons", image: resolveProductImage("Almond Milk", null, "Add-ons"), stock: 100, description: "Unsweetened roasted almond milk substitution", department: "Coffee Bar", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-add-6", name: "Coffee V60", price: 1100, category: "Add-ons", category_id: "cat-addons", image: resolveProductImage("Coffee V60", null, "Add-ons"), stock: 100, description: "Artisanal hand-poured single origin filter brew", department: "Coffee Bar", station: "bar" },
-
-  // --- BEVERAGES & REFRESHMENTS ---
-  { id: "prod-bev-1", name: "Water", price: 250, category: "Beverages", category_id: "cat-beverages", image: resolveProductImage("Water", null, "Beverages"), stock: 100, description: "Bottled pure mineral water", department: "Coffee Bar", station: "bar" },
-  { id: "prod-bev-2", name: "Fresh Coconut", price: 350, category: "Beverages", category_id: "cat-beverages", image: resolveProductImage("Fresh Coconut", null, "Beverages"), stock: 100, description: "Local chilled king coconut served fresh", department: "Coffee Bar", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-bev-3", name: "Soft Drinks", price: 400, category: "Beverages", category_id: "cat-beverages", image: resolveProductImage("Soft Drinks", null, "Beverages"), stock: 100, description: "Choice of Coca-Cola, Sprite, Coke Zero, or Ginger Beer", department: "Coffee Bar", station: "bar" },
-  { id: "prod-bev-4", name: "Fresh Juice", price: 800, category: "Beverages", category_id: "cat-beverages", image: resolveProductImage("Fresh Juice", null, "Beverages"), stock: 100, description: "Freshly squeezed: Lime, Mango, Papaya, Pineapple, Watermelon, or Passion Fruit", department: "Coffee Bar", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-bev-5", name: "Mix Juice", price: 900, category: "Beverages", category_id: "cat-beverages", image: resolveProductImage("Mix Juice", null, "Beverages"), stock: 100, description: "Fresh tropical blended mixed juice", department: "Coffee Bar", station: "bar", dietary_tags: ["VEG"] },
-
-  // --- FRESH JUICES ---
-  { id: "prod-1", name: "Papaya Lime Juice", price: 650, category: "Fresh Juices", category_id: "cat-juices", image: resolveProductImage("Papaya Lime Juice", null, "Fresh Juices"), stock: 100, department: "Juice & Food", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-2", name: "Watermelon Cooler", price: 700, category: "Fresh Juices", category_id: "cat-juices", image: resolveProductImage("Watermelon Cooler", null, "Fresh Juices"), stock: 100, department: "Juice & Food", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-3", name: "King Coconut Fresh", price: 450, category: "Fresh Juices", category_id: "cat-juices", image: resolveProductImage("King Coconut Fresh", null, "Fresh Juices"), stock: 100, department: "Juice & Food", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-4", name: "Pineapple Mint Zing", price: 750, category: "Fresh Juices", category_id: "cat-juices", image: resolveProductImage("Pineapple Mint Zing", null, "Fresh Juices"), stock: 100, department: "Juice & Food", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-5", name: "Passion Fruit Sparkler", price: 800, category: "Fresh Juices", category_id: "cat-juices", image: resolveProductImage("Passion Fruit Sparkler", null, "Fresh Juices"), stock: 100, department: "Juice & Food", station: "bar", dietary_tags: ["VEG"] },
-
-  // --- SMOOTHIES & SHAKES ---
-  { id: "prod-6", name: "Tropical Green Bowl", price: 1150, category: "Smoothies & Shakes", category_id: "cat-smoothies", image: resolveProductImage("Tropical Green Bowl", null, "Smoothies & Shakes"), stock: 100, department: "Juice & Food", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-7", name: "Mango Passion Smoothie", price: 950, category: "Smoothies & Shakes", category_id: "cat-smoothies", image: resolveProductImage("Mango Passion Smoothie", null, "Smoothies & Shakes"), stock: 100, department: "Juice & Food", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-8", name: "Dragonfruit Dream Shake", price: 1050, category: "Smoothies & Shakes", category_id: "cat-smoothies", image: resolveProductImage("Dragonfruit Dream Shake", null, "Smoothies & Shakes"), stock: 100, department: "Juice & Food", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-9", name: "Peanut Butter Banana Shake", price: 950, category: "Smoothies & Shakes", category_id: "cat-smoothies", image: resolveProductImage("Peanut Butter Banana Shake", null, "Smoothies & Shakes"), stock: 100, department: "Juice & Food", station: "bar", dietary_tags: ["VEG"] },
-
-  // --- APPETIZER ---
-  { id: "prod-app-1", name: "Crispy Tofu", price: 1000, category: "Appetizer", category_id: "cat-appetizer", image: resolveProductImage("Crispy Tofu", null, "Appetizer"), stock: 100, description: "Crispy golden spiced tofu cubes with dipping sauce", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-app-2", name: "Garlic Bread with Mozzarella", price: 1300, category: "Appetizer", category_id: "cat-appetizer", image: resolveProductImage("Garlic Bread with Mozzarella", null, "Appetizer"), stock: 100, description: "Toasted baguette slices with rich garlic butter and melted mozzarella", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-app-3", name: "French Fries", price: 1500, category: "Appetizer", category_id: "cat-appetizer", image: resolveProductImage("French Fries", null, "Appetizer"), stock: 100, description: "Classic salted crispy potato french fries", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-
-  // --- SALAD ---
-  { id: "prod-sal-1", name: "Fresh Green Salad", price: 1400, category: "Salad", category_id: "cat-salad", image: resolveProductImage("Fresh Green Salad", null, "Salad"), stock: 100, description: "Cabbage, cucumber, spring onion, tomato, carrot and vinaigrette dressing", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-sal-2", name: "Avocado Salad", price: 1800, category: "Salad", category_id: "cat-salad", image: resolveProductImage("Avocado Salad", null, "Salad"), stock: 100, description: "Fresh avocado, cucumber, tomato, parsley and extra virgin olive oil", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-sal-3", name: "Catalana di Gamberi", price: 1800, category: "Salad", category_id: "cat-salad", image: resolveProductImage("Catalana di Gamberi", null, "Salad"), stock: 100, description: "Fresh local prawns, tender leeks, cherry tomatoes, olive oil and lime", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-sal-4", name: "Chicken Salad", price: 1900, category: "Salad", category_id: "cat-salad", image: resolveProductImage("Chicken Salad", null, "Salad"), stock: 100, description: "Grilled chicken strips, fresh garden greens, Parmesan shavings and house dressing", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-21", name: "Hiriketiya Salad Bowl", price: 1250, category: "Salad", category_id: "cat-salad", image: resolveProductImage("Hiriketiya Salad Bowl", null, "Salad"), stock: 100, department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-
-  // --- SOUP ---
-  { id: "prod-soup-1", name: "Pumpkin Soup", price: 1800, category: "Soup", category_id: "cat-soup", image: resolveProductImage("Pumpkin Soup", null, "Soup"), stock: 100, description: "Creamy roasted pumpkin soup with herbs, served with crusty garlic bread", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-soup-2", name: "Vegan Noodles Soup", price: 1800, category: "Soup", category_id: "cat-soup", image: resolveProductImage("Vegan Noodles Soup", null, "Soup"), stock: 100, description: "Fresh vegetables, rice noodles, silken tofu and aromatic coconut broth", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-soup-3", name: "Creamy Chicken Soup", price: 1900, category: "Soup", category_id: "cat-soup", image: resolveProductImage("Creamy Chicken Soup", null, "Soup"), stock: 100, description: "Slow-simmered chicken breast, potato, carrot, leeks and garlic croutons", department: "Juice & Food", station: "kitchen" },
-
-  // --- MAINS ---
-  { id: "prod-main-1", name: "Tuna Tartare", price: 2300, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Tuna Tartare", null, "Mains"), stock: 100, description: "Fresh sashimi tuna, diced avocado, red onion, capers and citrus olive oil", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-main-2", name: "Hummus with Paratha Rotti", price: 1800, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Hummus with Paratha Rotti", null, "Mains"), stock: 100, description: "Velvety spiced chickpea hummus, tahini, cumin and warm flaky paratha", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-main-3", name: "BBQ Tofu Rice", price: 2000, category: "Mains", category_id: "cat-mains", image: resolveProductImage("BBQ Tofu Rice", null, "Mains"), stock: 100, description: "Smoky glazed BBQ tofu, sweet bell pepper, onion and fragrant jasmine rice", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-main-4", name: "Buddha Bowl", price: 2500, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Buddha Bowl", null, "Mains"), stock: 100, description: "Edamame, chickpeas, roasted vegetables, crispy tofu, avocado and brown rice", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-main-5", name: "Vegan Spaghetti Bolognese", price: 2200, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Vegan Spaghetti Bolognese", null, "Mains"), stock: 100, description: "Al dente spaghetti tossed in slow cooked minced soya tomato ragù", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-main-6", name: "Black Chicken Curry", price: 2300, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Black Chicken Curry", null, "Mains"), stock: 100, description: "Authentic southern Sri Lankan roasted spice black chicken curry, coconut rotti and sambol", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-main-7", name: "Zucchini Gamberi", price: 2500, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Zucchini Gamberi", null, "Mains"), stock: 100, description: "Fusilli pasta tossed in house zucchini pesto and sweet ocean prawns", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-main-8", name: "Gnocchi con Calamari", price: 2300, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Gnocchi con Calamari", null, "Mains"), stock: 100, description: "Handmade potato gnocchi with tender calamari rings in rich tomato sauce", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-main-9", name: "Nasi Goreng", price: 2000, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Nasi Goreng", null, "Mains"), stock: 100, description: "Indonesian wok-fried rice with seafood, chicken skewers and a sunny side egg", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-main-10", name: "Shakshouka", price: 2000, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Shakshouka", null, "Mains"), stock: 100, description: "Two poached eggs in spiced tomato, cumin and sweet pepper sauce with sourdough", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-main-11", name: "Grilled Tuna", price: 2500, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Grilled Tuna", null, "Mains"), stock: 100, description: "Pan-seared yellowfin tuna steak, creamy mashed potato and sautéed garden greens", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-main-12", name: "Vegan Penne Ai Funghi", price: 2000, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Vegan Penne Ai Funghi", null, "Mains"), stock: 100, description: "Creamy wild mushroom penne in velvety coconut cream sauce and parsley", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-main-13", name: "Seafood Marinara", price: 2500, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Seafood Marinara", null, "Mains"), stock: 100, description: "Fresh fish fillets, calamari, jumbo prawns and mussels in basil garlic marinara", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-19", name: "Delicious Handcrafted Pizza", price: 2100, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Delicious Handcrafted Pizza", null, "Mains"), stock: 100, department: "Juice & Food", station: "kitchen" },
-  { id: "prod-20", name: "Crispy Chicken Wings", price: 1450, category: "Mains", category_id: "cat-mains", image: resolveProductImage("Crispy Chicken Wings", null, "Mains"), stock: 100, department: "Juice & Food", station: "kitchen" },
-
-  // --- HANDHELD & SANDWICHES ---
-  { id: "prod-hh-1", name: "Prime Angus Burger", price: 2000, category: "Handheld", category_id: "cat-handheld", image: resolveProductImage("Prime Angus Burger", null, "Handheld"), stock: 100, description: "Signature house beef or veggie patty with crisp fries and fresh coleslaw", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-hh-2", name: "Mushroom Burger", price: 2200, category: "Handheld", category_id: "cat-handheld", image: resolveProductImage("Mushroom Burger", null, "Handheld"), stock: 100, description: "Grilled portobello mushroom patty with caramelized onions and fries", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-hh-3", name: "Veggie Panini", price: 1800, category: "Handheld", category_id: "cat-handheld", image: resolveProductImage("Veggie Panini", null, "Handheld"), stock: 100, description: "Pressed ciabatta with grilled zucchini, sweet pepper, pesto and fries", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-hh-4", name: "Signature Chicken Panini", price: 1800, category: "Handheld", category_id: "cat-handheld", image: resolveProductImage("Signature Chicken Panini", null, "Handheld"), stock: 100, description: "House grilled chicken, smoked mozzarella, ripe tomato and fries", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-hh-5", name: "Egg and Cheese Panini", price: 1900, category: "Handheld", category_id: "cat-handheld", image: resolveProductImage("Egg and Cheese Panini", null, "Handheld"), stock: 100, description: "Scrambled egg, cheddar, sliced tomato and cucumber in toasted panini", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-hh-6", name: "Coconut Sambol Panini", price: 2000, category: "Handheld", category_id: "cat-handheld", image: resolveProductImage("Coconut Sambol Panini", null, "Handheld"), stock: 100, description: "Melted mozzarella, fried egg, spicy fresh coconut pol sambol and fries", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-hh-7", name: "Club Sandwich", price: 2200, category: "Handheld", category_id: "cat-handheld", image: resolveProductImage("Club Sandwich", null, "Handheld"), stock: 100, description: "Triple decker toasted sandwich with chicken ham, egg, lettuce, tomato and fries", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-18", name: "Classic Beef Burger", price: 1650, category: "Handheld", category_id: "cat-handheld", image: resolveProductImage("Classic Beef Burger", null, "Handheld"), stock: 100, department: "Juice & Food", station: "kitchen" },
-
-  // --- MORNING BREATH (BREAKFAST) ---
-  { id: "prod-mb-1", name: "Fruit Platter", price: 1400, category: "Morning Breath", category_id: "cat-morning-breath", image: resolveProductImage("Fruit Platter", null, "Morning Breath"), stock: 100, description: "Seasonal sliced papaya, watermelon, pineapple, passion fruit and banana", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-mb-2", name: "Best Bowl", price: 1800, category: "Morning Breath", category_id: "cat-morning-breath", image: resolveProductImage("Best Bowl", null, "Morning Breath"), stock: 100, description: "Creamy avocado, golden hash browns, bacon strips, sausage, sourdough and eggs", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-mb-3", name: "Eggs Benedict", price: 1900, category: "Morning Breath", category_id: "cat-morning-breath", image: resolveProductImage("Eggs Benedict", null, "Morning Breath"), stock: 100, description: "Two poached farm eggs, creamy hollandaise sauce, bacon, avocado on sourdough", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-mb-4", name: "Spinach and Potato Omelette", price: 1700, category: "Morning Breath", category_id: "cat-morning-breath", image: resolveProductImage("Spinach and Potato Omelette", null, "Morning Breath"), stock: 100, description: "Fluffy 3-egg omelette with baby spinach, sautéed potatoes and sourdough toast", department: "Juice & Food", station: "kitchen" },
-  { id: "prod-mb-5", name: "Scrambled Tofu", price: 1800, category: "Morning Breath", category_id: "cat-morning-breath", image: resolveProductImage("Scrambled Tofu", null, "Morning Breath"), stock: 100, description: "Turmeric spiced scrambled tofu, sliced avocado, wilted spinach and sourdough", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-mb-6", name: "Vegan New York Pancake", price: 1800, category: "Morning Breath", category_id: "cat-morning-breath", image: resolveProductImage("Vegan New York Pancake", null, "Morning Breath"), stock: 100, description: "Stack of fluffy vegan pancakes with sliced banana, kithul treacle and chocolate sauce", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-mb-7", name: "Sri Lankan Coconut Rotti", price: 1800, category: "Morning Breath", category_id: "cat-morning-breath", image: resolveProductImage("Sri Lankan Coconut Rotti", null, "Morning Breath"), stock: 100, description: "Warm fresh coconut pol rotti served with spicy dhal curry and fresh sambol", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-mb-8", name: "Breaky Burger", price: 1900, category: "Morning Breath", category_id: "cat-morning-breath", image: resolveProductImage("Breaky Burger", null, "Morning Breath"), stock: 100, description: "Brioche bun with crispy hash browns, bacon, fried egg, relish and greens", department: "Juice & Food", station: "kitchen" },
-
-  // --- TRENDY AND CATCHY (BOWLS) ---
-  { id: "prod-tc-1", name: "Mango Smoothie Bowl", price: 1900, category: "Trendy and Catchy", category_id: "cat-trendy-catchy", image: resolveProductImage("Mango Smoothie Bowl", null, "Trendy and Catchy"), stock: 100, description: "Thick mango and banana base topped with chia seeds, coconut flakes and fresh fruits", department: "Juice & Food", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-tc-2", name: "Coco Banana Smoothie Bowl", price: 1800, category: "Trendy and Catchy", category_id: "cat-trendy-catchy", image: resolveProductImage("Coco Banana Smoothie Bowl", null, "Trendy and Catchy"), stock: 100, description: "Raw cocoa, frozen banana, coconut milk, roasted pumpkin seeds and kiwi", department: "Juice & Food", station: "bar", dietary_tags: ["VEG"] },
-  { id: "prod-tc-3", name: "Vegan Porridge Bowl", price: 1900, category: "Trendy and Catchy", category_id: "cat-trendy-catchy", image: resolveProductImage("Vegan Porridge Bowl", null, "Trendy and Catchy"), stock: 100, description: "Rolled oats simmered in coconut milk, topped with dates, raisins, peanut butter and banana", department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-tc-4", name: "Granola Bowl", price: 2000, category: "Trendy and Catchy", category_id: "cat-trendy-catchy", image: resolveProductImage("Granola Bowl", null, "Trendy and Catchy"), stock: 100, description: "Crunchy toasted artisan granola, buffalo curd, sliced tropical fruits and kithul treacle", department: "Juice & Food", station: "kitchen" },
-
-  // --- SNACKS & BITES ---
-  { id: "prod-22", name: "Crispy French Fries", price: 750, category: "Snacks & Bites", category_id: "cat-snacks", image: resolveProductImage("Crispy French Fries", null, "Snacks & Bites"), stock: 100, department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-  { id: "prod-23", name: "Cheesy Garlic Fries", price: 950, category: "Snacks & Bites", category_id: "cat-snacks", image: resolveProductImage("Cheesy Garlic Fries", null, "Snacks & Bites"), stock: 100, department: "Juice & Food", station: "kitchen", dietary_tags: ["VEG"] },
-
-  // --- DESSERTS ---
-  { id: "prod-24", name: "Warm Apple Pie Slice", price: 850, category: "Desserts", category_id: "cat-desserts", image: resolveProductImage("Warm Apple Pie Slice", null, "Desserts"), stock: 100, department: "Juice & Food", station: "kitchen" },
-  { id: "prod-25", name: "New York Cheesecake Slice", price: 950, category: "Desserts", category_id: "cat-desserts", image: resolveProductImage("New York Cheesecake Slice", null, "Desserts"), stock: 100, department: "Juice & Food", station: "kitchen" },
-  { id: "prod-26", name: "Chocolate Fudge Brownie", price: 800, category: "Desserts", category_id: "cat-desserts", image: resolveProductImage("Chocolate Fudge Brownie", null, "Desserts"), stock: 100, department: "Juice & Food", station: "kitchen" },
-  { id: "prod-27", name: "Chocolate Cake Slice", price: 900, category: "Desserts", category_id: "cat-desserts", image: resolveProductImage("Chocolate Cake Slice", null, "Desserts"), stock: 100, department: "Juice & Food", station: "kitchen" },
-  { id: "prod-28", name: "Artisan Ice Cream Sundae", price: 950, category: "Desserts", category_id: "cat-desserts", image: resolveProductImage("Artisan Ice Cream Sundae", null, "Desserts"), stock: 100, department: "Juice & Food", station: "kitchen" },
+  {
+    "id": "prod-101",
+    "name": "Ristretto",
+    "price": 500,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Short, concentrated espresso extraction with a sweet, rich profile.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-102",
+    "name": "Espresso",
+    "price": 500,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Full-bodied single origin espresso shot with thick golden crema.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-103",
+    "name": "Long Black",
+    "price": 650,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1551030173-122aabc4489c?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Double shot espresso poured over hot or iced mineral water.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-104",
+    "name": "Flat White",
+    "price": 750,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1577968897966-3d4325b36b61?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Velvety textured micro-foam over a double ristretto shot.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-105",
+    "name": "Cappuccino",
+    "price": 750,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Harmonious balance of espresso, steamed milk, and airy foam.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-106",
+    "name": "Latte",
+    "price": 800,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "/latte-coffee.png",
+    "stock": 100,
+    "description": "Smooth espresso with gently steamed milk and a light foam cap.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-107",
+    "name": "Mocha",
+    "price": 950,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Espresso blended with artisanal dark chocolate and steamed milk.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-108",
+    "name": "V60 Pour Over",
+    "price": 1100,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Single-origin pour over filter brew showcasing delicate florals and fruit notes.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-109",
+    "name": "Matcha Latte",
+    "price": 950,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Ceremonial grade Japanese green tea whisked with silky steamed milk.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-110",
+    "name": "Chocolate",
+    "price": 900,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Rich melted cocoa crafted into decadent hot chocolate or iced chocolate.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-111",
+    "name": "Ceylon Breakfast",
+    "price": 400,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "High-grown Nuwara Eliya whole leaf black tea with robust malty character.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-112",
+    "name": "Green Tea",
+    "price": 450,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Clean, fresh steamed whole-leaf green tea rich in antioxidants.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-113",
+    "name": "Ginger & Lemongrass",
+    "price": 450,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Soothing natural herbal infusion of sun-dried lemongrass stalks and spicy ginger.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-114",
+    "name": "Chai",
+    "price": 650,
+    "category": "Coffee & Hot Drinks",
+    "category_id": "cat-coffee-hot-drinks",
+    "image": "https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Aromatic black tea brewed with crushed cardamoms, cinnamon, cloves, and milk.",
+    "temperature": "hot",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Coffee Bar",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-115",
+    "name": "Mango Matcha",
+    "price": 1050,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Chilled tropical mango puree layered with iced ceremonial matcha.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-116",
+    "name": "King Coconut",
+    "price": 450,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Naturally sweet, isotonic fresh Sri Lankan thambili water served chilled.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-117",
+    "name": "House Lime Soda",
+    "price": 650,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Freshly squeezed garden lime with bubbly soda water and pure cane syrup.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-118",
+    "name": "House Pineapple & Mint Soda",
+    "price": 750,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "https://images.unsplash.com/photo-1546173159-315724a31696?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Crushed sweet pineapple and muddled garden mint topped with sparkling soda.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-119",
+    "name": "Passion Soda",
+    "price": 750,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Tangy tropical passionfruit pulp, lime, and crisp sparkling soda.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-120",
+    "name": "Mango Smoothie",
+    "price": 950,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Thick, creamy blend of ripe tropical mangoes, banana, and chilled coconut milk.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-121",
+    "name": "Peanut Butter Shake",
+    "price": 1100,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Roasted artisanal peanut butter, banana, dairy milk, and dark honey.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-122",
+    "name": "Pani Dodang & Sea Salt",
+    "price": 750,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "/glass-of-orange-juice.png",
+    "stock": 100,
+    "description": "Indigenous sweet orange infused with a subtle touch of natural sea salt.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-123",
+    "name": "Ginger Lemonade",
+    "price": 750,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Fiery organic Sri Lankan ginger balanced with zesty lemon and sparkling spring water.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-124",
+    "name": "Peach & Mango Iced Tea",
+    "price": 800,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "/iced-tea.png",
+    "stock": 100,
+    "description": "Cold brewed Ceylon black tea with natural orchard peach and luscious mango.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-125",
+    "name": "Salted Coconut & Lime Sparkling",
+    "price": 800,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Refreshing sparkling king coconut nectar with tangy lime and pinch of sea salt.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-126",
+    "name": "Sparkling Water",
+    "price": 500,
+    "category": "Cold Drinks",
+    "category_id": "cat-cold-drinks",
+    "image": "/bottled-water.png",
+    "stock": 100,
+    "description": "Pure chilled carbonated mineral spring water with crisp effervescence.",
+    "temperature": "iced",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Bar & Beverages",
+    "station": "bar",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-127",
+    "name": "Creamy Mushrooms",
+    "price": 1800,
+    "category": "Meals",
+    "category_id": "cat-meals",
+    "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Sautéed button & oyster mushrooms in garlic herb cream, served with Sourdough or Hashbrowns.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Kitchen Meals",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-128",
+    "name": "Bacon and Eggs",
+    "price": 1900,
+    "category": "Meals",
+    "category_id": "cat-meals",
+    "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Crispy smoked bacon with two eggs (Scrambled / Fried) and choice of Sourdough or Hashbrowns.",
+    "temperature": "none",
+    "dietary_tags": [],
+    "department": "Kitchen Meals",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-129",
+    "name": "Sri Lankan Chili Scramble",
+    "price": 1750,
+    "category": "Meals",
+    "category_id": "cat-meals",
+    "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Soft eggs scrambled with green chilies, shallots, curry leaves, and toasted sourdough.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Kitchen Meals",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-130",
+    "name": "Pancakes",
+    "price": 1600,
+    "category": "Meals",
+    "category_id": "cat-meals",
+    "image": "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Golden buttermilk pancake stack served with fresh tropical fruit, whipped butter, and kithul treacle.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Kitchen Meals",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-131",
+    "name": "Grilled Chicken Sandwich",
+    "price": 1950,
+    "category": "Meals",
+    "category_id": "cat-meals",
+    "image": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Herb-marinated chicken breast, garlic aioli, tomato, and baby greens on sourdough with Fries or Salad.",
+    "temperature": "none",
+    "dietary_tags": [],
+    "department": "Kitchen Meals",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-132",
+    "name": "Hashbrown-Crust Bacon & Egg Quiche",
+    "price": 1850,
+    "category": "Meals",
+    "category_id": "cat-meals",
+    "image": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Golden shredded potato crust filled with savory smoked bacon, eggs, and aged cheddar with Fries or Salad.",
+    "temperature": "none",
+    "dietary_tags": [],
+    "department": "Kitchen Meals",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-133",
+    "name": "Roast Vegetable Salad",
+    "price": 1750,
+    "category": "Salads",
+    "category_id": "cat-salads",
+    "image": "/vibrant-mixed-salad.png",
+    "stock": 100,
+    "description": "Oven-roasted pumpkin, sweet potato, bell peppers, mixed greens, toasted pumpkin seeds, and balsamic glaze.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Kitchen Salads",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-134",
+    "name": "Pesto Pasta Salad",
+    "price": 1850,
+    "category": "Salads",
+    "category_id": "cat-salads",
+    "image": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Fusilli pasta tossed in fresh basil cashew pesto, cherry tomatoes, baby spinach, and parmesan shavings.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Kitchen Salads",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-135",
+    "name": "Chickpea Salad",
+    "price": 1650,
+    "category": "Salads",
+    "category_id": "cat-salads",
+    "image": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Crisp cucumbers, spiced chickpeas, Kalamata olives, fresh herbs, and zesty lemon tahini dressing.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegan",
+      "Gluten-Free"
+    ],
+    "department": "Kitchen Salads",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-136",
+    "name": "Savoury Muffin",
+    "price": 650,
+    "category": "Bakery & Desserts",
+    "category_id": "cat-bakery-desserts",
+    "image": "https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Freshly baked savory muffin loaded with baby spinach, sweet corn, and crumbled feta cheese.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Bakery & Desserts",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-137",
+    "name": "Banana Chocolate Chip Muffin",
+    "price": 600,
+    "category": "Bakery & Desserts",
+    "category_id": "cat-bakery-desserts",
+    "image": "https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Moist ripe banana muffin baked with dark Belgian chocolate chips and cinnamon crumble.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Bakery & Desserts",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-138",
+    "name": "Sweet Scone with Tropical Jam & Cream",
+    "price": 650,
+    "category": "Bakery & Desserts",
+    "category_id": "cat-bakery-desserts",
+    "image": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Traditional butter scone served warm with house-made tropical passion-mango jam and clotted cream.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Bakery & Desserts",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-139",
+    "name": "Cheese Scone with Karipincha Butter",
+    "price": 650,
+    "category": "Bakery & Desserts",
+    "category_id": "cat-bakery-desserts",
+    "image": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Golden sharp cheddar cheese scone served with fragrant house-whipped curry leaf (karipincha) butter.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Bakery & Desserts",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-140",
+    "name": "Oaty Ginger Slice",
+    "price": 750,
+    "category": "Bakery & Desserts",
+    "category_id": "cat-bakery-desserts",
+    "image": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80",
+    "stock": 100,
+    "description": "Toasted rolled oats and golden syrup slice topped with spicy candied ginger icing.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Bakery & Desserts",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  },
+  {
+    "id": "prod-141",
+    "name": "Chocolate Brownie with Ice Cream",
+    "price": 850,
+    "category": "Bakery & Desserts",
+    "category_id": "cat-bakery-desserts",
+    "image": "/chocolate-brownie.png",
+    "stock": 100,
+    "description": "Warm fudgy dark chocolate brownie dusted with cocoa, paired with a scoop of vanilla bean ice cream.",
+    "temperature": "none",
+    "dietary_tags": [
+      "Vegetarian"
+    ],
+    "department": "Bakery & Desserts",
+    "station": "kitchen",
+    "active": true,
+    "is_archived": false
+  }
 ]
 
 export const DEFAULT_INITIAL_ORDERS: SharedOrder[] = []
@@ -622,9 +2474,9 @@ export class SharedPosService {
   private static productsCache: SharedProduct[] = DEFAULT_PRODUCTS.map((p) => ({ ...p }))
   private static categoriesCache: SharedCategory[] = DEFAULT_CATEGORIES.map((c) => ({ ...c }))
   private static ordersCache: SharedOrder[] = []
-  private static ingredientsCache: SharedIngredient[] = []
-  private static ingredientCategoriesCache: SharedIngredientCategory[] = []
-  private static recipesCache: Record<string, SharedRecipeItem[]> = {}
+  private static ingredientsCache: SharedIngredient[] = DEFAULT_INGREDIENTS.map((i) => ({ ...i }))
+  private static ingredientCategoriesCache: SharedIngredientCategory[] = DEFAULT_INGREDIENT_CATEGORIES.map((c) => ({ ...c }))
+  private static recipesCache: Record<string, SharedRecipeItem[]> = { ...DEFAULT_RECIPES }
   private static purchasesCache: SharedPurchase[] = []
   private static customersCache: SharedCustomer[] = []
   private static promosCache: SharedPromoOffer[] = []
@@ -808,6 +2660,64 @@ export class SharedPosService {
   public static init() {
     if (this.initialized || !this.isBrowser()) return
     this.initialized = true
+
+    // Clean-slate purge for Lazy Sunday 41-product menu and clean inventory/orders
+    const LAZY_SUNDAY_5CATS_FLAG = "pos_lazy_sunday_5cats_41prods_v2"
+    if (this.isBrowser() && localStorage.getItem(LAZY_SUNDAY_5CATS_FLAG) !== "true") {
+      try {
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(DEFAULT_PRODUCTS))
+        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(DEFAULT_CATEGORIES))
+        localStorage.setItem(INGREDIENTS_KEY, JSON.stringify(DEFAULT_INGREDIENTS))
+        localStorage.setItem(INGREDIENT_CATEGORIES_KEY, JSON.stringify(DEFAULT_INGREDIENT_CATEGORIES))
+        localStorage.setItem(RECIPES_KEY, JSON.stringify(DEFAULT_RECIPES))
+        localStorage.removeItem(ORDERS_KEY)
+        localStorage.removeItem(PURCHASES_KEY)
+        localStorage.removeItem(WASTAGE_KEY)
+        localStorage.removeItem(ADJUSTMENTS_KEY)
+        localStorage.removeItem("pos_coffee_bills")
+        localStorage.removeItem("pos_mock_orders")
+        localStorage.setItem(ORDERS_KEY, "[]")
+        localStorage.setItem(LAZY_SUNDAY_5CATS_FLAG, "true")
+      } catch {}
+    }
+
+    const PURE_ZERO_V7_FLAG = "pos_pure_zero_products_v7"
+    if (this.isBrowser() && localStorage.getItem(PURE_ZERO_V7_FLAG) !== "true") {
+      try {
+        localStorage.removeItem(PRODUCTS_KEY)
+        localStorage.removeItem(CATEGORIES_KEY)
+        localStorage.removeItem(ORDERS_KEY)
+        localStorage.removeItem(INGREDIENTS_KEY)
+        localStorage.removeItem(RECIPES_KEY)
+        localStorage.removeItem(PURCHASES_KEY)
+        localStorage.removeItem(WASTAGE_KEY)
+        localStorage.removeItem(ADJUSTMENTS_KEY)
+        localStorage.removeItem("pos_coffee_bills")
+        localStorage.removeItem("pos_mock_orders")
+        localStorage.setItem(PRODUCTS_KEY, "[]")
+        localStorage.setItem(CATEGORIES_KEY, "[]")
+        localStorage.setItem(ORDERS_KEY, "[]")
+        localStorage.setItem(INGREDIENTS_KEY, "[]")
+        localStorage.setItem(PURE_ZERO_V7_FLAG, "true")
+      } catch {}
+    }
+
+    const LAZY_SUNDAY_MENU_V5_FLAG = "pos_lazy_sunday_menu_41_pure_v5"
+    if (this.isBrowser() && localStorage.getItem(LAZY_SUNDAY_MENU_V5_FLAG) !== "true") {
+      try {
+        localStorage.removeItem(PRODUCTS_KEY)
+        localStorage.removeItem(CATEGORIES_KEY)
+        localStorage.removeItem(ORDERS_KEY)
+        localStorage.removeItem(INGREDIENTS_KEY)
+        localStorage.removeItem(RECIPES_KEY)
+        localStorage.removeItem(PURCHASES_KEY)
+        localStorage.removeItem(WASTAGE_KEY)
+        localStorage.removeItem(ADJUSTMENTS_KEY)
+        localStorage.removeItem("pos_coffee_bills")
+        localStorage.removeItem("pos_mock_orders")
+        localStorage.setItem(LAZY_SUNDAY_MENU_V5_FLAG, "true")
+      } catch {}
+    }
 
     // Clean-slate purge for Lazy Sunday tables & bookings to guarantee 0/14 active tables on fresh start
     const LAZY_SUNDAY_TABLES_CLEAN_FLAG = "pos_lazy_sunday_clean_tables_zero_v4"
@@ -2331,12 +4241,12 @@ export class SharedPosService {
         supabase.from("pos_products").select("*").eq("is_archived", false).order("name"),
         supabase.from("pos_categories").select("*").eq("is_active", true).order("sort_order"),
       ])
-      if (cs && cs.length > 0) {
+      if (Array.isArray(cs)) {
         this.categoriesCache = cs.map((c: any) => ({ id: String(c.id), name: c.name, sort_order: c.sort_order }))
         localStorage.setItem(CATEGORIES_KEY, JSON.stringify(this.categoriesCache))
         this.emitCategories()
       }
-      if (ps && ps.length > 0) {
+      if (Array.isArray(ps)) {
         const catMap = new Map(this.categoriesCache.map((c) => [c.id, c.name]))
         this.productsCache = ps.map((p: any) => {
           const categoryName = catMap.get(String(p.category_id)) || p.category || "General"

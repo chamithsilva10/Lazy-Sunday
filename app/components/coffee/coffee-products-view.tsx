@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Coffee, Plus, Search, Edit2, Trash2, ShieldAlert, CheckCircle2, XCircle, ArrowUpDown, ChevronLeft, ChevronRight, Sparkles } from "lucide-react"
+import { Coffee, Plus, Search, Edit2, Trash2, ShieldAlert, Camera, Upload, CheckCircle2, XCircle, ArrowUpDown, ChevronLeft, ChevronRight, Sparkles } from "lucide-react"
 import { CoffeeProduct, CoffeeStatus } from "@/lib/coffee/types"
 import { CoffeeStorageService } from "@/lib/coffee/storage"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -31,7 +31,35 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
   // Dialog states
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<CoffeeProduct | null>(null)
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+
+  async function handleImageFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const dataUrl = reader.result as string
+      setFormData((f) => ({ ...f, image_url: dataUrl }))
+
+      try {
+        const data = new FormData()
+        data.append("file", file)
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: data,
+        })
+        const json = await res.json()
+        if (json?.success && json?.url) {
+          setFormData((f) => ({ ...f, image_url: json.url }))
+          toast.success("Photo uploaded successfully")
+        }
+      } catch {
+        toast.info("Photo loaded")
+      }
+    }
+    reader.readAsDataURL(file)
+  }
 
   // Form states
   const [formData, setFormData] = useState({
@@ -49,7 +77,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
       const response = await fetch("/api/coffee/products", { cache: "no-store" })
       if (response.ok) {
         const data = await response.json()
-        if (Array.isArray(data.products) && data.products.length > 0) {
+        if (Array.isArray(data.products)) {
           setProducts(data.products)
           CoffeeStorageService.saveLocalProducts(data.products)
           return
@@ -559,18 +587,64 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
               </div>
             </div>
 
-            <div>
-              <Label className="text-xs font-semibold text-gray-700">Image Asset</Label>
-              <select
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-gray-700">Product Photo</Label>
+                {formData.image_url && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData((f) => ({ ...f, image_url: "" }))}
+                    className="text-[11px] text-red-500 hover:text-red-700 font-semibold"
+                  >
+                    Clear photo
+                  </button>
+                )}
+              </div>
+
+              {formData.image_url ? (
+                <div className="relative group rounded-xl overflow-hidden border border-[#E5D8CF] bg-[#FAF5F1] aspect-[16/9] max-h-36 flex items-center justify-center">
+                  <img
+                    src={formData.image_url}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/latte-coffee.png"
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <label className="cursor-pointer bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm hover:bg-gray-100 flex items-center gap-1.5">
+                      <Upload className="size-3.5" />
+                      Replace
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageFileUpload}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-[#E5D8CF] hover:border-[#D67B6B] bg-[#FAF5F1]/60 hover:bg-[#FAF5F1] rounded-xl cursor-pointer transition-colors text-center group">
+                  <Camera className="size-5 text-[#D67B6B] mb-1" />
+                  <span className="text-xs font-bold text-gray-700">Upload Photo</span>
+                  <span className="text-[10px] text-gray-400">Choose from device or camera</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleImageFileUpload}
+                  />
+                </label>
+              )}
+
+              <Input
+                placeholder="Or paste image URL (https://... or /uploads/...)"
                 value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                className="mt-1 h-10 w-full rounded-xl border border-[#E5D8CF] px-3 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D67B6B]"
-              >
-                <option value="/latte-coffee.png">Latte / Hot Coffee Cup</option>
-                <option value="/iced-tea.png">Iced / Cold Brew Glass</option>
-                <option value="/ice-cream-sundae.png">Frappe / Sweet Special</option>
-                <option value="/bottled-water.png">Bottled Beverage</option>
-              </select>
+                onChange={(e) => setFormData((f) => ({ ...f, image_url: e.target.value }))}
+                className="h-8 text-xs rounded-lg bg-white/70"
+              />
             </div>
           </div>
 

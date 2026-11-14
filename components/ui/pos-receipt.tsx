@@ -71,9 +71,9 @@ function generateBarcodeBars(seed: string, count = 42): number[] {
 }
 
 export function PosReceipt({
-  brandName = "ABC COFFEE",
-  brandSubtitle = "SPECIALTY COFFEE",
-  brandAddress = "123, Main Street",
+  brandName = "LAZY SUNDAY",
+  brandSubtitle = "RESTAURANT & BAR",
+  brandAddress = "Tel: +94 76 912 9153",
   currency = "LKR",
   receiptNumber,
   orderNumber,
@@ -137,25 +137,15 @@ export function PosReceipt({
       )}
     >
       <article className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden print:p-2 print:border-none print:shadow-none print:rounded-none">
-        {/* Top Header matching reference image */}
+        {/* Top Header */}
         <header className="text-center space-y-1">
-          {/* Sleek Tilted Coffee Bean Icon */}
-          <svg
-            className="w-7 h-7 mx-auto text-black"
-            viewBox="0 0 100 100"
-            fill="currentColor"
-            style={{ transform: "rotate(-22deg)" }}
-          >
-            <path d="M48,8 C28,10 14,28 14,50 C14,64 22,78 34,88 C38,82 40,72 40,62 C40,46 32,36 38,22 C41,15 45,10 48,8 Z" />
-            <path d="M54,8 C56,12 58,18 56,26 C52,40 60,50 60,66 C60,76 56,86 52,92 C72,88 86,72 86,50 C86,30 72,12 54,8 Z" />
-          </svg>
           <h2 className="font-sans text-xl font-extrabold tracking-[0.16em] uppercase text-black pt-0.5">
             {brandName}
           </h2>
           <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-black">
             {brandSubtitle}
           </p>
-          <p className="text-[10px] text-gray-700 tracking-wide">
+          <p className="text-[10px] text-gray-800 tracking-wide font-medium">
             {brandAddress}
           </p>
         </header>

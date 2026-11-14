@@ -12,7 +12,7 @@ const productUpdateSchema = z.object({
   stock: z.coerce.number().int().min(0).optional(),
   category_id: z.string().uuid().nullable().optional(),
   station: z.enum(["kitchen", "bar", "none"]).optional(),
-  image: z.string().trim().max(2048).optional(),
+  image: z.string().trim().max(5000000).optional(),
   description: z.string().trim().max(1000).optional(),
   temperature: z.enum(["hot", "iced", "cold", "none"]).optional(),
   dietary_tags: z.array(z.string()).optional(),

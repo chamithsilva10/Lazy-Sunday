@@ -48,7 +48,7 @@ export async function getBrowserSession(force = false): Promise<BrowserSession |
       }
       if (!response.ok) throw new Error(`Session request failed (${response.status})`)
       const next = (await response.json()) as (BrowserSession & { authenticated?: boolean })
-      if (!next || !next.access_token || next.authenticated === false) {
+      if (!next || (!next.access_token && !next.user) || next.authenticated === false) {
         sessionCache = null
         negativeCacheUntil = Date.now() + 5000
         return null

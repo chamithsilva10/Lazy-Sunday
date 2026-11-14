@@ -8,7 +8,7 @@ import { SessionIdleLock } from "./components/session-idle-lock"
 import { ClientErrorFilter } from "./components/client-error-filter"
 import { Toaster } from "@/components/ui/sonner"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"], display: "swap", preload: false })
 
 export const viewport: Viewport = {
   width: "device-width",

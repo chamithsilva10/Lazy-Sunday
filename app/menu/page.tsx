@@ -220,6 +220,12 @@ export default function MenuPage() {
 
         {loading ? (
           <div className="py-20 text-center text-[#808068] font-medium">Loading today&apos;s menu...</div>
+        ) : grouped.length === 0 ? (
+          <div className="py-20 text-center text-[#808068] bg-white rounded-3xl border border-[#E5D8CF] p-8">
+            <Coffee className="size-10 mx-auto mb-3 text-[#D67B6B]/40" />
+            <p className="font-serif text-xl font-bold text-[#343428]">Menu is Empty</p>
+            <p className="text-xs text-[#808068] mt-1 max-w-sm mx-auto">No products are currently published in the catalog.</p>
+          </div>
         ) : (
           grouped.map(({ category, items }) => (
             <section key={category.id} className="mb-8">
