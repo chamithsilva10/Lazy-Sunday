@@ -246,6 +246,11 @@ export function TablesWorkspace({
           notes: s.notes || "",
         })),
     )
+    setSelected((prev) => {
+      if (!prev) return null
+      const updated = sharedTables.find((t) => t.id === prev.id || tablesMatch(t.name, prev.name))
+      return updated ? { id: updated.id, name: updated.name, capacity: updated.capacity, status: updated.status } : prev
+    })
     setLoadError(null)
   }, [])
 

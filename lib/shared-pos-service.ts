@@ -3674,20 +3674,61 @@ export class SharedPosService {
         let sessionsChanged = false
 
         if (tableRes && tableRes.success && Array.isArray(tableRes.tables)) {
-          const newTables = tableRes.tables.map((r: any) => ({
-            id: String(r.id),
-            name: r.name,
-            capacity: Number(r.capacity) || 2,
-            status: r.status,
-            guestName: r.guestName,
-            occupiedAt: r.occupiedAt,
-            bookingId: r.bookingId,
-            department: r.department,
-            orderNumber: r.orderNumber,
-            orderTotal: r.orderTotal,
-          }))
-          if (JSON.stringify(newTables) !== JSON.stringify(this.tablesCache)) {
-            this.tablesCache = newTables
+          const mergedTables: SharedTable[] = tableRes.tables.map((r: any) => {
+            const tableId = String(r.id)
+            const tableName = String(r.name)
+            const local = this.tablesCache.find((t) => t.id === tableId || sameName(t.name, tableName))
+
+            const localSession = this.sessionsCache.find(
+              (s) => (s.table_id === tableId || sameName(s.table_name, tableName)) && s.status !== "closed"
+            )
+
+            // If table is occupied locally with an active session or order, PRESERVE it!
+            if (local && (local.status === "occupied" || local.status === "bill_requested") && (localSession || local.orderNumber)) {
+              return {
+                ...local,
+                capacity: Number(r.capacity) || local.capacity || 2,
+              }
+            }
+
+            if (localSession) {
+              return {
+                id: tableId,
+                name: tableName,
+                capacity: Number(r.capacity) || local?.capacity || 2,
+                status: localSession.status === "bill_requested" ? "bill_requested" : "occupied",
+                guestName: localSession.customer_name || local?.guestName,
+                occupiedAt: localSession.seated_at || local?.occupiedAt,
+                orderNumber: local?.orderNumber,
+                orderTotal: local?.orderTotal,
+                department: local?.department,
+                bookingId: r.bookingId || local?.bookingId,
+              }
+            }
+
+            return {
+              id: tableId,
+              name: tableName,
+              capacity: Number(r.capacity) || 2,
+              status: r.status,
+              guestName: r.guestName ?? local?.guestName,
+              occupiedAt: r.occupiedAt ?? local?.occupiedAt,
+              bookingId: r.bookingId ?? local?.bookingId,
+              department: r.department ?? local?.department,
+              orderNumber: r.orderNumber ?? local?.orderNumber,
+              orderTotal: r.orderTotal ?? local?.orderTotal,
+            }
+          })
+
+          // Also preserve any dynamic tables created locally that are not in server list
+          for (const local of this.tablesCache) {
+            if (!mergedTables.some((m) => m.id === local.id || sameName(m.name, local.name))) {
+              mergedTables.push(local)
+            }
+          }
+
+          if (JSON.stringify(mergedTables) !== JSON.stringify(this.tablesCache)) {
+            this.tablesCache = mergedTables
             try { localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache)) } catch {}
             tablesChanged = true
           }
@@ -3716,7 +3757,7 @@ export class SharedPosService {
         }
 
         if (tableRes && tableRes.sessions && Array.isArray(tableRes.sessions)) {
-          const newSessions = tableRes.sessions.map((s: any) => ({
+          const serverSessions = tableRes.sessions.map((s: any) => ({
             id: String(s.id),
             table_id: String(s.table_id),
             table_name: this.tablesCache.find((t) => t.id === String(s.table_id))?.name || "Table",
@@ -3727,8 +3768,19 @@ export class SharedPosService {
             status: s.status,
             notes: s.notes || "",
           }))
-          if (JSON.stringify(newSessions) !== JSON.stringify(this.sessionsCache)) {
-            this.sessionsCache = newSessions
+
+          // Merge: Keep all local active sessions (status !== 'closed') unless the server explicitly returned them as closed
+          const mergedSessions = [...serverSessions]
+          for (const localSess of this.sessionsCache) {
+            if (localSess.status === "closed") continue
+            const inServer = serverSessions.find((s: any) => s.id === localSess.id)
+            if (!inServer) {
+              mergedSessions.push(localSess)
+            }
+          }
+
+          if (JSON.stringify(mergedSessions) !== JSON.stringify(this.sessionsCache)) {
+            this.sessionsCache = mergedSessions
             try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache)) } catch {}
             sessionsChanged = true
           }
@@ -3970,27 +4022,11 @@ export class SharedPosService {
 
   static async releaseTable(tableName: string) {
     this.init()
-    if (isTakeaway(tableName)) return
+    if (isTakeaway(tableName)) return "available"
     const table = this.tablesCache.find((t) => sameName(t.name, tableName))
-    if (!table) return
+    if (!table) return "available"
 
-    let serverStatus = "available"
-    if (this.isBrowser()) {
-      try {
-        const res = await fetch("/api/tables", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "release", tableId: table.id, tableName: table.name }),
-        })
-        const data = await res.json()
-        if (data.status) serverStatus = data.status
-        await this.refreshFromApi(true)
-        this.broadcast("tables")
-        this.broadcast("sessions")
-        return serverStatus
-      } catch {}
-    }
-
+    // 1. Immediately update local state so UI updates with ZERO lag
     this.tablesCache = this.tablesCache.map((t) =>
       sameName(t.name, tableName)
         ? {
@@ -4023,6 +4059,20 @@ export class SharedPosService {
     this.broadcast("tables")
     this.broadcast("sessions")
 
+    // 2. Persist to API and Supabase
+    let serverStatus = "available"
+    if (this.isBrowser()) {
+      try {
+        const res = await fetch("/api/tables", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "release", tableId: table.id, tableName: table.name }),
+        })
+        const data = await res.json()
+        if (data.status) serverStatus = data.status
+      } catch {}
+    }
+
     try {
       const supabase = createClient()
       void supabase.from("pos_tables").update({ status: "available" }).eq("id", table.id)
@@ -4032,7 +4082,8 @@ export class SharedPosService {
         .eq("table_id", table.id)
         .in("status", ["open", "bill_requested"])
     } catch {}
-    return "available"
+
+    return serverStatus
   }
 
   static async setTableStatus(tableIdOrName: string, status: SharedTable["status"]) {
