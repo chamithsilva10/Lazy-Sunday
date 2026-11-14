@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
-import { SharedPosService, type SharedOrder, type SharedBooking, type SharedTable } from "@/lib/shared-pos-service"
+import { SharedPosService, tablesMatch, normalizeTableName, type SharedOrder, type SharedBooking, type SharedTable } from "@/lib/shared-pos-service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -213,6 +213,7 @@ export function TablesWorkspace({
 
     setTables(sharedTables.map((t) => ({ id: t.id, name: t.name, capacity: t.capacity, status: t.status })))
     setAllBookings(sharedBookings)
+    setOrders(SharedPosService.getOrders())
     setReservations(
       sharedBookings
         .filter((b) => ACTIVE_BOOKING.includes(b.status))
@@ -293,7 +294,7 @@ export function TablesWorkspace({
   const sessionFor = (table: Table) =>
     sessions.find(
       (item) =>
-        (item.table_id === table.id || item.table_name?.toLowerCase() === table.name.toLowerCase()) &&
+        (item.table_id === table.id || tablesMatch(item.table_name, table.name)) &&
         item.status !== "closed"
     )
 
@@ -302,7 +303,7 @@ export function TablesWorkspace({
       if (item.table_id && (item.table_id === table.id || String(item.table_id) === String(table.id))) {
         return true
       }
-      if (item.table_name && table.name && item.table_name.trim().toLowerCase() === table.name.trim().toLowerCase()) {
+      if (item.table_name && table.name && tablesMatch(item.table_name, table.name)) {
         return true
       }
       return false
@@ -339,6 +340,10 @@ export function TablesWorkspace({
     if (session && session.status !== "closed") {
       return session.status === "bill_requested" ? "bill_requested" : "occupied"
     }
+
+    const hasOpenOrder = orders.some((o) => o.status === "open" && tablesMatch(o.table_name, table.name))
+    if (hasOpenOrder) return "occupied"
+
     const held = heldBookingFor(table)
     if (held) return "reserved"
 
@@ -359,6 +364,13 @@ export function TablesWorkspace({
     const orderMatch = session?.notes?.match(/Order\s*#?([A-Za-z0-9-]+)/i)
     const sessionOrderNum = orderMatch ? orderMatch[1] : (table as any).orderNumber
 
+    // 1. First priority: any active "open" order directly matching this table
+    const openOrder = orders.find(
+      (o) => o.status === "open" && tablesMatch(o.table_name, table.name)
+    )
+    if (openOrder) return openOrder
+
+    // 2. Second priority: order referenced explicitly by session notes or table.orderNumber
     if (sessionOrderNum) {
       const match = orders.find(
         (o) => o.order_number?.toLowerCase() === sessionOrderNum.toLowerCase()
@@ -366,15 +378,20 @@ export function TablesWorkspace({
       if (match) return match
     }
 
+    // 3. Third priority: most recent dine-in order for this table
     const tStatus = statusFor(table)
-    if (tStatus === "occupied" || tStatus === "bill_requested") {
+    if (tStatus === "occupied" || tStatus === "bill_requested" || (table as any).status === "occupied" || !!session) {
       const sessionTime = session?.seated_at ? new Date(session.seated_at).getTime() : 0
       return orders.find((o) => {
-        if (o.table_name.toLowerCase() !== table.name.toLowerCase()) return false
+        if (!tablesMatch(o.table_name, table.name)) return false
         if (o.status !== "open" && o.status !== "paid") return false
         if (sessionTime && o.created_at) {
           const orderTime = new Date(o.created_at).getTime()
-          return orderTime >= sessionTime - 2 * 60 * 60 * 1000
+          return orderTime >= sessionTime - 4 * 60 * 60 * 1000
+        }
+        if (o.created_at) {
+          const orderTime = new Date(o.created_at).getTime()
+          return Date.now() - orderTime <= 8 * 60 * 60 * 1000
         }
         return true
       })

@@ -2466,8 +2466,37 @@ export const DEFAULT_BRANCHES: SharedBranch[] = [
 
 type Listener<T> = (data: T) => void
 
+export function normalizeTableName(str?: string | null): string {
+  if (!str) return ""
+  let clean = str.trim().toLowerCase()
+  clean = clean.replace(/^(dine\s*in\s*[\/-]?\s*)/i, "")
+  clean = clean.replace(/\s*\((dine[- ]?in|takeaway)\)\s*$/i, "")
+  clean = clean.replace(/^tbl[-_\s]*/i, "table ")
+  clean = clean.replace(/^t[-_\s]*(\d+)$/i, "table $1")
+  clean = clean.replace(/\btable\s*0+(\d+)\b/i, "table $1")
+  return clean.trim()
+}
+
+export function tablesMatch(a?: string | null, b?: string | null): boolean {
+  if (!a || !b) return false
+  if (a === b) return true
+  const normA = normalizeTableName(a)
+  const normB = normalizeTableName(b)
+  if (normA === normB) return true
+  const numA = normA.match(/\d+/)?.[0]
+  const numB = normB.match(/\d+/)?.[0]
+  if (numA && numB && numA === numB) {
+    if (normA.startsWith("table") && normB.startsWith("table")) return true
+  }
+  return false
+}
+
 const isTakeaway = (name?: string) => !name || name.trim().toLowerCase() === "takeaway"
-const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+const sameName = (a: string, b: string) => {
+  if (!a || !b) return false
+  if (a.trim().toLowerCase() === b.trim().toLowerCase()) return true
+  return tablesMatch(a, b)
+}
 
 export class SharedPosService {
   private static tablesCache: SharedTable[] = DEFAULT_TABLES.map((t) => ({ ...t }))
@@ -3842,8 +3871,18 @@ export class SharedPosService {
   ) {
     this.init()
     if (isTakeaway(tableName)) return
-    const table = this.tablesCache.find((t) => sameName(t.name, tableName))
-    if (!table) return
+    let table: SharedTable | undefined = this.tablesCache.find((t) => sameName(t.name, tableName))
+    if (!table) {
+      const cleanName = tableName.trim()
+      const newTable: SharedTable = {
+        id: `tbl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: cleanName,
+        capacity: 4,
+        status: "occupied",
+      }
+      this.tablesCache = [...this.tablesCache, newTable]
+      table = newTable
+    }
 
     const nowIso = new Date().toISOString()
     this.tablesCache = this.tablesCache.map((t) =>

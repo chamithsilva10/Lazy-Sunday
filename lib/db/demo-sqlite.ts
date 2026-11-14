@@ -144,7 +144,14 @@ function initSchemaAndSeed(db: any) {
 // ---------------------------------------------------------------------------
 
 function normalizeTableName(name: string): string {
-  return (name || "").trim().toLowerCase().replace(/\btable\s*0+(\d+)\b/i, "table $1")
+  if (!name) return ""
+  let clean = (name || "").trim().toLowerCase()
+  clean = clean.replace(/^(dine\s*in\s*[\/-]?\s*)/i, "")
+  clean = clean.replace(/\s*\((dine[- ]?in|takeaway)\)\s*$/i, "")
+  clean = clean.replace(/^tbl[-_\s]*/i, "table ")
+  clean = clean.replace(/^t[-_\s]*(\d+)$/i, "table $1")
+  clean = clean.replace(/\btable\s*0+(\d+)\b/i, "table $1")
+  return clean.trim()
 }
 
 function findTableInDb(db: any, idOrName: string): any {
@@ -842,8 +849,15 @@ export const DemoDbService = {
     const db = getDemoSqliteDb()
     if (!db) return { success: false, error: "Database not available" }
     try {
-      const table = findTableInDb(db, tableIdOrName) as any
-      if (!table) return { success: false, error: `Table '${tableIdOrName}' not found` }
+      let table = findTableInDb(db, tableIdOrName) as any
+      if (!table) {
+        const cleanName = (tableIdOrName || "Table").trim()
+        const newId = `tbl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+        db.prepare(
+          "INSERT INTO pos_tables (id, name, capacity, status) VALUES (?, ?, 4, 'occupied')"
+        ).run(newId, cleanName)
+        table = { id: newId, name: cleanName, capacity: 4, status: "occupied" }
+      }
 
       const existingSession = db.prepare(
         "SELECT * FROM table_sessions WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested')"
@@ -879,8 +893,15 @@ export const DemoDbService = {
     const db = getDemoSqliteDb()
     if (!db) return { success: false, error: "Database not available" }
     try {
-      const table = findTableInDb(db, tableIdOrName) as any
-      if (!table) return { success: false, error: `Table '${tableIdOrName}' not found` }
+      let table = findTableInDb(db, tableIdOrName) as any
+      if (!table) {
+        const cleanName = (tableIdOrName || "Table").trim()
+        const newId = `tbl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+        db.prepare(
+          "INSERT INTO pos_tables (id, name, capacity, status) VALUES (?, ?, 4, 'occupied')"
+        ).run(newId, cleanName)
+        table = { id: newId, name: cleanName, capacity: 4, status: "occupied" }
+      }
 
       const existingSession = db.prepare(
         "SELECT * FROM table_sessions WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested') ORDER BY seated_at DESC LIMIT 1"
@@ -917,7 +938,9 @@ export const DemoDbService = {
     if (!db) return { success: false, error: "Database not available" }
     try {
       const table = findTableInDb(db, tableIdOrName) as any
-      if (!table) return { success: false, error: `Table '${tableIdOrName}' not found` }
+      if (!table) {
+        return { success: true, status: "available" }
+      }
 
       db.prepare(
         "UPDATE table_sessions SET status = 'closed' WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested')"

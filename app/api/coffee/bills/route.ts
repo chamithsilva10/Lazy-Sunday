@@ -32,7 +32,10 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createStaffSupabaseClient(request)
     if (request.nextUrl.searchParams.get("forBar") === "true") {
-      const { data, error } = await supabase!.rpc("get_active_coffee_bar_tickets")
+      if (!supabase) {
+        return NextResponse.json({ success: true, bills: [] })
+      }
+      const { data, error } = await supabase.rpc("get_active_coffee_bar_tickets")
       // The legacy coffee tables/functions may not exist after the unified
       // catalog migration. Keep the main POS available in that case.
       if (error) {
