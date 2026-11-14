@@ -19,7 +19,8 @@ export function isDemoMode(): boolean {
       return false
     }
   }
-  return false
+  // If neither Supabase nor PostgreSQL is configured, default to demo mode so the application functions everywhere (including Vercel without manual env vars)
+  return true
 }
 
 export const DEMO_CONFIG = {

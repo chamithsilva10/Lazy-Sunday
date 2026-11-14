@@ -16,11 +16,6 @@ const ALLOWED_MIME_TYPES: Record<string, string> = {
 export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get("content-type") || ""
-    const uploadsDir = path.join(process.cwd(), "public", "uploads")
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true })
-    }
-
     // 1. Multipart Form Data (Device File Upload)
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData()
@@ -33,19 +28,36 @@ export async function POST(request: NextRequest) {
       const mimeType = file.type || "image/jpeg"
       const ext = ALLOWED_MIME_TYPES[mimeType] || path.extname(file.name) || ".jpg"
       const safeName = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`
-      const targetPath = path.join(uploadsDir, safeName)
-
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
-      fs.writeFileSync(targetPath, buffer)
 
-      const publicUrl = `/uploads/${safeName}`
-      return NextResponse.json({
-        success: true,
-        url: publicUrl,
-        filename: safeName,
-        size: buffer.length,
-      })
+      try {
+        const uploadsDir = path.join(process.cwd(), "public", "uploads")
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true })
+        }
+        const targetPath = path.join(uploadsDir, safeName)
+        fs.writeFileSync(targetPath, buffer)
+
+        const publicUrl = `/uploads/${safeName}`
+        return NextResponse.json({
+          success: true,
+          url: publicUrl,
+          filename: safeName,
+          size: buffer.length,
+        })
+      } catch (writeErr) {
+        // Fallback for serverless read-only environments (e.g. Vercel)
+        console.warn("Read-only filesystem detected, encoding as dataUrl:", writeErr)
+        const base64 = buffer.toString("base64")
+        const dataUrl = `data:${mimeType};base64,${base64}`
+        return NextResponse.json({
+          success: true,
+          url: dataUrl,
+          filename: safeName,
+          size: buffer.length,
+        })
+      }
     }
 
     // 2. JSON Payload (Base64 dataUrl or direct image URL)
@@ -67,18 +79,32 @@ export async function POST(request: NextRequest) {
         const base64Data = matches[2]
         const ext = ALLOWED_MIME_TYPES[mime] || ".jpg"
         const safeName = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`
-        const targetPath = path.join(uploadsDir, safeName)
 
-        const buffer = Buffer.from(base64Data, "base64")
-        fs.writeFileSync(targetPath, buffer)
+        try {
+          const uploadsDir = path.join(process.cwd(), "public", "uploads")
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true })
+          }
+          const targetPath = path.join(uploadsDir, safeName)
+          const buffer = Buffer.from(base64Data, "base64")
+          fs.writeFileSync(targetPath, buffer)
 
-        const publicUrl = `/uploads/${safeName}`
-        return NextResponse.json({
-          success: true,
-          url: publicUrl,
-          filename: safeName,
-          size: buffer.length,
-        })
+          const publicUrl = `/uploads/${safeName}`
+          return NextResponse.json({
+            success: true,
+            url: publicUrl,
+            filename: safeName,
+            size: buffer.length,
+          })
+        } catch {
+          // If filesystem is read-only (e.g. Vercel), return the dataUrl directly
+          return NextResponse.json({
+            success: true,
+            url: dataUrl,
+            filename: safeName,
+            size: base64Data.length,
+          })
+        }
       }
 
       return NextResponse.json({ success: false, error: "Missing dataUrl or url in JSON body" }, { status: 400 })

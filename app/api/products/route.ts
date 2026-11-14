@@ -16,16 +16,18 @@ const productCreateSchema = z.object({
   category: z.string().trim().max(120).optional(),
   category_name: z.string().trim().max(120).optional(),
   station: z.enum(["kitchen", "bar", "none"]).optional(),
-  image: z.string().trim().max(5000000).optional(),
-  image_url: z.string().trim().max(5000000).optional(),
+  image: z.string().trim().max(10000000).optional(),
+  image_url: z.string().trim().max(10000000).optional(),
   description: z.string().trim().max(1000).optional(),
   temperature: z.enum(["hot", "iced", "cold", "none"]).default("none"),
   dietary_tags: z.array(z.string()).default([]),
   department: z.string().trim().max(80).optional(),
   department_override: z.string().trim().max(80).optional(),
   active: z.boolean().default(true),
+  is_active: z.boolean().optional(),
+  is_archived: z.boolean().optional(),
   track_stock: z.boolean().default(true),
-})
+}).passthrough()
 
 export async function GET(request: NextRequest) {
   try {

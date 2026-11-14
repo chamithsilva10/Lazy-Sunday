@@ -20,8 +20,10 @@ import {
   MockCategory,
 } from "../mock/pos-mock-data"
 
-const DB_DIR = path.join(process.cwd(), "data")
-const DB_FILE = path.join(DB_DIR, "pos_demo.sqlite")
+const BUNDLED_DB_FILE = path.join(process.cwd(), "data", "pos_demo.sqlite")
+const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)
+const DB_DIR = IS_SERVERLESS ? "/tmp" : path.join(process.cwd(), "data")
+const DB_FILE = IS_SERVERLESS ? path.join("/tmp", "pos_demo.sqlite") : BUNDLED_DB_FILE
 
 let dbInstance: any = null
 
@@ -29,8 +31,16 @@ export function getDemoSqliteDb() {
   if (dbInstance) return dbInstance
 
   try {
-    if (!fs.existsSync(DB_DIR)) {
-      fs.mkdirSync(DB_DIR, { recursive: true })
+    if (IS_SERVERLESS) {
+      if (!fs.existsSync(DB_FILE) && fs.existsSync(BUNDLED_DB_FILE)) {
+        try {
+          fs.copyFileSync(BUNDLED_DB_FILE, DB_FILE)
+        } catch {}
+      }
+    } else {
+      if (!fs.existsSync(DB_DIR)) {
+        fs.mkdirSync(DB_DIR, { recursive: true })
+      }
     }
 
     // Dynamic require for node:sqlite
@@ -39,8 +49,10 @@ export function getDemoSqliteDb() {
     dbInstance = new DatabaseSync(DB_FILE)
 
     // Enable WAL mode & foreign keys for SQLite performance
-    dbInstance.exec("PRAGMA journal_mode = WAL;")
-    dbInstance.exec("PRAGMA foreign_keys = ON;")
+    try {
+      dbInstance.exec("PRAGMA journal_mode = WAL;")
+      dbInstance.exec("PRAGMA foreign_keys = ON;")
+    } catch {}
 
     // Ensure reservations table exists
     dbInstance.exec(`

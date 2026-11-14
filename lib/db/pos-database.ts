@@ -13,13 +13,18 @@ const globalForPg = globalThis as unknown as {
 function getConnectionString(): string {
   if (process.env.POSTGRES_URL) return process.env.POSTGRES_URL
   if (process.env.POSTGRES_URL_NON_POOLING) return process.env.POSTGRES_URL_NON_POOLING
+  // If running on Vercel or serverless without a database configured, don't attempt to connect to localhost
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) return ""
   // Default local fallback if environment variables are not yet loaded
   return "postgresql://postgres:postgres@127.0.0.1:5432/pos_test"
 }
 
 export function getPgPool(): pg.Pool {
+  const connStr = getConnectionString()
+  if (!connStr) {
+    throw new Error("No PostgreSQL connection string configured")
+  }
   if (!globalForPg.posPgPool) {
-    const connStr = getConnectionString()
     const isLocal = connStr.includes("127.0.0.1") || connStr.includes("localhost")
     globalForPg.posPgPool = new Pool({
       connectionString: connStr,
