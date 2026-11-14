@@ -37,12 +37,35 @@ export async function GET(request: NextRequest) {
     const activeOnly = searchParams.get("activeOnly") === "true"
     const search = searchParams.get("search")?.trim().toLowerCase() || undefined
 
-    const products = await PosDatabase.getProducts({
+    let products = await PosDatabase.getProducts({
       category,
       station,
       activeOnly,
       search,
     })
+
+    // Check pos_product_overrides cookie (for serverless environments where SQLite in /tmp is container-local)
+    const rawCookie = request.cookies.get("pos_product_overrides")?.value
+    if (rawCookie) {
+      try {
+        const overrides = JSON.parse(decodeURIComponent(rawCookie))
+        if (overrides && typeof overrides === "object") {
+          products = products.map((p: any) => {
+            const o = overrides[p.id] || overrides[p.name] || overrides[(p.name || "").trim().toLowerCase()]
+            if (o) {
+              return {
+                ...p,
+                price: o.price !== undefined ? Number(o.price) : p.price,
+                stock: o.stock !== undefined ? Number(o.stock) : p.stock,
+                image: o.image || p.image,
+                updated_at: o.updated_at || p.updated_at,
+              }
+            }
+            return p
+          })
+        }
+      } catch {}
+    }
 
     return NextResponse.json({ success: true, products })
   } catch (error: any) {

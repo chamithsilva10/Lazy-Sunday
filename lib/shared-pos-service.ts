@@ -65,6 +65,8 @@ export interface SharedProduct {
   station?: "kitchen" | "bar" | "none"
   active?: boolean
   is_archived?: boolean
+  user_customized?: boolean
+  updated_at?: string
 }
 
 export interface SharedOrderItem {
@@ -4295,6 +4297,7 @@ export class SharedPosService {
             station,
             active: p.active !== false,
             is_archived: p.is_archived === true,
+            updated_at: p.updated_at ? String(p.updated_at) : undefined,
           }
         })
 
@@ -4304,12 +4307,20 @@ export class SharedPosService {
         mappedIncoming.forEach((mp) => {
           const key = mp.name.trim().toLowerCase()
           const existing = cacheMap.get(key)
+          let finalPrice = existing?.price ?? mp.price
+          if (!existing?.user_customized && mp.price > 0) {
+            finalPrice = mp.price
+          } else if (existing?.user_customized && mp.updated_at && existing.updated_at && new Date(mp.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
+            finalPrice = mp.price
+          }
           cacheMap.set(key, {
             ...existing,
             ...mp,
             id: existing?.id || mp.id,
-            price: mp.price > 0 ? mp.price : (existing?.price ?? 0),
+            price: finalPrice,
             image: (mp.image && !mp.image.includes("placeholder")) ? mp.image : (existing?.image || mp.image),
+            user_customized: existing?.user_customized,
+            updated_at: existing?.updated_at || mp.updated_at,
           })
         })
         this.productsCache = Array.from(cacheMap.values())
@@ -4349,6 +4360,8 @@ export class SharedPosService {
       station,
       active: product.active !== false,
       is_archived: false,
+      user_customized: true,
+      updated_at: new Date().toISOString(),
     }
 
     let matched = false
@@ -4379,6 +4392,29 @@ export class SharedPosService {
     try {
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(this.productsCache))
     } catch {}
+
+    // Update pos_product_overrides cookie in browser
+    if (typeof document !== "undefined") {
+      try {
+        const match = document.cookie.match(/pos_product_overrides=([^;]+)/)
+        let curOverrides: Record<string, any> = {}
+        if (match && match[1]) {
+          try { curOverrides = JSON.parse(decodeURIComponent(match[1])) } catch {}
+        }
+        const oData = {
+          price: cleanProduct.price,
+          stock: cleanProduct.stock,
+          image: cleanProduct.image,
+          updated_at: cleanProduct.updated_at,
+        }
+        curOverrides[id] = oData
+        if (cleanProduct.name) {
+          curOverrides[cleanProduct.name.trim().toLowerCase()] = oData
+        }
+        document.cookie = `pos_product_overrides=${encodeURIComponent(JSON.stringify(curOverrides))}; path=/; max-age=2592000; SameSite=Lax`
+      } catch {}
+    }
+
     this.emitProducts()
     this.broadcast("products", cleanProduct)
 

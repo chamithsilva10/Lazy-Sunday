@@ -132,6 +132,8 @@ export type Product = {
   description?: string
   temperature?: "hot" | "iced" | "none"
   dietary_tags?: string[]
+  user_customized?: boolean
+  updated_at?: string
 }
 
 const DEFAULT_POS_CATEGORIES: { id: string; name: string }[] = [
@@ -804,6 +806,8 @@ export default function POSPage() {
           dietary_tags: p.dietary_tags || [],
           department: p.department || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
           station,
+          user_customized: p.user_customized,
+          updated_at: p.updated_at,
         })
       })
       // 2. Overlay / merge any cloud products from Supabase
@@ -818,7 +822,12 @@ export default function POSPage() {
           })
           const key = p.name.trim().toLowerCase()
           const existing = prodMap.get(key)
-          const resolvedPrice = Number(p.price != null && p.price > 0 ? p.price : (existing?.price ?? 0))
+          let resolvedPrice = existing?.price ?? Number(p.price != null ? p.price : 0)
+          if (!existing?.user_customized && p.price != null && p.price > 0) {
+            resolvedPrice = Number(p.price)
+          } else if (existing?.user_customized && p.updated_at && existing.updated_at && new Date(p.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
+            resolvedPrice = Number(p.price)
+          }
           prodMap.set(key, {
             id: String(p.id || existing?.id),
             name: p.name,
@@ -832,6 +841,8 @@ export default function POSPage() {
             dietary_tags: p.dietary_tags || existing?.dietary_tags || [],
             department: p.department_override || existing?.department || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
             station,
+            user_customized: existing?.user_customized,
+            updated_at: existing?.updated_at || p.updated_at,
           })
         })
       }
@@ -855,7 +866,12 @@ export default function POSPage() {
               const finalImage = p.image && !p.image.includes("placeholder")
                 ? p.image
                 : (existing?.image || resolveProductImage(p.name, p.image, cat))
-              const resolvedPrice = Number(p.price != null && p.price > 0 ? p.price : (existing?.price ?? 0))
+              let resolvedPrice = existing?.price ?? Number(p.price != null ? p.price : 0)
+              if (!existing?.user_customized && p.price != null && p.price > 0) {
+                resolvedPrice = Number(p.price)
+              } else if (existing?.user_customized && p.updated_at && existing.updated_at && new Date(p.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
+                resolvedPrice = Number(p.price)
+              }
               prodMap.set(key, {
                 id: String(p.id || existing?.id),
                 name: p.name,
@@ -869,6 +885,8 @@ export default function POSPage() {
                 dietary_tags: Array.isArray(p.dietary_tags) ? p.dietary_tags : (existing?.dietary_tags || []),
                 department: p.department || p.department_override || existing?.department || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
                 station,
+                user_customized: existing?.user_customized,
+                updated_at: existing?.updated_at || p.updated_at,
               })
             })
           }
@@ -2133,6 +2151,8 @@ export default function POSPage() {
       category_id: catId || undefined,
       station,
       department,
+      user_customized: true,
+      updated_at: new Date().toISOString(),
     }
 
     await SharedPosService.saveProduct(saved, editingProductId || undefined)

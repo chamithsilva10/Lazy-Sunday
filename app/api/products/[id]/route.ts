@@ -95,26 +95,49 @@ async function handleProductUpdate(
     }
 
     const updated = await PosDatabase.updateProduct(id, payload)
-    if (!updated) {
-      const fallback = {
-        id,
-        name: payload.name || id,
-        price: payload.price ?? 0,
-        image: payload.image || payload.image_url || "/placeholder.svg",
-        stock: payload.stock ?? 50,
-        category: payload.category || payload.category_name || "General",
-        category_name: payload.category_name || payload.category || "General",
-        category_id: payload.category_id || null,
-        station: payload.station || "bar",
-        department: payload.department || "Coffee Bar",
-        active: payload.active !== false && payload.is_active !== false,
-        is_archived: payload.is_archived === true,
+    const resultProduct = updated || {
+      id,
+      name: payload.name || id,
+      price: payload.price ?? 0,
+      image: payload.image || payload.image_url || "/placeholder.svg",
+      stock: payload.stock ?? 50,
+      category: payload.category || payload.category_name || "General",
+      category_name: payload.category_name || payload.category || "General",
+      category_id: payload.category_id || null,
+      station: payload.station || "bar",
+      department: payload.department || "Coffee Bar",
+      active: payload.active !== false && payload.is_active !== false,
+      is_archived: payload.is_archived === true,
+      updated_at: new Date().toISOString(),
+    }
+    const res = NextResponse.json({ success: true, product: resultProduct })
+
+    // Also update pos_product_overrides cookie so serverless GET /api/products across containers reflects updates
+    try {
+      const rawCookie = request.cookies.get("pos_product_overrides")?.value
+      let overrides: Record<string, any> = {}
+      if (rawCookie) {
+        try { overrides = JSON.parse(decodeURIComponent(rawCookie)) } catch {}
+      }
+      const overrideData = {
+        price: resultProduct.price,
+        stock: resultProduct.stock,
+        image: resultProduct.image,
         updated_at: new Date().toISOString(),
       }
-      return NextResponse.json({ success: true, product: fallback })
-    }
+      overrides[id] = overrideData
+      if (resultProduct.name) {
+        overrides[resultProduct.name.trim().toLowerCase()] = overrideData
+      }
+      res.cookies.set("pos_product_overrides", encodeURIComponent(JSON.stringify(overrides)), {
+        path: "/",
+        maxAge: 86400 * 30,
+        sameSite: "lax",
+        httpOnly: false,
+      })
+    } catch {}
 
-    return NextResponse.json({ success: true, product: updated })
+    return res
   } catch (error: any) {
     console.error("PUT/PATCH /api/products/[id] failed", error)
     return NextResponse.json({ success: false, error: error.message || "Unable to update product." }, { status: 500 })
