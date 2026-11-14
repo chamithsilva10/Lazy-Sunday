@@ -663,11 +663,13 @@ export default function POSPage() {
     stationManuallySelected: false,
     image: "",
   })
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
 
   async function handleImageFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
+    setIsUploadingImage(true)
     const reader = new FileReader()
     reader.onload = async () => {
       const dataUrl = reader.result as string
@@ -690,6 +692,8 @@ export default function POSPage() {
       } catch (err) {
         console.warn("Upload fallback to dataUrl", err)
         toast.info("Photo loaded")
+      } finally {
+        setIsUploadingImage(false)
       }
     }
     reader.readAsDataURL(file)
@@ -2044,7 +2048,23 @@ export default function POSPage() {
       category: categoryName,
     })
     const department = station === "bar" ? "Coffee Bar" : "Juice & Food"
-    const productImage = form.image?.trim() || resolveProductImage(form.name.trim(), "/placeholder.svg", categoryName)
+    let productImage = form.image?.trim() || resolveProductImage(form.name.trim(), "/placeholder.svg", categoryName)
+
+    if (productImage.startsWith("data:")) {
+      try {
+        const upRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl: productImage }),
+        })
+        const upJson = await upRes.json()
+        if (upJson?.success && upJson?.url) {
+          productImage = upJson.url
+        }
+      } catch (e) {
+        console.warn("Could not convert dataUrl to uploaded image", e)
+      }
+    }
 
     const payload = {
       name: form.name.trim(),
@@ -4530,6 +4550,12 @@ export default function POSPage() {
                         e.currentTarget.src = "/placeholder.svg"
                       }}
                     />
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-2 text-white text-xs font-semibold z-10">
+                        <div className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Uploading photo...
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <label className="cursor-pointer bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm hover:bg-gray-100 flex items-center gap-1.5">
                         <Upload className="size-3.5" />
@@ -4552,7 +4578,13 @@ export default function POSPage() {
                     </div>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-[#E5D8CF] hover:border-[#D67B6B] bg-[#FAF5F1]/60 hover:bg-[#FAF5F1] rounded-xl cursor-pointer transition-colors text-center group">
+                  <label className="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-[#E5D8CF] hover:border-[#D67B6B] bg-[#FAF5F1]/60 hover:bg-[#FAF5F1] rounded-xl cursor-pointer transition-colors text-center group">
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center gap-2 text-[#D67B6B] text-xs font-semibold z-10">
+                        <div className="size-4 animate-spin rounded-full border-2 border-[#D67B6B] border-t-transparent" />
+                        Uploading photo...
+                      </div>
+                    )}
                     <div className="size-10 rounded-full bg-white shadow-xs border border-[#E5D8CF] flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
                       <Camera className="size-5 text-[#D67B6B]" />
                     </div>
@@ -4593,8 +4625,12 @@ export default function POSPage() {
                 onChange={(e) => setForm({ ...form, stock: e.target.value })}
                 className="h-11 rounded-xl"
               />
-              <Button onClick={saveProduct} className="bg-[#D67B6B] hover:bg-[#c26555] text-white h-11 rounded-xl font-bold mt-2">
-                {editingProductId ? "Save Changes" : "Create Product"}
+              <Button
+                onClick={saveProduct}
+                disabled={isUploadingImage}
+                className="bg-[#D67B6B] hover:bg-[#c26555] text-white h-11 rounded-xl font-bold mt-2 disabled:opacity-50"
+              >
+                {isUploadingImage ? "Uploading photo..." : (editingProductId ? "Save Changes" : "Create Product")}
               </Button>
             </div>
           )}
