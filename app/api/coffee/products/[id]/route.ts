@@ -46,7 +46,33 @@ export async function PUT(
     }
 
     await writeSecurityAudit(request, "product_updated", auth.identity.userId, id, { fields: Object.keys(parsed.data) })
-    return NextResponse.json({ success: true, product: updated })
+    const res = NextResponse.json({ success: true, product: updated })
+
+    // Also update pos_product_overrides cookie so serverless GET /api/products reflects updates
+    try {
+      const rawCookie = request.cookies.get("pos_product_overrides")?.value
+      let overrides: Record<string, any> = {}
+      if (rawCookie) {
+        try { overrides = JSON.parse(decodeURIComponent(rawCookie)) } catch {}
+      }
+      const overrideData = {
+        price: parsed.data.price,
+        image: parsed.data.image_url,
+        updated_at: new Date().toISOString(),
+      }
+      overrides[id] = overrideData
+      if (parsed.data.name) {
+        overrides[parsed.data.name.trim().toLowerCase()] = overrideData
+      }
+      res.cookies.set("pos_product_overrides", encodeURIComponent(JSON.stringify(overrides)), {
+        path: "/",
+        maxAge: 86400 * 30,
+        sameSite: "lax",
+        httpOnly: false,
+      })
+    } catch {}
+
+    return res
   } catch (error: any) {
     console.error("Coffee product update failed", error)
     return NextResponse.json({ success: false, error: "Unable to update product." }, { status: 500 })

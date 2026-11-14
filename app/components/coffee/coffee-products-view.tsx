@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { Coffee, Plus, Search, Edit2, Trash2, ShieldAlert, Camera, Upload, CheckCircle2, XCircle, ArrowUpDown, ChevronLeft, ChevronRight, Sparkles } from "lucide-react"
 import { CoffeeProduct, CoffeeStatus } from "@/lib/coffee/types"
 import { CoffeeStorageService } from "@/lib/coffee/storage"
+import { SharedPosService } from "@/lib/shared-pos-service"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -200,6 +201,21 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
         setProducts(updated)
         CoffeeStorageService.saveLocalProducts(updated)
 
+        // Sync with SharedPosService so POS & Catalog views update immediately
+        SharedPosService.saveProduct({
+          id: editingProduct.id,
+          name: formData.name.trim(),
+          category: formData.category,
+          price: priceNum,
+          image: formData.image_url,
+          department: "Coffee Bar",
+          station: "bar",
+          active: formData.status === "active",
+        })
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("pos_products_updated"))
+        }
+
         // Call API endpoint in background
         void fetch(`/api/coffee/products/${editingProduct.id}`, {
           method: "PUT",
@@ -231,6 +247,21 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
         setProducts(updated)
         CoffeeStorageService.saveLocalProducts(updated)
 
+        // Sync with SharedPosService
+        SharedPosService.saveProduct({
+          id: newProduct.id,
+          name: formData.name.trim(),
+          category: formData.category,
+          price: priceNum,
+          image: formData.image_url,
+          department: "Coffee Bar",
+          station: "bar",
+          active: formData.status === "active",
+        })
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("pos_products_updated"))
+        }
+
         // Call API endpoint in background
         void fetch("/api/coffee/products", {
           method: "POST",
@@ -261,6 +292,17 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
     const updated = products.map((p) => (p.id === product.id ? { ...p, status: newStatus } : p))
     setProducts(updated)
     CoffeeStorageService.saveLocalProducts(updated)
+    SharedPosService.saveProduct({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      active: newStatus === "active",
+      department: "Coffee Bar",
+      station: "bar",
+    })
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pos_products_updated"))
+    }
     try {
       void fetch(`/api/coffee/products/${product.id}`, {
         method: "PUT",
@@ -279,6 +321,10 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
     const updated = products.filter((p) => p.id !== id)
     setProducts(updated)
     CoffeeStorageService.saveLocalProducts(updated)
+    SharedPosService.deleteProduct(id)
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pos_products_updated"))
+    }
     setDeleteConfirmId(null)
     toast.success("Coffee product removed")
     try {
