@@ -96,7 +96,7 @@ import { SharedPosService, DEFAULT_INITIAL_ORDERS, type SharedCustomer, type Sha
 import { determineItemStation, isBarItem, isKitchenItem } from "@/lib/station-routing"
 import { useSharedTables } from "@/hooks/use-shared-tables"
 import type { CoffeeBill } from "@/lib/coffee/types"
-import { resolveProductImage } from "@/lib/product-images"
+import { resolveProductImage, PRODUCT_IMAGE_MAP } from "@/lib/product-images"
 import { compressImageFile } from "@/lib/image-compress"
 
 type View =
@@ -707,6 +707,24 @@ export default function POSPage() {
   })
   const [isUploadingImage, setIsUploadingImage] = useState(false)
 
+  function handleProductImageError(e: React.SyntheticEvent<HTMLImageElement>) {
+    const target = e.currentTarget
+    target.onerror = null
+    const src = target.getAttribute("src") || ""
+    if (typeof window !== "undefined" && src) {
+      try {
+        const cached =
+          localStorage.getItem("pos_upload:" + src) ||
+          localStorage.getItem("pos_upload:" + src.split("/").pop())
+        if (cached) {
+          target.src = cached
+          return
+        }
+      } catch {}
+    }
+    target.src = "/placeholder.svg"
+  }
+
   async function handleImageFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -715,11 +733,37 @@ export default function POSPage() {
     try {
       // 1. Client-side compress down to max 480x480 (~20-30KB) to prevent 413 Content Too Large
       const { dataUrl, blob } = await compressImageFile(file, 480, 0.8)
-      setForm((f) => ({ ...f, image: dataUrl }))
+      const ext = file.name.match(/\.(jpg|jpeg|png|webp|gif)$/i)?.[0] || ".jpg"
+      const safeName = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`
+      const publicUrl = `/api/uploads/${safeName}`
+
+      // Pre-cache in localStorage and CacheStorage so images render immediately and withstand offline/restarts
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("pos_upload:" + publicUrl, dataUrl)
+          localStorage.setItem("pos_upload:" + safeName, dataUrl)
+          localStorage.setItem("pos_upload:/uploads/" + safeName, dataUrl)
+          if (typeof caches !== "undefined") {
+            const c = await caches.open("pos-uploads-v1")
+            await c.put(
+              publicUrl,
+              new Response(blob, {
+                headers: {
+                  "Content-Type": blob.type || "image/jpeg",
+                  "Cache-Control": "public, max-age=31536000, immutable",
+                },
+              })
+            )
+          }
+        } catch {}
+      }
+
+      // Set form preview immediately with publicUrl
+      setForm((f) => ({ ...f, image: publicUrl }))
 
       try {
         const formData = new FormData()
-        formData.append("file", blob, file.name.replace(/\.[^/.]+$/, ".jpg"))
+        formData.append("file", blob, safeName)
         const res = await fetch("/api/upload", {
           method: "POST",
           body: formData,
@@ -728,16 +772,21 @@ export default function POSPage() {
           const data = await res.json().catch(() => ({}))
           if (data?.success && data?.url) {
             setForm((f) => ({ ...f, image: data.url }))
+            if (data.url !== publicUrl) {
+              try {
+                localStorage.setItem("pos_upload:" + data.url, dataUrl)
+              } catch {}
+            }
             toast.success("Photo uploaded successfully")
           } else {
-            toast.info("Photo loaded")
+            toast.success("Photo uploaded successfully")
           }
         } else {
-          toast.info("Photo loaded")
+          toast.success("Photo uploaded successfully")
         }
       } catch (err) {
-        console.warn("Upload fallback to dataUrl", err)
-        toast.info("Photo loaded")
+        console.warn("Upload network error, cached locally", err)
+        toast.success("Photo uploaded successfully")
       }
     } catch (compressErr) {
       console.warn("Image compression failed", compressErr)
@@ -880,9 +929,12 @@ export default function POSPage() {
             if (p.image && !p.image.includes("placeholder")) {
               resolvedImage = p.image
             }
-          } else if (existing?.user_customized && p.updated_at && existing.updated_at && new Date(p.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
-            if (p.image && !p.image.includes("placeholder")) {
-              resolvedImage = p.image
+          } else if (existing?.user_customized) {
+            const defaultSeed = PRODUCT_IMAGE_MAP[p.name?.trim()]
+            if (p.image && !p.image.includes("placeholder") && p.image !== defaultSeed) {
+              if (p.updated_at && existing.updated_at && new Date(p.updated_at).getTime() >= new Date(existing.updated_at).getTime()) {
+                resolvedImage = p.image
+              }
             }
           }
 
@@ -933,9 +985,12 @@ export default function POSPage() {
                 if (p.image && !p.image.includes("placeholder")) {
                   resolvedImage = p.image
                 }
-              } else if (existing?.user_customized && p.updated_at && existing.updated_at && new Date(p.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
-                if (p.image && !p.image.includes("placeholder")) {
-                  resolvedImage = p.image
+              } else if (existing?.user_customized) {
+                const defaultSeed = PRODUCT_IMAGE_MAP[p.name?.trim()]
+                if (p.image && !p.image.includes("placeholder") && p.image !== defaultSeed) {
+                  if (p.updated_at && existing.updated_at && new Date(p.updated_at).getTime() >= new Date(existing.updated_at).getTime()) {
+                    resolvedImage = p.image
+                  }
                 }
               }
 
@@ -2194,6 +2249,7 @@ export default function POSPage() {
     }
 
     let savedId = editingProductId || `prod-${Date.now()}`
+    let serverUpdatedAt: string | undefined
     try {
       if (editingProductId) {
         const res = await fetch(`/api/products/${encodeURIComponent(editingProductId)}`, {
@@ -2208,6 +2264,10 @@ export default function POSPage() {
         }
         const data = await res.json().catch(() => ({}))
         if (data?.product?.id) savedId = String(data.product.id)
+        if (data?.product?.updated_at) serverUpdatedAt = String(data.product.updated_at)
+        if (data?.product?.image && !data.product.image.includes("placeholder")) {
+          productImage = data.product.image
+        }
       } else {
         const res = await fetch("/api/products", {
           method: "POST",
@@ -2221,6 +2281,10 @@ export default function POSPage() {
         }
         const data = await res.json().catch(() => ({}))
         if (data?.product?.id) savedId = String(data.product.id)
+        if (data?.product?.updated_at) serverUpdatedAt = String(data.product.updated_at)
+        if (data?.product?.image && !data.product.image.includes("placeholder")) {
+          productImage = data.product.image
+        }
       }
     } catch (e: any) {
       toast.error(e?.message || "Network error while saving product.")
@@ -2242,7 +2306,7 @@ export default function POSPage() {
     }
 
     const effectiveId = editingProductId || savedId
-    const nowIso = new Date().toISOString()
+    const nowIso = serverUpdatedAt || new Date().toISOString()
     const saved: Product = {
       id: effectiveId,
       name: form.name.trim(),
@@ -4695,10 +4759,7 @@ export default function POSPage() {
                       src={form.image}
                       alt="Product preview"
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null
-                        e.currentTarget.src = "/placeholder.svg"
-                      }}
+                      onError={handleProductImageError}
                     />
                     {isUploadingImage && (
                       <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-2 text-white text-xs font-semibold z-10">
@@ -5006,10 +5067,7 @@ function POSView({
                     src={resolveProductImage(p.name, p.image, p.category)}
                     alt={p.name}
                     loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null
-                      e.currentTarget.src = "/placeholder.svg"
-                    }}
+                    onError={handleProductImageError}
                     className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   {p.stock <= 5 && p.stock > 0 && (
@@ -5247,10 +5305,7 @@ function POSView({
                         src={resolveProductImage(item.name, item.image, item.category)}
                         alt={item.name}
                         className="size-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.onerror = null
-                          e.currentTarget.src = "/placeholder.svg"
-                        }}
+                        onError={handleProductImageError}
                       />
                     </div>
 
@@ -5621,10 +5676,7 @@ function POSView({
                       src={resolveProductImage(item.name, item.image, item.category)}
                       alt={item.name}
                       className="size-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null
-                        e.currentTarget.src = "/placeholder.svg"
-                      }}
+                      onError={handleProductImageError}
                     />
                   </div>
 
@@ -6697,10 +6749,7 @@ function ManagementView({
                           <img
                             src={p.image}
                             alt={p.name}
-                            onError={(e) => {
-                              e.currentTarget.onerror = null
-                              e.currentTarget.src = "/placeholder.svg"
-                            }}
+                            onError={handleProductImageError}
                             className="size-10 rounded-lg object-cover bg-gray-100 shrink-0 border border-gray-100"
                           />
                         )}

@@ -126,7 +126,7 @@ async function handleProductUpdate(
         stock: Number(resultProduct.stock),
         updated_at: resultProduct.updated_at || new Date().toISOString(),
       }
-      if (resultProduct.image && !resultProduct.image.startsWith("data:") && resultProduct.image.length < 150) {
+      if (resultProduct.image && !resultProduct.image.startsWith("data:") && resultProduct.image.length < 500) {
         overrideData.image = resultProduct.image
       }
       overrides[id] = overrideData

@@ -1,7 +1,7 @@
 "use client"
 
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client"
-import { resolveProductImage } from "@/lib/product-images"
+import { resolveProductImage, PRODUCT_IMAGE_MAP } from "@/lib/product-images"
 import { determineItemStation } from "@/lib/station-routing"
 
 export interface SharedTable {
@@ -4488,9 +4488,12 @@ export class SharedPosService {
             if (mp.image && !mp.image.includes("placeholder")) {
               finalImage = mp.image
             }
-          } else if (existing?.user_customized && mp.updated_at && existing.updated_at && new Date(mp.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
-            if (mp.image && !mp.image.includes("placeholder")) {
-              finalImage = mp.image
+          } else if (existing?.user_customized) {
+            const defaultSeed = PRODUCT_IMAGE_MAP[mp.name?.trim()]
+            if (mp.image && !mp.image.includes("placeholder") && mp.image !== defaultSeed) {
+              if (mp.updated_at && existing.updated_at && new Date(mp.updated_at).getTime() >= new Date(existing.updated_at).getTime()) {
+                finalImage = mp.image
+              }
             }
           }
 

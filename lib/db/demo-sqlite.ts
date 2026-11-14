@@ -72,6 +72,13 @@ export function getDemoSqliteDb() {
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (table_id) REFERENCES pos_tables(id)
       );
+
+      CREATE TABLE IF NOT EXISTS pos_uploads (
+        filename TEXT PRIMARY KEY,
+        mime_type TEXT NOT NULL DEFAULT 'image/jpeg',
+        data_base64 TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
     `)
 
     // Check if tables exist, otherwise run schema & seed
@@ -1354,6 +1361,39 @@ export const DemoDbService = {
     } catch (err) {
       console.error("Failed to reset SQLite database:", err)
       return false
+    }
+  },
+
+  saveUpload(filename: string, mimeType: string, base64Data: string): boolean {
+    const db = getDemoSqliteDb()
+    if (!db || !filename || !base64Data) return false
+    try {
+      db.prepare(`
+        INSERT INTO pos_uploads (filename, mime_type, data_base64, created_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(filename) DO UPDATE SET
+          mime_type = excluded.mime_type,
+          data_base64 = excluded.data_base64,
+          created_at = CURRENT_TIMESTAMP
+      `).run(filename, mimeType || "image/jpeg", base64Data)
+      return true
+    } catch (err) {
+      console.warn("DemoDbService.saveUpload error:", err)
+      return false
+    }
+  },
+
+  getUpload(filename: string): { filename: string; mime_type: string; data_base64: string } | null {
+    const db = getDemoSqliteDb()
+    if (!db || !filename) return null
+    try {
+      const row = db.prepare(
+        "SELECT filename, mime_type, data_base64 FROM pos_uploads WHERE filename = ? LIMIT 1"
+      ).get(filename) as any
+      return row || null
+    } catch (err) {
+      console.warn("DemoDbService.getUpload error:", err)
+      return null
     }
   },
 }

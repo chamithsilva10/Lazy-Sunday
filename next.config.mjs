@@ -15,6 +15,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: "/uploads/:filename*",
+        destination: "/api/uploads/:filename*",
+      },
+    ]
+  },
   env: {
     NEXT_PUBLIC_DEMO_MODE: isDemo ? "true" : "false",
     DEMO_MODE: isDemo ? "true" : "false",
