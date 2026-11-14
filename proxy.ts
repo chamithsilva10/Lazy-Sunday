@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { refreshSessionMarker, setSessionCookie, verifyAndExtractSession, SESSION_COOKIE_NAME } from "@/lib/coffee/session"
 import { isDemoMode } from "@/lib/config/demo"
 
-const publicPaths = new Set(["/auth/login", "/api/auth/login", "/api/auth/demo", "/api/auth/session", "/menu", "/api/tables", "/api/tables/bookings", "/api/upload"])
+const publicPaths = new Set(["/auth/login", "/api/auth/login", "/api/auth/demo", "/api/auth/session", "/menu", "/api/tables", "/api/tables/bookings"])
 const publicGetPrefixes = ["/api/coffee/products", "/api/coffee/bills", "/api/products", "/api/tables", "/api/tables/bookings"]
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
@@ -62,17 +62,6 @@ export async function proxy(request: NextRequest) {
   const isPublicGet = request.method === "GET" && publicGetPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(prefix + "?"))
   if (publicPaths.has(pathname) || isPublicGet) return withSecurityHeaders(nextResponse())
 
-  if (isDemoMode()) {
-    const rawRole = request.cookies.get("pos-staff-role")?.value
-    const hasLocalAuth = rawRole === "admin" || rawRole === "manager" || rawRole === "cashier" || rawRole === "kitchen" || rawRole === "staff"
-    const resp = withSecurityHeaders(nextResponse())
-    if (!hasLocalAuth) {
-      resp.cookies.set("pos-staff-role", "admin", { path: "/", httpOnly: false, sameSite: "lax" })
-      resp.cookies.set("pos-staff-user", "admin", { path: "/", httpOnly: false, sameSite: "lax" })
-    }
-    return resp
-  }
-
   let response = nextResponse()
   try {
     // 1. Verify signed HMAC session marker
@@ -88,7 +77,7 @@ export async function proxy(request: NextRequest) {
     }
 
     // 2. Fall back to Supabase Auth token if configured
-    if (url && key) {
+    if (!isDemoMode() && url && key) {
       const supabase = createServerClient(url, key, {
         cookies: {
           getAll() {
@@ -113,13 +102,6 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    // 3. Fall back to staff role cookie if present and authorized
-    const rawRole = request.cookies.get("pos-staff-role")?.value
-    const hasLocalAuth = rawRole === "admin" || rawRole === "manager" || rawRole === "cashier" || rawRole === "kitchen" || rawRole === "staff"
-    if (hasLocalAuth) {
-      return withSecurityHeaders(response)
-    }
-
     return unauthenticatedResponse(request)
   } catch {
     if (pathname.startsWith("/api/")) {
@@ -127,8 +109,6 @@ export async function proxy(request: NextRequest) {
     }
     return withSecurityHeaders(NextResponse.redirect(new URL("/auth/login", request.url)))
   }
-
-  return withSecurityHeaders(response)
 }
 
 export const config = {

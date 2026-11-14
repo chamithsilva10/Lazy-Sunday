@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import fs from "fs"
 import path from "path"
 import { DemoDbService } from "@/lib/db/demo-sqlite"
+import { authorizeStaff, hasValidOrigin } from "@/lib/coffee/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -11,7 +12,13 @@ const ALLOWED_MIME_TYPES: Record<string, string> = {
   "image/png": ".png",
   "image/webp": ".webp",
   "image/gif": ".gif",
-  "image/svg+xml": ".svg",
+}
+
+function sanitizeUploadFilename(rawName: unknown, ext: string): string {
+  if (typeof rawName === "string" && /^prod_[A-Za-z0-9_-]+$/.test(path.basename(rawName, path.extname(rawName)))) {
+    return `${path.basename(rawName, path.extname(rawName))}${ext}`
+  }
+  return `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`
 }
 
 function persistImageBuffer(safeName: string, mimeType: string, buffer: Buffer) {
@@ -33,7 +40,7 @@ function persistImageBuffer(safeName: string, mimeType: string, buffer: Buffer) 
     fs.writeFileSync(path.join(tmpUploadsDir, safeName), buffer)
   } catch {}
 
-  // 3. Persist in SQLite pos_uploads table
+  // 3. Persist in SQLite / in-memory pos_uploads table
   try {
     const base64 = buffer.toString("base64")
     DemoDbService.saveUpload(safeName, mimeType, base64)
@@ -41,6 +48,18 @@ function persistImageBuffer(safeName: string, mimeType: string, buffer: Buffer) 
 }
 
 export async function POST(request: NextRequest) {
+  if (!hasValidOrigin(request)) {
+    return NextResponse.json({ success: false, error: "Invalid request origin." }, { status: 403 })
+  }
+
+  const auth = await authorizeStaff(request, "cashier")
+  if (auth.status !== 200) {
+    return NextResponse.json(
+      { success: false, error: auth.status === 401 ? "Authentication required." : "Forbidden." },
+      { status: auth.status }
+    )
+  }
+
   try {
     const contentType = request.headers.get("content-type") || ""
 
@@ -53,11 +72,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 })
       }
 
-      const mimeType = file.type || "image/jpeg"
-      const ext = ALLOWED_MIME_TYPES[mimeType] || path.extname(file.name) || ".jpg"
-      const customName = typeof file.name === "string" && file.name.startsWith("prod_") ? path.basename(file.name) : ""
-      const safeName = customName || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`
+      const mimeType = (file.type || "image/jpeg").toLowerCase()
+      const ext = ALLOWED_MIME_TYPES[mimeType]
+      if (!ext) {
+        return NextResponse.json({ success: false, error: "Unsupported image type. Allowed: JPEG, PNG, WebP, GIF." }, { status: 400 })
+      }
+
+      const safeName = sanitizeUploadFilename(file.name, ext)
       const bytes = await file.arrayBuffer()
+      if (bytes.byteLength > 5 * 1024 * 1024) {
+        return NextResponse.json({ success: false, error: "File too large (max 5MB)." }, { status: 413 })
+      }
       const buffer = Buffer.from(bytes)
 
       persistImageBuffer(safeName, mimeType, buffer)
@@ -87,14 +112,18 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ success: false, error: "Invalid base64 data URL" }, { status: 400 })
         }
 
-        const mime = matches[1]
+        const mime = matches[1].toLowerCase()
+        const ext = ALLOWED_MIME_TYPES[mime]
+        if (!ext) {
+          return NextResponse.json({ success: false, error: "Unsupported image type. Allowed: JPEG, PNG, WebP, GIF." }, { status: 400 })
+        }
+
         const base64Data = matches[2]
-        const ext = ALLOWED_MIME_TYPES[mime] || ".jpg"
-        const safeName =
-          customFilename && typeof customFilename === "string" && customFilename.startsWith("prod_")
-            ? path.basename(customFilename)
-            : `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`
+        const safeName = sanitizeUploadFilename(customFilename, ext)
         const buffer = Buffer.from(base64Data, "base64")
+        if (buffer.byteLength > 5 * 1024 * 1024) {
+          return NextResponse.json({ success: false, error: "Image too large (max 5MB)." }, { status: 413 })
+        }
 
         persistImageBuffer(safeName, mime, buffer)
 

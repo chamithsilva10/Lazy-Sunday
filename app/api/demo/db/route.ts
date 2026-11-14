@@ -1,17 +1,38 @@
 import { NextRequest, NextResponse } from "next/server"
 import { DemoDbService, getDemoSqliteDb } from "@/lib/db/demo-sqlite"
 import { isDemoMode } from "@/lib/config/demo"
+import { authorizeStaff, hasValidOrigin } from "@/lib/coffee/auth"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   if (!isDemoMode()) {
     return NextResponse.json({ error: "Demo mode is not active." }, { status: 403 })
   }
 
+  const auth = await authorizeStaff(request, "admin")
+  if (auth.status !== 200) {
+    return NextResponse.json(
+      { error: auth.status === 401 ? "Authentication required." : "Forbidden." },
+      { status: auth.status }
+    )
+  }
+
   const db = getDemoSqliteDb()
   if (!db) {
-    return NextResponse.json({ error: "SQLite database not initialized." }, { status: 500 })
+    return NextResponse.json({
+      status: "connected",
+      engine: "In-Memory Store (SQLite unavailable)",
+      database: "memory",
+      tables: {
+        pos_products: DemoDbService.getProducts().length,
+        pos_categories: DemoDbService.getCategories().length,
+        pos_tables: DemoDbService.getTables().length,
+        pos_orders: DemoDbService.getOrders().length,
+        customers: DemoDbService.getCustomers().length,
+        roles: DemoDbService.getRoles().length,
+      },
+    })
   }
 
   try {
@@ -43,6 +64,17 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   if (!isDemoMode()) {
     return NextResponse.json({ error: "Demo mode is not active." }, { status: 403 })
+  }
+  if (!hasValidOrigin(request)) {
+    return NextResponse.json({ error: "Invalid request origin." }, { status: 403 })
+  }
+
+  const auth = await authorizeStaff(request, "admin")
+  if (auth.status !== 200) {
+    return NextResponse.json(
+      { error: auth.status === 401 ? "Authentication required." : "Forbidden." },
+      { status: auth.status }
+    )
   }
 
   try {

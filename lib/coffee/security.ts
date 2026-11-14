@@ -54,6 +54,26 @@ function isUuid(val?: string | null): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val)
 }
 
+const globalForAudit = globalThis as unknown as {
+  __pos_security_audit_logs?: Array<{
+    id: string
+    actor_user_id: string | null
+    action: string
+    target_id: string | null
+    ip_address: string | null
+    user_agent: string | null
+    metadata: Record<string, unknown>
+    created_at: string
+  }>
+}
+
+function getLocalAuditStore() {
+  if (!globalForAudit.__pos_security_audit_logs) {
+    globalForAudit.__pos_security_audit_logs = []
+  }
+  return globalForAudit.__pos_security_audit_logs
+}
+
 export async function writeSecurityAudit(
   request: NextRequest,
   action: string,
@@ -61,21 +81,36 @@ export async function writeSecurityAudit(
   targetId: string | null = null,
   metadata: Record<string, unknown> = {},
 ) {
-  if (isDemoMode()) return
+  const ip = requestIp(request)
+  const validActorId = isUuid(actorUserId) ? actorUserId : null
+  const auditMetadata = isUuid(actorUserId)
+    ? metadata
+    : { ...metadata, local_actor: actorUserId || "anonymous" }
+
+  const entry = {
+    id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    actor_user_id: validActorId,
+    action,
+    target_id: targetId,
+    ip_address: ip === "unknown" ? null : ip,
+    user_agent: request.headers.get("user-agent")?.slice(0, 1024) || null,
+    metadata: auditMetadata,
+    created_at: new Date().toISOString(),
+  }
+
+  const store = getLocalAuditStore()
+  store.unshift(entry)
+  if (store.length > 500) store.length = 500
+
+  if (isDemoMode() || !process.env.NEXT_PUBLIC_SUPABASE_URL) return
   try {
     const client = createServiceClient()
-    const ip = requestIp(request)
-    const validActorId = isUuid(actorUserId) ? actorUserId : null
-    const auditMetadata = isUuid(actorUserId)
-      ? metadata
-      : { ...metadata, local_actor: actorUserId || "anonymous" }
-
     const { error } = await client.from("security_audit_log").insert({
       actor_user_id: validActorId,
       action,
       target_id: targetId,
-      ip_address: ip === "unknown" ? null : ip,
-      user_agent: request.headers.get("user-agent")?.slice(0, 1024) || null,
+      ip_address: entry.ip_address,
+      user_agent: entry.user_agent,
       metadata: auditMetadata,
     })
     if (error) {
@@ -93,17 +128,40 @@ export async function readSecurityAudit(filters: {
   limit: number
   offset: number
 }) {
-  let query = createServiceClient()
-    .from("security_audit_log")
-    .select("id,actor_user_id,action,target_id,ip_address,user_agent,metadata,created_at", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(filters.offset, filters.offset + filters.limit - 1)
+  if (isDemoMode() || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    let entries = [...getLocalAuditStore()]
+    if (filters.action) entries = entries.filter((e) => e.action === filters.action)
+    if (filters.from) entries = entries.filter((e) => e.created_at >= filters.from!)
+    if (filters.to) entries = entries.filter((e) => e.created_at <= filters.to!)
+    return {
+      entries: entries.slice(filters.offset, filters.offset + filters.limit),
+      total: entries.length,
+    }
+  }
 
-  if (filters.action) query = query.eq("action", filters.action)
-  if (filters.from) query = query.gte("created_at", filters.from)
-  if (filters.to) query = query.lte("created_at", filters.to)
+  try {
+    let query = createServiceClient()
+      .from("security_audit_log")
+      .select("id,actor_user_id,action,target_id,ip_address,user_agent,metadata,created_at", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(filters.offset, filters.offset + filters.limit - 1)
 
-  const { data, count, error } = await query
-  if (error) throw error
-  return { entries: data || [], total: count || 0 }
+    if (filters.action) query = query.eq("action", filters.action)
+    if (filters.from) query = query.gte("created_at", filters.from)
+    if (filters.to) query = query.lte("created_at", filters.to)
+
+    const { data, count, error } = await query
+    if (error) throw error
+    return { entries: data || [], total: count || 0 }
+  } catch (err) {
+    console.warn("Supabase audit read fallback to local store:", err)
+    let entries = [...getLocalAuditStore()]
+    if (filters.action) entries = entries.filter((e) => e.action === filters.action)
+    if (filters.from) entries = entries.filter((e) => e.created_at >= filters.from!)
+    if (filters.to) entries = entries.filter((e) => e.created_at <= filters.to!)
+    return {
+      entries: entries.slice(filters.offset, filters.offset + filters.limit),
+      total: entries.length,
+    }
+  }
 }

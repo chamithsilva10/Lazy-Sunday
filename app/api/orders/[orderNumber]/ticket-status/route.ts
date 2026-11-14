@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeStaff, createStaffSupabaseClient, hasValidOrigin } from "@/lib/coffee/auth"
+import { PosDatabase } from "@/lib/db/pos-database"
 
 export const dynamic = "force-dynamic"
 
@@ -36,13 +37,37 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: "Invalid order number." }, { status: 400 })
     }
 
-    const supabase = createStaffSupabaseClient(request)
-    if (!supabase) {
-      return NextResponse.json({ success: true, status: parsed.data.status, offline: true })
-    }
-
     const { station, status } = parsed.data
     const field = station === "bar" ? "bar_status" : "kitchen_status"
+
+    const supabase = createStaffSupabaseClient(request)
+    if (!supabase) {
+      const existing = await PosDatabase.getOrderByIdOrNumber(orderNumber)
+      if (!existing) {
+        return NextResponse.json({
+          success: true,
+          order_number: orderNumber,
+          station,
+          status,
+          offline: true,
+        })
+      }
+      const nextKitchen = station === "kitchen" ? status : existing.kitchen_status
+      const nextBar = station === "bar" ? status : existing.bar_status
+      const allServed = (nextKitchen === "served" || !nextKitchen) && (nextBar === "served" || !nextBar)
+      const updatePayload: Record<string, any> = { [field]: status }
+      if (allServed && (existing.status === "paid" || existing.status === "completed")) {
+        updatePayload.status = "completed"
+      }
+      const updated = await PosDatabase.updateOrder(orderNumber, updatePayload)
+      return NextResponse.json({
+        success: true,
+        order_number: updated?.order_number || orderNumber,
+        station,
+        status,
+        order_status: updated?.status || existing.status,
+      })
+    }
     const nowIso = new Date().toISOString()
 
     // 1. Fetch current order

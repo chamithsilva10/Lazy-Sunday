@@ -131,7 +131,11 @@ function setTableData(tableName: string, data: any[]) {
   else if (tableName === "reservations") localReservations = data
 
   // Notify mock realtime subscribers & DOM event listeners
-  emitMockRealtime(tableName, { eventType: "UPDATE", data })
+  if (tableName === "table_sessions") {
+    emitMockRealtime("table_sessions", { eventType: "UPDATE", data })
+  } else {
+    emitMockRealtime(tableName, { eventType: "UPDATE", data })
+  }
   if (typeof window !== "undefined") {
     try {
       window.dispatchEvent(new CustomEvent("pos_realtime_" + tableName, { detail: data }))

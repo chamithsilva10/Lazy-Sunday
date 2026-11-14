@@ -15,12 +15,21 @@ export async function authorizeRequest(
   request: NextRequest,
   requiredPermission?: string
 ): Promise<AuthContext> {
-  // 1. Identify staff member from cookie or Supabase session
+  // 1. Identify staff member from verified HMAC session or Supabase Auth
   const identity = await getStaffIdentity(request)
-  const username =
-    identity?.email?.split("@")[0] ||
-    request.cookies.get("pos-staff-user")?.value ||
-    "admin"
+  if (!identity) {
+    return {
+      allowed: false,
+      user: null,
+      role: null,
+      permissions: [],
+      response: NextResponse.json(
+        { error: "Authentication required." },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
+      ),
+    }
+  }
+  const username = identity.email?.split("@")[0] || identity.role
 
   // 2. Load user record
   let user = await RbacService.getUserByUsername(username)

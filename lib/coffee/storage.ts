@@ -614,7 +614,7 @@ export class CoffeeStorageService {
         .select()
         .single()
 
-      if (!billError && billRecord) {
+      if (!billError && billRecord && billRecord.id) {
         billToSave.id = String(billRecord.id)
 
         // Insert bill line items with frozen snapshot of name and price

@@ -208,10 +208,20 @@ function createAuthShim() {
 
 function createOfflineClient() {
   // Returned when Supabase isn't configured so screens degrade to empty data instead of crashing.
-  const empty = { data: [], error: null }
+  const emptyList = { data: [], error: null }
+  const emptySingle = { data: null, error: null }
+  let isSingle = false
   const chain: any = new Proxy(function () {}, {
     get: (_target, prop) => {
-      if (prop === "then") return (resolve: (value: unknown) => unknown) => Promise.resolve(empty).then(resolve)
+      if (prop === "single" || prop === "maybeSingle") {
+        isSingle = true
+        return () => chain
+      }
+      if (prop === "then") {
+        const res = isSingle ? emptySingle : emptyList
+        isSingle = false
+        return (resolve: (value: unknown) => unknown) => Promise.resolve(res).then(resolve)
+      }
       return () => chain
     },
     apply: () => chain,

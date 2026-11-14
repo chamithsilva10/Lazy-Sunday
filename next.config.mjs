@@ -1,7 +1,4 @@
-const isExplicitDemo = process.env.DEMO_MODE === "true" || process.env.NEXT_PUBLIC_DEMO_MODE === "true"
-const isExplicitProd = process.env.DEMO_MODE === "false" || process.env.NEXT_PUBLIC_DEMO_MODE === "false"
-
-const isDemo = isExplicitProd ? false : isExplicitDemo
+const explicitDemoEnv = process.env.DEMO_MODE ?? process.env.NEXT_PUBLIC_DEMO_MODE
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
@@ -15,6 +12,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./data/**/*", "./demo_schema.sql", "./demo_seed.sql"],
+  },
   async rewrites() {
     return [
       {
@@ -24,11 +24,16 @@ const nextConfig = {
     ]
   },
   env: {
-    NEXT_PUBLIC_DEMO_MODE: isDemo ? "true" : "false",
-    DEMO_MODE: isDemo ? "true" : "false",
+    ...(explicitDemoEnv !== undefined
+      ? {
+          NEXT_PUBLIC_DEMO_MODE: explicitDemoEnv,
+          DEMO_MODE: explicitDemoEnv,
+        }
+      : {}),
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey,
   },
 }
 
 export default nextConfig
+

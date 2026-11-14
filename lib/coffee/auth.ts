@@ -67,24 +67,13 @@ export async function getStaffIdentity(request: NextRequest): Promise<StaffIdent
         email: `${verified.username}@posdemo.com`,
       }
     }
+    return null
   }
 
-  // 2. Demo mode only (when DEMO_MODE=true is explicitly set for local isolated mock testing)
-  if (isDemoMode()) {
-    const rawRole = request.cookies.get("pos-staff-role")?.value as StaffRole | undefined
-    const username = request.cookies.get("pos-staff-user")?.value || "admin"
-    const role: StaffRole = rawRole && validRoles.includes(rawRole) ? rawRole : "admin"
-    return {
-      userId: `demo-${username}`,
-      role,
-      email: `${username}@posdemo.com`,
-    }
-  }
-
-  // 3. Check Supabase Auth session if present
+  // 2. Check Supabase Auth session if present
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-  if (url && anonKey) {
+  if (!isDemoMode() && url && anonKey) {
     try {
       const cookieSupabase = createServerClient(url, anonKey, {
         cookies: {
@@ -106,23 +95,7 @@ export async function getStaffIdentity(request: NextRequest): Promise<StaffIdent
     } catch {}
   }
 
-  // 4. Local staff role cookie fallback (for local authoritative database authentication)
-  const rawRole = request.cookies.get("pos-staff-role")?.value as StaffRole | undefined
-  const username = request.cookies.get("pos-staff-user")?.value || "admin"
-  if (rawRole && validRoles.includes(rawRole)) {
-    return {
-      userId: `local-${username}`,
-      role: rawRole,
-      email: `${username}@posdemo.com`,
-    }
-  }
-
-  // 5. Default POS terminal fallback (permits operational till, bar, kitchen and catalog calls)
-  return {
-    userId: "pos-terminal-default",
-    role: "admin",
-    email: "admin@posdemo.com",
-  }
+  return null
 }
 
 export async function authorizeStaff(

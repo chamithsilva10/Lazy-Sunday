@@ -54,7 +54,11 @@ export async function POST(req: Request) {
       }
       const res = await PosDatabase.seatWalkIn(targetId, guestInfo)
       if (!res.success) {
-        return NextResponse.json({ success: true, status: "occupied", message: res.error || "Fallback seated" })
+        const isConflict = res.error?.toLowerCase().includes("already occupied")
+        return NextResponse.json(
+          { success: false, error: res.error || "Unable to seat table" },
+          { status: isConflict ? 409 : 400 }
+        )
       }
       return NextResponse.json({ ...res })
     }

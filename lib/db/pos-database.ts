@@ -95,12 +95,16 @@ export const PosDatabase = {
     const formattedOrder = {
       ...order,
       id: order.id || `ord-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      payment_status: order.payment_status || (order.status === "open" ? "unpaid" : "paid"),
+      kitchen_status: order.kitchen_status || "pending",
+      bar_status: order.bar_status || "pending",
+      created_at: order.created_at || new Date().toISOString(),
       items: items && items.length > 0 ? items : (order.items || []),
     }
 
     if (!isPgActive()) {
       DemoDbService.createOrder(formattedOrder)
-      return formattedOrder
+      return DemoDbService.getOrderByIdOrNumber(formattedOrder.order_number) || formattedOrder
     }
 
     try {
@@ -113,14 +117,23 @@ export const PosDatabase = {
     } catch (err) {
       console.warn("PosDatabase.createOrderAtomic Postgres fallback to DemoDbService:", err)
       DemoDbService.createOrder(formattedOrder)
-      return formattedOrder
+      return DemoDbService.getOrderByIdOrNumber(formattedOrder.order_number) || formattedOrder
     }
   },
 
   async voidOrderAtomic(orderId: string, reason: string, restoreInventory?: boolean): Promise<any> {
     if (!isPgActive()) {
-      DemoDbService.voidOrder(orderId, reason)
-      return { success: true, id: orderId, voided: true }
+      const ok = DemoDbService.voidOrder(orderId, reason)
+      if (!ok) return null
+      const updated = DemoDbService.getOrderByIdOrNumber(orderId)
+      return {
+        ...(updated || {}),
+        success: true,
+        id: updated?.id || orderId,
+        status: "cancelled",
+        is_void: true,
+        voided: true,
+      }
     }
     try {
       const pool = getPgPool()
@@ -133,11 +146,20 @@ export const PosDatabase = {
         "SELECT void_pos_order_atomic($1::uuid, $2::text, $3::boolean) AS result",
         [uuidVal, reason, typeof restoreInventory === "boolean" ? restoreInventory : null]
       )
-      return res.rows[0]?.result || { success: true, id: orderId, voided: true }
+      return res.rows[0]?.result || { success: true, id: orderId, status: "cancelled", is_void: true, voided: true }
     } catch (err) {
       console.warn("PosDatabase.voidOrderAtomic fallback to DemoDbService:", err)
-      DemoDbService.voidOrder(orderId, reason)
-      return { success: true, id: orderId, voided: true }
+      const ok = DemoDbService.voidOrder(orderId, reason)
+      if (!ok) return null
+      const updated = DemoDbService.getOrderByIdOrNumber(orderId)
+      return {
+        ...(updated || {}),
+        success: true,
+        id: updated?.id || orderId,
+        status: "cancelled",
+        is_void: true,
+        voided: true,
+      }
     }
   },
 
@@ -286,35 +308,7 @@ export const PosDatabase = {
   },
 
   async getOrderByIdOrNumber(idOrNumber: string): Promise<any | null> {
-    const fallbackToDemo = () => {
-      const db = getDemoSqliteDb()
-      if (db) {
-        try {
-          const row = db.prepare("SELECT * FROM pos_orders WHERE id = ? OR order_number = ?").get(idOrNumber, idOrNumber) as any
-          if (row) {
-            const items = db.prepare("SELECT * FROM order_items WHERE order_id = ?").all(row.id) as any[]
-            return {
-              ...row,
-              items: items.map((i: any) => ({
-                id: i.id,
-                product_id: i.product_id,
-                name: i.product_name,
-                product_name_snapshot: i.product_name,
-                price: Number(i.unit_price),
-                unit_price_snapshot: Number(i.unit_price),
-                quantity: Number(i.quantity),
-                line_total: Number(i.line_total),
-                station: i.station,
-                item_status: i.item_status,
-                notes: i.notes,
-              })),
-              tickets: [],
-            }
-          }
-        } catch {}
-      }
-      return null
-    }
+    const fallbackToDemo = () => DemoDbService.getOrderByIdOrNumber(idOrNumber)
 
     if (!isPgActive()) {
       return fallbackToDemo()
@@ -378,29 +372,7 @@ export const PosDatabase = {
   },
 
   async updateOrder(idOrNumber: string, updates: Record<string, any>): Promise<any | null> {
-    const fallbackToDemo = () => {
-      const db = getDemoSqliteDb()
-      if (db) {
-        try {
-          const isId = isUuid(idOrNumber)
-          const setClauses: string[] = []
-          const params: any[] = []
-          for (const [key, val] of Object.entries(updates)) {
-            if (key === "id" || key === "order_number" || key === "created_at" || key === "items" || key === "tickets") continue
-            setClauses.push(`${key} = ?`)
-            params.push(typeof val === "object" ? JSON.stringify(val) : val)
-          }
-          if (setClauses.length > 0) {
-            params.push(idOrNumber)
-            db.prepare(`UPDATE pos_orders SET ${setClauses.join(", ")} WHERE ${isId ? "id = ? OR order_number = ?" : "order_number = ?"}`).run(
-              ...params
-            )
-          }
-          return this.getOrderByIdOrNumber(idOrNumber)
-        } catch {}
-      }
-      return null
-    }
+    const fallbackToDemo = () => DemoDbService.updateOrder(idOrNumber, updates)
 
     if (!isPgActive()) {
       return fallbackToDemo()
@@ -1365,15 +1337,7 @@ export const PosDatabase = {
   // INVENTORY & INGREDIENTS
   // =========================================================================
   async getIngredients(): Promise<any[]> {
-    const fallbackToDemo = () => {
-      const db = getDemoSqliteDb()
-      if (db) {
-        try {
-          return db.prepare("SELECT * FROM ingredients WHERE is_active = 1").all()
-        } catch {}
-      }
-      return []
-    }
+    const fallbackToDemo = () => DemoDbService.getIngredients()
 
     if (!isPgActive()) {
       return fallbackToDemo()
@@ -1397,21 +1361,12 @@ export const PosDatabase = {
   },
 
   async createIngredient(data: any): Promise<any> {
-    const id = data.id || crypto.randomUUID()
-    const sku = data.sku || `ING-${crypto.randomBytes(3).toString("hex").toUpperCase()}`
-    const db = getDemoSqliteDb()
-    if (db) {
-      try {
-        db.prepare(`
-          INSERT INTO ingredients (id, sku, name, category_id, current_stock, base_unit, reorder_level, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-        `).run(id, sku, data.name, data.category_id || null, data.current_stock_base || 0, data.base_unit || "pcs", data.reorder_level_base || 0)
-      } catch {}
+    if (!isPgActive()) {
+      return DemoDbService.createIngredient(data)
     }
 
-    if (!isPgActive()) {
-      return { id, sku, ...data }
-    }
+    const id = data.id || crypto.randomUUID()
+    const sku = data.sku || `ING-${crypto.randomBytes(3).toString("hex").toUpperCase()}`
     try {
       const pool = getPgPool()
       const res = await pool.query(`
@@ -1438,7 +1393,7 @@ export const PosDatabase = {
       return res.rows[0] || { id, sku, ...data }
     } catch (err) {
       console.warn("PosDatabase.createIngredient Postgres fallback:", err)
-      return { id, sku, ...data }
+      return DemoDbService.createIngredient({ id, sku, ...data })
     }
   },
 
