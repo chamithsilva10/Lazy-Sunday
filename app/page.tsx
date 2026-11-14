@@ -96,7 +96,7 @@ import { SharedPosService, DEFAULT_INITIAL_ORDERS, type SharedCustomer, type Sha
 import { determineItemStation, isBarItem, isKitchenItem } from "@/lib/station-routing"
 import { useSharedTables } from "@/hooks/use-shared-tables"
 import type { CoffeeBill } from "@/lib/coffee/types"
-import { resolveProductImage, PRODUCT_IMAGE_MAP } from "@/lib/product-images"
+import { resolveProductImage, PRODUCT_IMAGE_MAP, handleProductImageError } from "@/lib/product-images"
 import { compressImageFile } from "@/lib/image-compress"
 
 type View =
@@ -469,24 +469,6 @@ function mergeOrderRecords(...orderArrays: (OrderRecord[] | undefined | null)[])
   return Array.from(unique.values()).sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   )
-}
-
-function handleProductImageError(e: React.SyntheticEvent<HTMLImageElement>) {
-  const target = e.currentTarget
-  target.onerror = null
-  const src = target.getAttribute("src") || ""
-  if (typeof window !== "undefined" && src) {
-    try {
-      const cached =
-        localStorage.getItem("pos_upload:" + src) ||
-        localStorage.getItem("pos_upload:" + src.split("/").pop())
-      if (cached) {
-        target.src = cached
-        return
-      }
-    } catch {}
-  }
-  target.src = "/placeholder.svg"
 }
 
 export default function POSPage() {

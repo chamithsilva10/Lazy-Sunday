@@ -134,3 +134,31 @@ export function resolveProductImage(name: string, currentImage?: string | null, 
 
   return "/placeholder.svg"
 }
+
+/**
+ * Global fallback handler for product images across POS, Cart, and Product Catalog.
+ * Attempts to load locally cached uploads from localStorage before falling back to placeholder.
+ */
+export function handleProductImageError(e: any) {
+  const target = e?.currentTarget || e?.target
+  if (!target) return
+  target.onerror = null
+  const src = target.getAttribute ? target.getAttribute("src") || "" : (target.src || "")
+  if (typeof window !== "undefined" && src) {
+    try {
+      const parts = src.split("/")
+      const filename = parts[parts.length - 1] || ""
+      const cached =
+        localStorage.getItem("pos_upload:" + src) ||
+        localStorage.getItem("pos_upload:" + filename) ||
+        localStorage.getItem("pos_upload:/uploads/" + filename) ||
+        localStorage.getItem("pos_upload:/api/uploads/" + filename)
+      if (cached) {
+        target.src = cached
+        return
+      }
+    } catch {}
+  }
+  target.src = "/placeholder.svg"
+}
+
