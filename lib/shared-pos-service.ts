@@ -4313,12 +4313,24 @@ export class SharedPosService {
           } else if (existing?.user_customized && mp.updated_at && existing.updated_at && new Date(mp.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
             finalPrice = mp.price
           }
+
+          let finalImage = existing?.image || mp.image
+          if (!existing?.user_customized) {
+            if (mp.image && !mp.image.includes("placeholder")) {
+              finalImage = mp.image
+            }
+          } else if (existing?.user_customized && mp.updated_at && existing.updated_at && new Date(mp.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
+            if (mp.image && !mp.image.includes("placeholder")) {
+              finalImage = mp.image
+            }
+          }
+
           cacheMap.set(key, {
             ...existing,
             ...mp,
             id: existing?.id || mp.id,
             price: finalPrice,
-            image: (mp.image && !mp.image.includes("placeholder")) ? mp.image : (existing?.image || mp.image),
+            image: finalImage,
             user_customized: existing?.user_customized,
             updated_at: existing?.updated_at || mp.updated_at,
           })

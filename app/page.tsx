@@ -804,7 +804,7 @@ export default function POSPage() {
           id: String(p.id),
           name: p.name,
           price: Number(p.price ?? 0),
-          image: resolveProductImage(p.name, p.image, cat),
+          image: p.image && !p.image.includes("placeholder") ? p.image : resolveProductImage(p.name, p.image, cat),
           category: cat,
           category_id: p.category_id,
           stock: Number(p.stock ?? 0),
@@ -835,11 +835,23 @@ export default function POSPage() {
           } else if (existing?.user_customized && p.updated_at && existing.updated_at && new Date(p.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
             resolvedPrice = Number(p.price)
           }
+
+          let resolvedImage = existing?.image || p.image || resolveProductImage(p.name, p.image, cat)
+          if (!existing?.user_customized) {
+            if (p.image && !p.image.includes("placeholder")) {
+              resolvedImage = p.image
+            }
+          } else if (existing?.user_customized && p.updated_at && existing.updated_at && new Date(p.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
+            if (p.image && !p.image.includes("placeholder")) {
+              resolvedImage = p.image
+            }
+          }
+
           prodMap.set(key, {
             id: String(p.id || existing?.id),
             name: p.name,
             price: resolvedPrice,
-            image: resolveProductImage(p.name, p.image || existing?.image, cat),
+            image: resolvedImage,
             category: cat,
             category_id: p.category_id || existing?.category_id,
             stock: Number(p.stock ?? existing?.stock ?? 0),
@@ -870,20 +882,29 @@ export default function POSPage() {
               })
               const key = p.name.trim().toLowerCase()
               const existing = prodMap.get(key)
-              const finalImage = p.image && !p.image.includes("placeholder")
-                ? p.image
-                : (existing?.image || resolveProductImage(p.name, p.image, cat))
               let resolvedPrice = existing?.price ?? Number(p.price != null ? p.price : 0)
               if (!existing?.user_customized && p.price != null && p.price > 0) {
                 resolvedPrice = Number(p.price)
               } else if (existing?.user_customized && p.updated_at && existing.updated_at && new Date(p.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
                 resolvedPrice = Number(p.price)
               }
+
+              let resolvedImage = existing?.image || p.image || resolveProductImage(p.name, p.image, cat)
+              if (!existing?.user_customized) {
+                if (p.image && !p.image.includes("placeholder")) {
+                  resolvedImage = p.image
+                }
+              } else if (existing?.user_customized && p.updated_at && existing.updated_at && new Date(p.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
+                if (p.image && !p.image.includes("placeholder")) {
+                  resolvedImage = p.image
+                }
+              }
+
               prodMap.set(key, {
                 id: String(p.id || existing?.id),
                 name: p.name,
                 price: resolvedPrice,
-                image: finalImage,
+                image: resolvedImage,
                 category: cat,
                 category_id: p.category_id || existing?.category_id,
                 stock: Number(p.stock != null ? p.stock : (existing?.stock ?? 0)),
@@ -943,7 +964,7 @@ export default function POSPage() {
           id: String(p.id),
           name: p.name,
           price: Number(p.price ?? 0),
-          image: resolveProductImage(p.name, p.image, p.category),
+          image: p.image && !p.image.includes("placeholder") ? p.image : resolveProductImage(p.name, p.image, p.category),
           category: p.category || "General",
           category_id: p.category_id,
           stock: Number(p.stock ?? 0),
@@ -1060,7 +1081,7 @@ export default function POSPage() {
           id: String(p.id),
           name: p.name,
           price: Number(p.price ?? 0),
-          image: resolveProductImage(p.name, p.image, cat),
+          image: p.image && !p.image.includes("placeholder") ? p.image : resolveProductImage(p.name, p.image, cat),
           category: cat,
           category_id: p.category_id,
           stock: Number(p.stock ?? 0),
