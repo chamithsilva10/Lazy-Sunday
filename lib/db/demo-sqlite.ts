@@ -2537,7 +2537,7 @@ export const DemoDbService = {
           perms = [...DEFAULT_ROLE_PERMISSIONS[canonical]]
         }
 
-        const userCount = countMap.get(r.id) || countMap.get(canonical) || 1
+        const userCount = countMap.get(r.id) ?? 0
 
         return {
           id: r.id,
