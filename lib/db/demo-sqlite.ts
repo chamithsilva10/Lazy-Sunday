@@ -561,11 +561,15 @@ export const DemoDbService = {
   getTableSessions(openOnly: boolean = true): any[] {
     const db = getDemoSqliteDb()
     if (!db) return []
-    let query = "SELECT * FROM table_sessions"
+    let query = `
+      SELECT s.*, t.name AS table_name 
+      FROM table_sessions s 
+      LEFT JOIN pos_tables t ON s.table_id = t.id
+    `
     if (openOnly) {
-      query += " WHERE status IN ('open', 'bill_requested')"
+      query += " WHERE s.status IN ('open', 'bill_requested')"
     }
-    query += " ORDER BY seated_at DESC"
+    query += " ORDER BY s.seated_at DESC"
     return db.prepare(query).all() as any[]
   },
 

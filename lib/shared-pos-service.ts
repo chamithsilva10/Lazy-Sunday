@@ -3770,7 +3770,7 @@ export class SharedPosService {
           const serverSessions = tableRes.sessions.map((s: any) => ({
             id: String(s.id),
             table_id: String(s.table_id),
-            table_name: this.tablesCache.find((t) => t.id === String(s.table_id))?.name || "Table",
+            table_name: s.table_name || this.tablesCache.find((t) => t.id === String(s.table_id))?.name || "Table",
             customer_name: s.customer_name,
             phone: s.phone,
             guest_count: Number(s.guest_count) || 2,
@@ -4794,6 +4794,21 @@ export class SharedPosService {
 
   static async allocateNextOrderNumber(): Promise<{ orderNumber: string; receiptNumber: string; seq: number }> {
     this.init()
+
+    // Calculate maximum known sequence on client to prevent sequence collisions
+    let maxKnownSeq = 100
+    for (const o of this.ordersCache) {
+      if (!o.order_number) continue
+      const m = o.order_number.match(/(\d+)/)
+      if (m) {
+        const val = parseInt(m[1], 10)
+        if (!isNaN(val) && val > maxKnownSeq) maxKnownSeq = val
+      }
+    }
+    if (this.sharedNextSeq > maxKnownSeq) {
+      maxKnownSeq = this.sharedNextSeq - 1
+    }
+
     if (this.isBrowser()) {
       // 1. Direct Supabase RPC for maximum speed if configured in client
       if (isSupabaseConfigured()) {
@@ -4801,11 +4816,15 @@ export class SharedPosService {
           const supabase = createClient()
           const { data, error } = await supabase.rpc("get_next_bill_numbers")
           if (!error && data && data.order_number) {
-            const seq = Number(data.seq) || 101
+            let seq = Number(data.seq) || (maxKnownSeq + 1)
+            if (seq <= maxKnownSeq) {
+              seq = maxKnownSeq + 1
+            }
             this.sharedNextSeq = Math.max(this.sharedNextSeq, seq + 1)
+            const formatted = String(seq).padStart(6, "0")
             return {
-              orderNumber: data.order_number,
-              receiptNumber: data.receipt_number || `LS-RC-${data.order_number.replace(/^LS-/, "")}`,
+              orderNumber: `LS-${formatted}`,
+              receiptNumber: `LS-RC-${formatted}`,
               seq,
             }
           }
@@ -4819,21 +4838,33 @@ export class SharedPosService {
         const res = await fetch("/api/orders/next-number", { cache: "no-store" })
         if (res.ok) {
           const data = await res.json()
-          if (data.success && data.orderNumber) {
-            const seq = Number(data.seq) || 101
+          if (data.success && (data.orderNumber || data.seq)) {
+            let seq = Number(data.seq) || (maxKnownSeq + 1)
+            if (seq <= maxKnownSeq) {
+              seq = maxKnownSeq + 1
+            }
             this.sharedNextSeq = Math.max(this.sharedNextSeq, seq + 1)
+            const formatted = String(seq).padStart(6, "0")
             return {
-              orderNumber: data.orderNumber,
-              receiptNumber: data.receiptNumber || `LS-RC-${data.orderNumber.replace(/^LS-/, "")}`,
+              orderNumber: `LS-${formatted}`,
+              receiptNumber: `LS-RC-${formatted}`,
               seq,
             }
           }
         }
       } catch (err) {
-        console.warn("Could not allocate server order sequence, falling back to provisional offline sequence", err)
+        console.warn("Could not allocate server order sequence, falling back to client sequence", err)
       }
     }
-    return this.getOfflineOrderNumber()
+
+    const nextSeq = maxKnownSeq + 1
+    this.sharedNextSeq = Math.max(this.sharedNextSeq, nextSeq + 1)
+    const formatted = String(nextSeq).padStart(6, "0")
+    return {
+      orderNumber: `LS-${formatted}`,
+      receiptNumber: `LS-RC-${formatted}`,
+      seq: nextSeq,
+    }
   }
 
   static restockAllProducts(amount = 100) {
@@ -5145,10 +5176,21 @@ export class SharedPosService {
     if (committed.status) normalizedOrder.status = committed.status
     if (committed.created_at) normalizedOrder.created_at = committed.created_at
 
-    // Upsert into orders cache
+    // Ensure payment_status is strictly aligned with status
+    if (normalizedOrder.status === "paid") {
+      normalizedOrder.payment_status = "paid"
+    } else if (normalizedOrder.status === "open") {
+      normalizedOrder.payment_status = "unpaid"
+    }
+
+    // Upsert into orders cache: NEVER overwrite an order belonging to a different table
     normalizedOrder.stock_deducted = true
     const existingById = this.ordersCache.findIndex((o) => o.id === normalizedOrder.id)
-    const existingByNum = this.ordersCache.findIndex((o) => o.order_number === normalizedOrder.order_number)
+    const existingByNum = this.ordersCache.findIndex(
+      (o) =>
+        o.order_number === normalizedOrder.order_number &&
+        (sameName(o.table_name, normalizedOrder.table_name) || !o.table_name || !normalizedOrder.table_name)
+    )
 
     if (existingById >= 0) {
       this.ordersCache[existingById] = { ...this.ordersCache[existingById], ...normalizedOrder }

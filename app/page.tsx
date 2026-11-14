@@ -1780,6 +1780,7 @@ export default function POSPage() {
       cash_received: finalCashReceived,
       change_amount: finalChangeAmount,
       status: "paid",
+      payment_status: "paid",
       kitchen_status: isPayingExisting ? (activeOpenOrder!.kitchen_status || "pending") : "pending",
       bar_status: isPayingExisting ? (activeOpenOrder!.bar_status || "pending") : "pending",
       order_type: orderType,

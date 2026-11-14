@@ -545,8 +545,15 @@ export const PosDatabase = {
     try {
       const pool = getPgPool()
       const query = openOnly
-        ? "SELECT * FROM table_sessions WHERE status IN ('open', 'bill_requested') ORDER BY seated_at DESC"
-        : "SELECT * FROM table_sessions ORDER BY seated_at DESC"
+        ? `SELECT s.*, t.name AS table_name 
+           FROM table_sessions s 
+           LEFT JOIN pos_tables t ON s.table_id = t.id 
+           WHERE s.status IN ('open', 'bill_requested') 
+           ORDER BY s.seated_at DESC`
+        : `SELECT s.*, t.name AS table_name 
+           FROM table_sessions s 
+           LEFT JOIN pos_tables t ON s.table_id = t.id 
+           ORDER BY s.seated_at DESC`
       const res = await pool.query(query)
       return res.rows
     } catch (err) {

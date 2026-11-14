@@ -201,7 +201,7 @@ export function TablesWorkspace({
   const [mergePrimary, setMergePrimary] = useState("")
   const [mergeSecondary, setMergeSecondary] = useState("")
   const [zoneFilter, setZoneFilter] = useState<"all" | "indoor" | "patio" | "bar">("all")
-  const [statusFilter, setStatusFilter] = useState<"all" | "available" | "occupied" | "reserved" | "cleaning">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "available" | "occupied" | "reserved" | "cleaning" | "paid" | "unpaid">("all")
 
   useEffect(() => {
     return SharedPosService.subscribeOrders(setOrders)
@@ -300,7 +300,7 @@ export function TablesWorkspace({
   const sessionFor = (table: Table) =>
     sessions.find(
       (item) =>
-        (item.table_id === table.id || tablesMatch(item.table_name, table.name)) &&
+        (item.table_id === table.id || (item.table_name && item.table_name !== "Table" && tablesMatch(item.table_name, table.name))) &&
         item.status !== "closed"
     )
 
@@ -378,29 +378,30 @@ export function TablesWorkspace({
   const getActiveOrderForTable = (table: Table | null | undefined): SharedOrder | undefined => {
     if (!table) return undefined
     const session = sessionFor(table)
+    const isOccupied = (session && session.status !== "closed") || table.status === "occupied" || table.status === "bill_requested"
+    if (!isOccupied) return undefined
+
     const orderMatch = session?.notes?.match(/Order\s*#?([A-Za-z0-9-]+)/i)
     const sessionOrderNum = orderMatch ? orderMatch[1] : table.orderNumber
 
-    // 1. First priority: any active "open" order directly matching this table
+    // 1. First priority: any active "open" (unpaid) order directly matching this table
     const openOrder = orders.find(
       (o) => o.status === "open" && tablesMatch(o.table_name, table.name)
     )
     if (openOrder) return openOrder
 
-    // 2. Second priority: order referenced explicitly by session notes or table.orderNumber
+    // 2. Second priority: order referenced explicitly by session notes or table.orderNumber, MUST match this table
     if (sessionOrderNum) {
       const match = orders.find(
-        (o) => o.order_number?.toLowerCase() === sessionOrderNum.toLowerCase()
+        (o) =>
+          o.order_number?.toLowerCase() === sessionOrderNum.toLowerCase() &&
+          (tablesMatch(o.table_name, table.name) || !o.table_name)
       )
       if (match) return match
     }
 
-    // 3. Third priority: Only look for paid orders if the table is currently occupied/seated!
-    const isOccupied = (session && session.status !== "closed") || table.status === "occupied" || table.status === "bill_requested"
-    if (!isOccupied) return undefined
-
+    // 3. Third priority: Most recent order for this table (open or paid)
     const releasedTime = table.releasedAt ? new Date(table.releasedAt).getTime() : 0
-    const occupiedTime = table.occupiedAt ? new Date(table.occupiedAt).getTime() : 0
     const now = Date.now()
 
     const recentOrder = orders.find((o) => {
@@ -408,9 +409,8 @@ export function TablesWorkspace({
       if (o.status !== "open" && o.status !== "paid") return false
       if (!o.created_at) return true
       const orderTime = new Date(o.created_at).getTime()
-      if (now - orderTime > 6 * 60 * 60 * 1000) return false
+      if (now - orderTime > 12 * 60 * 60 * 1000) return false
       if (releasedTime && releasedTime >= orderTime) return false
-      if (occupiedTime && orderTime < occupiedTime - 60000) return false
       return true
     })
 
@@ -420,6 +420,17 @@ export function TablesWorkspace({
   const visibleTables = tables.filter((table) => {
     const q = search.trim().toLowerCase()
     const st = statusFor(table)
+
+    if (statusFilter === "paid") {
+      if (st !== "occupied" && st !== "bill_requested") return false
+      const o = getActiveOrderForTable(table)
+      return Boolean(o && (o.status === "paid" || o.payment_status === "paid"))
+    }
+    if (statusFilter === "unpaid") {
+      if (st !== "occupied" && st !== "bill_requested") return false
+      const o = getActiveOrderForTable(table)
+      return Boolean(!o || (o.status !== "paid" && o.payment_status !== "paid"))
+    }
     if (statusFilter !== "all" && st !== statusFilter) return false
 
     const matchesSearch =
@@ -468,14 +479,22 @@ export function TablesWorkspace({
   }, [allBookings, tables, sessions, reservations])
 
   const counts = useMemo(() => {
-    const tally = { available: 0, reserved: 0, occupied: 0, cleaning: 0, bill_requested: 0 } as Record<string, number>
+    const tally = { available: 0, reserved: 0, occupied: 0, cleaning: 0, bill_requested: 0, paid: 0, unpaid: 0 } as Record<string, number>
     tables.forEach((table) => {
       const st = statusFor(table)
       tally[st] = (tally[st] || 0) + 1
+      if (st === "occupied" || st === "bill_requested") {
+        const o = getActiveOrderForTable(table)
+        if (o && (o.status === "paid" || o.payment_status === "paid")) {
+          tally.paid = (tally.paid || 0) + 1
+        } else {
+          tally.unpaid = (tally.unpaid || 0) + 1
+        }
+      }
     })
     return tally
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tables, sessions, reservations])
+  }, [tables, sessions, reservations, orders])
 
   const selectedSession = selected ? sessionFor(selected) : undefined
   const selectedBookings = selected ? bookingsFor(selected) : []
@@ -954,6 +973,28 @@ export function TablesWorkspace({
                   </button>
                 )
               })}
+              <button
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === "paid" ? "all" : "paid")}
+                className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                  statusFilter === "paid"
+                    ? "bg-emerald-600 text-white border-emerald-600 font-bold ring-2 ring-emerald-400 shadow-xs scale-105"
+                    : "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+                }`}
+              >
+                {counts.paid || 0} Paid
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === "unpaid" ? "all" : "unpaid")}
+                className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                  statusFilter === "unpaid"
+                    ? "bg-amber-600 text-white border-amber-600 font-bold ring-2 ring-amber-400 shadow-xs scale-105"
+                    : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                }`}
+              >
+                {counts.unpaid || 0} Unpaid
+              </button>
               <Badge className="rounded-full bg-[#FAF5F1] px-3 py-1.5 text-[#808068] border border-[#EAB8B5]">
                 Live sync
               </Badge>
