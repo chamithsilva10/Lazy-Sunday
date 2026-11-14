@@ -8,6 +8,7 @@ import {
   Permission,
   Role,
   SYSTEM_PERMISSIONS,
+  normalizeRole,
 } from "./permissions"
 
 function hashPassword(password: string): string {
@@ -215,7 +216,18 @@ export class RbacService {
 
   static async getRoleById(roleId: string): Promise<Role | null> {
     const roles = await this.getRoles()
-    return roles.find((r) => r.id === roleId) || null
+    const cleanId = (roleId || "").trim().toLowerCase()
+    const norm = normalizeRole(cleanId)
+    return (
+      roles.find(
+        (r) =>
+          r.id.toLowerCase() === cleanId ||
+          r.id.toLowerCase() === `role-${cleanId}` ||
+          r.name.toLowerCase() === cleanId ||
+          normalizeRole(r.id) === norm ||
+          normalizeRole(r.name) === norm
+      ) || null
+    )
   }
 
   static async createRole(params: {

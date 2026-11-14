@@ -1,12 +1,17 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
 import { isDemoMode } from "../config/demo"
 import { createMockSupabaseClient } from "./mock-client"
+import { CanonicalRole, normalizeRole } from "../rbac/permissions"
 
 export type BrowserSession = {
   access_token: string
   expires_at: number
-  user: { id: string; email?: string }
-  role: "cashier" | "manager" | "admin"
+  user: { id: string; email?: string; username?: string; full_name?: string }
+  role: CanonicalRole
+  role_id?: string
+  role_name?: string
+  role_label?: string
+  permissions?: string[]
 }
 
 let sessionCache: BrowserSession | null = null
@@ -44,6 +49,12 @@ export async function getBrowserSession(force = false): Promise<BrowserSession |
       if (response.status === 401 || response.status === 403) {
         sessionCache = null
         negativeCacheUntil = Date.now() + 5000
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.removeItem("pos_cached_role")
+            localStorage.removeItem("pos_cached_user")
+          } catch {}
+        }
         return null
       }
       if (!response.ok) throw new Error(`Session request failed (${response.status})`)
@@ -51,9 +62,24 @@ export async function getBrowserSession(force = false): Promise<BrowserSession |
       if (!next || (!next.access_token && !next.user) || next.authenticated === false) {
         sessionCache = null
         negativeCacheUntil = Date.now() + 5000
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.removeItem("pos_cached_role")
+            localStorage.removeItem("pos_cached_user")
+          } catch {}
+        }
         return null
       }
       negativeCacheUntil = 0
+      next.role = normalizeRole(next.role || (next as any).role_id)
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("pos_cached_role", next.role)
+          if (next.user) {
+            localStorage.setItem("pos_cached_user", JSON.stringify(next.user))
+          }
+        } catch {}
+      }
       sessionCache = next
       scheduleRealtimeRefresh(next)
       return next

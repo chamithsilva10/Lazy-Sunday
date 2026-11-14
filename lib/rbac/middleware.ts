@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getStaffIdentity } from "@/lib/coffee/auth"
 import { RbacService } from "./rbac-service"
-import { AppUser, Role } from "./permissions"
+import { AppUser, Role, normalizeRole } from "./permissions"
 
 export type AuthContext = {
   allowed: boolean
@@ -66,11 +66,13 @@ export async function authorizeRequest(
 
   // 3. Resolve role and permissions
   const role = user.role || (await RbacService.getRoleById(user.role_id))
+  const normRole = normalizeRole(role?.name || user.role_id)
   const permissions = role?.permissions || []
 
   // 4. Verify permission if required
   if (requiredPermission) {
     const hasPerm =
+      normRole === "admin" ||
       role?.id === "admin" ||
       permissions.includes(requiredPermission) ||
       permissions.includes("*")
@@ -110,7 +112,8 @@ export function requireAdmin() {
   return async (request: NextRequest) => {
     const auth = await authorizeRequest(request)
     if (!auth.allowed || !auth.user) return auth
-    if (auth.role?.id !== "admin") {
+    const norm = normalizeRole(auth.role?.name || auth.user.role_id)
+    if (norm !== "admin" && auth.role?.id !== "admin") {
       return {
         allowed: false,
         user: auth.user,

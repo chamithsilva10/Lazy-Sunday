@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog"
 import { SharedPosService } from "@/lib/shared-pos-service"
 import { usePermissions } from "@/hooks/use-permissions"
+import { normalizeRole, getRoleDisplayName } from "@/lib/rbac/permissions"
 
 interface Role {
   id: string
@@ -347,7 +348,8 @@ export function UserManagementView() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredUsers.map((u) => {
-                const roleObj = roles.find((r) => r.id === u.role_id)
+                const normRole = normalizeRole(u.role_id)
+                const roleObj = roles.find((r) => r.id === u.role_id || normalizeRole(r.id) === normRole || r.name.toLowerCase() === normRole)
                 const isPrimaryAdmin = u.username === "admin"
                 return (
                   <tr key={u.id} className="hover:bg-gray-50/60 transition-colors">
@@ -375,17 +377,19 @@ export function UserManagementView() {
                     <td className="px-4 sm:px-6 py-3.5">
                       <Badge
                         className={`capitalize font-semibold text-xs border-0 ${
-                          u.role_id === "admin"
+                          normRole === "admin"
                             ? "bg-purple-100 text-purple-900"
-                            : u.role_id === "cashier"
+                            : normRole === "cashier"
                             ? "bg-emerald-100 text-emerald-900"
-                            : u.role_id === "kitchen"
+                            : normRole === "kitchen"
                             ? "bg-amber-100 text-amber-900"
+                            : normRole === "manager"
+                            ? "bg-indigo-100 text-indigo-900"
                             : "bg-blue-100 text-blue-900"
                         }`}
                       >
                         <Shield className="size-3 mr-1 inline" />
-                        {roleObj ? roleObj.name : u.role_id}
+                        {roleObj ? roleObj.name : getRoleDisplayName(u.role_id)}
                       </Badge>
                     </td>
 

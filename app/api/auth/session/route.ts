@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createStaffSupabaseClient, getStaffIdentity } from "@/lib/coffee/auth"
 import { RbacService } from "@/lib/rbac/rbac-service"
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  getRoleDisplayName,
+  normalizeRole,
+} from "@/lib/rbac/permissions"
 
 export const dynamic = "force-dynamic"
 
@@ -30,7 +35,10 @@ export async function GET(request: NextRequest) {
         access_token: null,
         expires_at: 0,
         user: null,
-        role: null,
+        role: "viewer",
+        role_id: null,
+        role_name: "Viewer",
+        role_label: "Guest",
         permissions: [],
       },
       { status: 200, headers: noStore }
@@ -41,7 +49,12 @@ export async function GET(request: NextRequest) {
   const appUser = await RbacService.getUserByUsername(username)
   const roleId = appUser?.role_id || identity.role || "admin"
   const role = await RbacService.getRoleById(roleId)
-  const permissions = role?.permissions || []
+  const canonicalRole = normalizeRole(role?.name || roleId)
+  const roleLabel = getRoleDisplayName(canonicalRole)
+  const permissions =
+    role?.permissions && role.permissions.length > 0
+      ? role.permissions
+      : (DEFAULT_ROLE_PERMISSIONS[canonicalRole] || [])
 
   const supabase = createStaffSupabaseClient(request)
   const defaultJwt = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "local-pos-auth-token"
@@ -57,7 +70,10 @@ export async function GET(request: NextRequest) {
           username: appUser?.username || username,
           full_name: appUser?.full_name || username,
         },
-        role: roleId,
+        role: canonicalRole,
+        role_id: roleId,
+        role_name: role?.name || canonicalRole,
+        role_label: roleLabel,
         permissions,
         role_detail: role,
       },
@@ -82,7 +98,10 @@ export async function GET(request: NextRequest) {
         username: appUser?.username || username,
         full_name: appUser?.full_name || username,
       },
-      role: roleId,
+      role: canonicalRole,
+      role_id: roleId,
+      role_name: role?.name || canonicalRole,
+      role_label: roleLabel,
       permissions,
       role_detail: role,
     },

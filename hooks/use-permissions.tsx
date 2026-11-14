@@ -1,6 +1,17 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from "react"
+import {
+  CanonicalRole,
+  canAdjustStock,
+  canManageCategories,
+  canManageProducts,
+  canManageRoles,
+  canManageTables,
+  canManageUsers,
+  getRoleDisplayName,
+  normalizeRole,
+} from "@/lib/rbac/permissions"
 
 export interface UserSession {
   id: string
@@ -11,21 +22,39 @@ export interface UserSession {
 
 export interface PermissionsContextType {
   user: UserSession | null
-  role: string
+  role: CanonicalRole
+  rawRole: string
+  roleLabel: string
   permissions: string[]
   loading: boolean
+  isAuthenticated: boolean
   hasPermission: (permission: string | string[]) => boolean
   canAccessView: (view: string) => boolean
+  canManageProducts: boolean
+  canManageCategories: boolean
+  canManageTables: boolean
+  canAdjustStock: boolean
+  canManageUsers: boolean
+  canManageRoles: boolean
   refreshPermissions: () => Promise<void>
 }
 
 const PermissionsContext = createContext<PermissionsContextType>({
   user: null,
   role: "cashier",
+  rawRole: "cashier",
+  roleLabel: "Cashier",
   permissions: [],
   loading: true,
+  isAuthenticated: false,
   hasPermission: () => false,
   canAccessView: () => false,
+  canManageProducts: false,
+  canManageCategories: false,
+  canManageTables: false,
+  canAdjustStock: false,
+  canManageUsers: false,
+  canManageRoles: false,
   refreshPermissions: async () => {},
 })
 
@@ -50,28 +79,100 @@ const VIEW_PERMISSION_MAP: Record<string, string[]> = {
 }
 
 export function PermissionsProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserSession | null>(null)
-  const [role, setRole] = useState<string>("admin")
+  const [user, setUser] = useState<UserSession | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("pos_cached_user")
+        if (cached) return JSON.parse(cached)
+      } catch {}
+    }
+    return null
+  })
+
+  // Least privilege default until server verifies identity, preserving cached role on reload
+  const [role, setRole] = useState<CanonicalRole>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("pos_cached_role")
+        if (cached) return normalizeRole(cached)
+      } catch {}
+    }
+    return "cashier"
+  })
+
+  const [rawRole, setRawRole] = useState<string>("cashier")
   const [permissions, setPermissions] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const fetchSession = useCallback(async () => {
     try {
       const response = await fetch("/api/auth/session", { cache: "no-store" })
-      if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        setUser(null)
+        setRole("cashier")
+        setRawRole("cashier")
+        setPermissions([])
+        setIsAuthenticated(false)
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.removeItem("pos_cached_role")
+            localStorage.removeItem("pos_cached_user")
+          } catch {}
+        }
         setLoading(false)
         return
       }
+
+      if (!response.ok) {
+        // Transient network or server error: do not revoke existing state
+        setLoading(false)
+        return
+      }
+
       const data = await response.json()
+      if (data.authenticated === false) {
+        setUser(null)
+        setRole("cashier")
+        setRawRole("cashier")
+        setPermissions([])
+        setIsAuthenticated(false)
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.removeItem("pos_cached_role")
+            localStorage.removeItem("pos_cached_user")
+          } catch {}
+        }
+        setLoading(false)
+        return
+      }
+
       if (data.user) {
-        setUser({
+        const userObj: UserSession = {
           id: data.user.id,
           username: data.user.username || data.user.email?.split("@")[0] || "staff",
           full_name: data.user.full_name || data.user.username || "Staff Member",
           email: data.user.email,
-        })
+        }
+        setUser(userObj)
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("pos_cached_user", JSON.stringify(userObj))
+          } catch {}
+        }
       }
-      if (data.role) setRole(data.role)
+
+      const canonical = normalizeRole(data.role || data.role_id)
+      setRole(canonical)
+      setRawRole(data.role || data.role_id || canonical)
+      setIsAuthenticated(true)
+
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("pos_cached_role", canonical)
+        } catch {}
+      }
+
       if (Array.isArray(data.permissions)) {
         setPermissions(data.permissions)
       }
@@ -121,7 +222,8 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
 
   const hasPermission = useCallback(
     (permission: string | string[]): boolean => {
-      if (role === "admin" || permissions.includes("*")) return true
+      const norm = normalizeRole(role)
+      if (norm === "admin" || permissions.includes("*")) return true
       if (Array.isArray(permission)) {
         return permission.some((p) => permissions.includes(p))
       }
@@ -132,7 +234,8 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
 
   const canAccessView = useCallback(
     (view: string): boolean => {
-      if (role === "admin" || permissions.includes("*")) return true
+      const norm = normalizeRole(role)
+      if (norm === "admin" || permissions.includes("*")) return true
       const required = VIEW_PERMISSION_MAP[view]
       if (!required || required.length === 0) return true
       return required.some((perm) => permissions.includes(perm))
@@ -140,15 +243,32 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     [role, permissions]
   )
 
+  const roleLabel = useMemo(() => getRoleDisplayName(role), [role])
+  const canManageProductsVal = useMemo(() => canManageProducts(role, permissions), [role, permissions])
+  const canManageCategoriesVal = useMemo(() => canManageCategories(role, permissions), [role, permissions])
+  const canManageTablesVal = useMemo(() => canManageTables(role, permissions), [role, permissions])
+  const canAdjustStockVal = useMemo(() => canAdjustStock(role, permissions), [role, permissions])
+  const canManageUsersVal = useMemo(() => canManageUsers(role, permissions), [role, permissions])
+  const canManageRolesVal = useMemo(() => canManageRoles(role, permissions), [role, permissions])
+
   return (
     <PermissionsContext.Provider
       value={{
         user,
         role,
+        rawRole,
+        roleLabel,
         permissions,
         loading,
+        isAuthenticated,
         hasPermission,
         canAccessView,
+        canManageProducts: canManageProductsVal,
+        canManageCategories: canManageCategoriesVal,
+        canManageTables: canManageTablesVal,
+        canAdjustStock: canAdjustStockVal,
+        canManageUsers: canManageUsersVal,
+        canManageRoles: canManageRolesVal,
         refreshPermissions: fetchSession,
       }}
     >

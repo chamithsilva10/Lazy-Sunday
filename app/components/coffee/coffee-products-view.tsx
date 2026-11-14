@@ -14,9 +14,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import { normalizeRole } from "@/lib/rbac/permissions"
 
 interface CoffeeProductsViewProps {
-  role: "admin" | "cashier"
+  role?: string
 }
 
 export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
@@ -24,7 +25,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("All")
-  const isAdmin = role === "admin"
+  const isAdmin = normalizeRole(role) === "admin"
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)

@@ -245,6 +245,7 @@ export const SYSTEM_PERMISSIONS: Permission[] = [
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
   admin: SYSTEM_PERMISSIONS.map((p) => p.code),
+  manager: SYSTEM_PERMISSIONS.map((p) => p.code).filter((c) => c !== "roles.manage"),
   cashier: [
     "orders.create",
     "orders.view",
@@ -264,3 +265,186 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     "products.view",
   ],
 }
+
+// ============================================================================
+// CANONICAL ROLES & NORMALIZATION
+// ============================================================================
+export type CanonicalRole = "admin" | "manager" | "cashier" | "kitchen" | "staff" | "viewer"
+
+/**
+ * Normalizes any role identifier, database ID (e.g. 'role-admin'),
+ * display label, or raw string into a canonical lowercase role slug.
+ */
+export function normalizeRole(raw?: string | null): CanonicalRole {
+  if (!raw) return "cashier"
+  const clean = String(raw).trim().toLowerCase()
+  if (
+    clean === "admin" ||
+    clean === "role-admin" ||
+    clean === "role_admin" ||
+    clean === "administrator" ||
+    clean.startsWith("role-admin") ||
+    clean.startsWith("role_admin") ||
+    clean.includes("admin")
+  ) {
+    return "admin"
+  }
+  if (
+    clean === "manager" ||
+    clean === "role-manager" ||
+    clean === "role_manager" ||
+    clean.startsWith("role-manager") ||
+    clean.includes("manager")
+  ) {
+    return "manager"
+  }
+  if (
+    clean === "cashier" ||
+    clean === "role-cashier" ||
+    clean === "role_cashier" ||
+    clean.startsWith("role-cashier") ||
+    clean.includes("cashier")
+  ) {
+    return "cashier"
+  }
+  if (
+    clean === "kitchen" ||
+    clean === "role-kitchen" ||
+    clean === "role_kitchen" ||
+    clean.startsWith("role-kitchen") ||
+    clean.includes("kitchen") ||
+    clean.includes("chef")
+  ) {
+    return "kitchen"
+  }
+  if (
+    clean === "staff" ||
+    clean === "role-staff" ||
+    clean === "role_staff" ||
+    clean.startsWith("role-staff") ||
+    clean.includes("staff") ||
+    clean.includes("waiter")
+  ) {
+    return "staff"
+  }
+  if (
+    clean === "viewer" ||
+    clean === "guest" ||
+    clean === "anonymous" ||
+    clean === "unauthorized" ||
+    clean.includes("viewer") ||
+    clean.includes("guest")
+  ) {
+    return "viewer"
+  }
+  const stripped = clean.replace(/^role[-_]/, "")
+  if (stripped === "admin") return "admin"
+  if (stripped === "manager") return "manager"
+  if (stripped === "cashier") return "cashier"
+  if (stripped === "kitchen") return "kitchen"
+  if (stripped === "staff") return "staff"
+  if (stripped === "viewer") return "viewer"
+  return "viewer"
+}
+
+/**
+ * Formats a clean human-readable title for a role (e.g. "Admin", "Manager").
+ * Never displays raw database IDs like "Role-admin".
+ */
+export function getRoleDisplayName(raw?: string | null): string {
+  const norm = normalizeRole(raw)
+  return norm.charAt(0).toUpperCase() + norm.slice(1)
+}
+
+// ============================================================================
+// CENTRALIZED CAPABILITY CHECKS
+// ============================================================================
+
+/**
+ * Determines whether a user has permission to add, edit, or delete products.
+ * Admin, manager, and cashier roles have product management permission in POS,
+ * as well as any user with specific product management permissions or wildcard.
+ */
+export function canManageProducts(role?: string | null, permissions: string[] = []): boolean {
+  const norm = normalizeRole(role)
+  if (norm === "admin" || norm === "manager" || norm === "cashier") return true
+  if (
+    permissions.includes("*") ||
+    permissions.includes("products.create") ||
+    permissions.includes("products.edit") ||
+    permissions.includes("products.manage") ||
+    permissions.includes("products.delete")
+  ) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Determines whether a user has permission to add categories.
+ */
+export function canManageCategories(role?: string | null, permissions: string[] = []): boolean {
+  const norm = normalizeRole(role)
+  if (norm === "admin" || norm === "manager" || norm === "cashier") return true
+  if (
+    permissions.includes("*") ||
+    permissions.includes("products.create") ||
+    permissions.includes("products.manage")
+  ) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Determines whether a user has permission to configure dining tables.
+ */
+export function canManageTables(role?: string | null, permissions: string[] = []): boolean {
+  const norm = normalizeRole(role)
+  if (norm === "admin" || norm === "manager") return true
+  if (
+    permissions.includes("*") ||
+    permissions.includes("tables.manage") ||
+    permissions.includes("orders.cancel")
+  ) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Determines whether a user can adjust stock levels.
+ */
+export function canAdjustStock(role?: string | null, permissions: string[] = []): boolean {
+  const norm = normalizeRole(role)
+  if (norm === "admin" || norm === "manager" || norm === "cashier") return true
+  if (
+    permissions.includes("*") ||
+    permissions.includes("inventory.update") ||
+    permissions.includes("inventory.view")
+  ) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Determines whether a user can manage staff accounts.
+ */
+export function canManageUsers(role?: string | null, permissions: string[] = []): boolean {
+  const norm = normalizeRole(role)
+  if (norm === "admin") return true
+  if (permissions.includes("*") || permissions.includes("users.manage")) return true
+  return false
+}
+
+/**
+ * Determines whether a user can configure RBAC roles and permissions.
+ */
+export function canManageRoles(role?: string | null, permissions: string[] = []): boolean {
+  const norm = normalizeRole(role)
+  if (norm === "admin") return true
+  if (permissions.includes("*") || permissions.includes("roles.manage")) return true
+  return false
+}
+

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { normalizeRole } from "@/lib/rbac/permissions"
 import {
   SharedPosService,
   type SharedIngredient,
@@ -2530,7 +2531,7 @@ export function InventoryWorkspace({
                     difference: diffBase,
                     unit: ing.base_unit,
                     reason: adjustmentForm.reason,
-                    adjusted_by: role === "admin" ? "admin" : "cashier",
+                    adjusted_by: normalizeRole(role) === "admin" ? "admin" : "cashier",
                   })
                   setIngredients((prev) =>
                     prev.map((i) => (i.id === ing.id ? { ...i, current_stock_base: nextBase } : i))

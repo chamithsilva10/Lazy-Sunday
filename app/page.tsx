@@ -81,6 +81,17 @@ import { RoleManagementView } from "@/app/components/admin/role-management-view"
 import { UserGuideView } from "@/app/components/user-guide-view"
 import { AccessDenied } from "@/app/components/access-denied"
 import { usePermissions } from "@/hooks/use-permissions"
+import {
+  CanonicalRole,
+  canAdjustStock,
+  canManageCategories,
+  canManageProducts,
+  canManageRoles,
+  canManageTables,
+  canManageUsers,
+  getRoleDisplayName,
+  normalizeRole,
+} from "@/lib/rbac/permissions"
 import { SharedPosService, DEFAULT_INITIAL_ORDERS, type SharedCustomer, type SharedBranch } from "@/lib/shared-pos-service"
 import { determineItemStation, isBarItem, isKitchenItem } from "@/lib/station-routing"
 import { useSharedTables } from "@/hooks/use-shared-tables"
@@ -463,7 +474,17 @@ function mergeOrderRecords(...orderArrays: (OrderRecord[] | undefined | null)[])
 export default function POSPage() {
   const supabase = useMemo(() => createClient(), [])
   const [mounted, setMounted] = useState(false)
-  const { user: rbacUser, role: rbacRole, hasPermission, canAccessView } = usePermissions()
+  const {
+    user: rbacUser,
+    role: rbacRole,
+    permissions: rbacPermissions,
+    loading: rbacLoading,
+    hasPermission,
+    canAccessView,
+    canManageProducts: rbacCanManageProducts,
+    canManageCategories: rbacCanManageCategories,
+    canManageTables: rbacCanManageTables,
+  } = usePermissions()
 
   useEffect(() => {
     setMounted(true)
@@ -475,10 +496,28 @@ export default function POSPage() {
   }, [])
 
   // User & View states
-  const [user, setUser] = useState<any>(null)
-  // Least privilege until the server confirms the signed-in user's role
-  const [role, setRole] = useState<string>(isSupabaseConfigured() ? "cashier" : "admin")
-  const activeRole = rbacRole || role
+  const [user, setUser] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("pos_cached_user")
+        if (cached) return JSON.parse(cached)
+      } catch {}
+    }
+    return null
+  })
+
+  // Least privilege until the server confirms the signed-in user's role, preserving cached verified session
+  const [role, setRole] = useState<CanonicalRole>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("pos_cached_role") || localStorage.getItem("pos_staff_role")
+        if (cached) return normalizeRole(cached)
+      } catch {}
+    }
+    return "cashier"
+  })
+  const activeRole = normalizeRole(rbacRole || role)
+  const activeUser = rbacUser || user
   const [view, setView] = useState<View>("POS")
   const [coffeeMenuOpen, setCoffeeMenuOpen] = useState(true)
 
@@ -1042,13 +1081,14 @@ export default function POSPage() {
       try {
         const session = await getBrowserSession()
         const currentUser = session?.user || null
-        setUser(currentUser)
-        const userRole = session?.role || "cashier"
-        const roleLabel = userRole.charAt(0).toUpperCase() + userRole.slice(1)
-        setCashierName(roleLabel)
-        if (session?.role) {
-          setRole(session.role)
+        if (currentUser) {
+          setUser(currentUser)
         }
+        const canonicalRole = normalizeRole(session?.role || session?.role_id)
+        const roleLabel = getRoleDisplayName(canonicalRole)
+        const displayName = currentUser?.full_name || currentUser?.username || roleLabel
+        setCashierName(displayName)
+        setRole(canonicalRole)
       } catch (err) {
         console.warn("Could not determine user session:", err)
       } finally {
@@ -2460,7 +2500,7 @@ export default function POSPage() {
                 <p className="text-sm font-semibold text-[#343428]">{cashierName}</p>
               </div>
               <Badge className="bg-[#808068] text-white capitalize text-[10px] px-2 py-0.5">
-                {role}
+                {getRoleDisplayName(activeRole)}
               </Badge>
             </div>
 
@@ -2630,7 +2670,7 @@ export default function POSPage() {
                 </div>
               </div>
               <h1 className="font-serif text-base sm:text-xl font-bold leading-tight text-[#343428] truncate">
-                Good day, {activeRole ? activeRole.charAt(0).toUpperCase() + activeRole.slice(1) : "Cashier"}
+                Good day, {activeUser?.full_name || getRoleDisplayName(activeRole)}
               </h1>
             </div>
           </div>
@@ -2824,7 +2864,7 @@ export default function POSPage() {
               supabase={supabase}
               view={view}
               setView={setView}
-              role={role}
+              role={activeRole}
               setRole={setRole}
               orders={orders}
               coffeeBills={coffeeBills}
@@ -5803,6 +5843,21 @@ function ManagementView({
   onSelectTableAndStartOrder,
   onSignOut,
 }: any) {
+  const {
+    permissions: rbacPermissions = [],
+    canManageProducts: rbacCanManageProducts,
+    canManageCategories: rbacCanManageCategories,
+    canManageTables: rbacCanManageTables,
+    canAdjustStock: rbacCanAdjustStock,
+    role: rbacRole,
+  } = usePermissions()
+
+  const effectiveRole = normalizeRole(role || rbacRole)
+  const effectiveCanManageProducts = rbacCanManageProducts || canManageProducts(effectiveRole, rbacPermissions)
+  const effectiveCanManageCategories = rbacCanManageCategories || canManageCategories(effectiveRole, rbacPermissions)
+  const effectiveCanManageTables = rbacCanManageTables || canManageTables(effectiveRole, rbacPermissions)
+  const effectiveCanAdjustStock = rbacCanAdjustStock || canAdjustStock(effectiveRole, rbacPermissions)
+
   const [orderSearch, setOrderSearch] = useState("")
   const [orderStatusFilter, setOrderStatusFilter] = useState<"all" | "completed" | "active" | "open">("all")
   const [ticketFilter, setTicketFilter] = useState<"active" | "all">("active")
@@ -5953,7 +6008,7 @@ function ManagementView({
           <p className="mt-0.5 text-xs sm:text-sm text-gray-500">Live operational restaurant records.</p>
         </div>
 
-        {(role === "admin" || role === "manager" || role === "cashier") && view === "Products" && (
+        {effectiveCanManageCategories && view === "Products" && (
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <Button
               onClick={() => onAdd("category")}
@@ -5973,7 +6028,7 @@ function ManagementView({
           </div>
         )}
 
-        {role === "admin" && view === "Tables" && (
+        {effectiveCanManageTables && view === "Tables" && (
           <Button
             onClick={() => onAdd("table")}
             className="bg-[#D67B6B] hover:bg-[#c26555] text-white gap-2 rounded-xl h-10 text-xs sm:text-sm self-start sm:self-auto shadow-sm"
@@ -6549,7 +6604,7 @@ function ManagementView({
       {/* ========================================================= */}
       {(view === "Tables" || view === "TableBooked") && (
         <TablesWorkspace
-          role={role}
+          role={effectiveRole}
           initialTab={view === "TableBooked" ? "bookings" : "floor"}
           onStartOrder={onSelectTableAndStartOrder}
         />
@@ -6622,7 +6677,7 @@ function ManagementView({
                         <Badge variant={p.stock <= 5 ? "destructive" : "outline"} className="font-mono text-[10px]">
                           Stock: {p.stock}
                         </Badge>
-                        {(role === "admin" || role === "manager" || role === "cashier") ? (
+                        {effectiveCanManageProducts ? (
                           <>
                             <Button size="icon" variant="outline" onClick={() => onEditProduct(p)} className="size-8 rounded-lg" title="Edit product" aria-label={`Edit ${p.name}`}>
                               <Edit2 className="size-3.5" />
@@ -6634,11 +6689,11 @@ function ManagementView({
                               Adjust Stock
                             </Button>
                           </>
-                        ) : (
+                        ) : effectiveCanAdjustStock ? (
                           <Button size="sm" variant="outline" onClick={() => onStock(p)} className="h-8 text-xs rounded-lg">
                             Adjust Stock
                           </Button>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   ))}
@@ -6655,7 +6710,7 @@ function ManagementView({
       {/* 6. INVENTORY CONTROL VIEW                                 */}
       {/* ========================================================= */}
       {view === "Inventory" && (
-        <InventoryWorkspace supabase={supabase} products={inventoryProducts} role={role} />
+        <InventoryWorkspace supabase={supabase} products={inventoryProducts} role={effectiveRole} />
       )}
 
       {/* ========================================================= */}
@@ -6740,7 +6795,7 @@ function ManagementView({
               <div className="flex justify-between py-2 border-b items-center">
                 <span className="text-gray-600">Active Terminal Role:</span>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-[#808068] text-white capitalize">{role}</Badge>
+                  <Badge className="bg-[#808068] text-white capitalize">{getRoleDisplayName(effectiveRole)}</Badge>
                 </div>
               </div>
             </div>

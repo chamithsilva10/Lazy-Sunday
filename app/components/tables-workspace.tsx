@@ -28,6 +28,7 @@ import { SharedPosService, tablesMatch, normalizeTableName, type SharedOrder, ty
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { canManageTables, normalizeRole } from "@/lib/rbac/permissions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 type Table = SharedTable
@@ -863,7 +864,7 @@ export function TablesWorkspace({
             <GitMerge className="size-3.5" /> Merge
           </Button>
 
-          {role === "admin" && (
+          {canManageTables(role) && (
             <Button
               variant="outline"
               className="h-10 rounded-xl text-xs gap-1"
