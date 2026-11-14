@@ -471,6 +471,24 @@ function mergeOrderRecords(...orderArrays: (OrderRecord[] | undefined | null)[])
   )
 }
 
+function handleProductImageError(e: React.SyntheticEvent<HTMLImageElement>) {
+  const target = e.currentTarget
+  target.onerror = null
+  const src = target.getAttribute("src") || ""
+  if (typeof window !== "undefined" && src) {
+    try {
+      const cached =
+        localStorage.getItem("pos_upload:" + src) ||
+        localStorage.getItem("pos_upload:" + src.split("/").pop())
+      if (cached) {
+        target.src = cached
+        return
+      }
+    } catch {}
+  }
+  target.src = "/placeholder.svg"
+}
+
 export default function POSPage() {
   const supabase = useMemo(() => createClient(), [])
   const [mounted, setMounted] = useState(false)
@@ -706,24 +724,6 @@ export default function POSPage() {
     image: "",
   })
   const [isUploadingImage, setIsUploadingImage] = useState(false)
-
-  function handleProductImageError(e: React.SyntheticEvent<HTMLImageElement>) {
-    const target = e.currentTarget
-    target.onerror = null
-    const src = target.getAttribute("src") || ""
-    if (typeof window !== "undefined" && src) {
-      try {
-        const cached =
-          localStorage.getItem("pos_upload:" + src) ||
-          localStorage.getItem("pos_upload:" + src.split("/").pop())
-        if (cached) {
-          target.src = cached
-          return
-        }
-      } catch {}
-    }
-    target.src = "/placeholder.svg"
-  }
 
   async function handleImageFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
