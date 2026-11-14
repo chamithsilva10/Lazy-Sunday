@@ -9,7 +9,7 @@ import { SharedPosService } from "@/lib/shared-pos-service"
 import { resolveProductImage } from "@/lib/product-images"
 
 type Category = { id: string; name: string; sort_order: number; available_until: string | null }
-type Product = { id: string; name: string; description: string; price: number; category_id: string; dietary_tags: string[]; temperature: string; active: boolean; is_archived: boolean; available_until: string | null; category?: string }
+type Product = { id: string; name: string; description: string; price: number; category_id: string; dietary_tags: string[]; temperature: string; active: boolean; is_archived: boolean; available_until: string | null; category?: string; image?: string | null }
 
 function money(price: number) {
   return `Rs. ${Number(price).toLocaleString("en-LK", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
@@ -34,7 +34,7 @@ export default function MenuPage() {
       try {
         const [{ data: categoryRows }, { data: productRows }] = await Promise.all([
           supabase.from("pos_categories").select("id,name,sort_order,available_until").eq("is_active", true).order("sort_order"),
-          supabase.from("pos_products").select("id,name,description,price,category_id,dietary_tags,temperature,active,is_archived,available_until").eq("active", true).eq("is_archived", false).order("sort_order").order("name"),
+          supabase.from("pos_products").select("id,name,description,price,category_id,image,dietary_tags,temperature,active,is_archived,available_until").eq("active", true).eq("is_archived", false).order("sort_order").order("name"),
         ])
         const sharedCats = SharedPosService.getCategories()
         const sharedProds = SharedPosService.getProducts()
@@ -66,6 +66,7 @@ export default function MenuPage() {
             active: p.active !== false,
             is_archived: p.is_archived === true,
             available_until: null,
+            image: p.image || null,
           })
         })
         if (productRows && productRows.length > 0) {
@@ -84,9 +85,39 @@ export default function MenuPage() {
               active: p.active !== false,
               is_archived: p.is_archived === true,
               available_until: p.available_until ?? existing?.available_until ?? null,
+              image: p.image || existing?.image || null,
             })
           })
         }
+
+        // Direct API overlay for authoritative demo SQLite or backend data
+        try {
+          const apiRes = await fetch("/api/products")
+          if (apiRes.ok) {
+            const apiJson = await apiRes.json()
+            if (Array.isArray(apiJson?.products)) {
+              apiJson.products.forEach((p: any) => {
+                const key = p.name.trim().toLowerCase()
+                const existing = prodMap.get(key)
+                prodMap.set(key, {
+                  id: String(p.id),
+                  name: p.name,
+                  description: p.description || existing?.description || "",
+                  price: Number(p.price != null ? p.price : (existing?.price ?? 0)),
+                  category_id: String(p.category_id || existing?.category_id || "General"),
+                  category: p.category || p.category_name || existing?.category || "General",
+                  dietary_tags: Array.isArray(p.dietary_tags) ? p.dietary_tags : (existing?.dietary_tags || []),
+                  temperature: p.temperature || existing?.temperature || "none",
+                  active: p.active !== false && p.is_active !== false,
+                  is_archived: p.is_archived === true,
+                  available_until: p.available_until ?? existing?.available_until ?? null,
+                  image: p.image || existing?.image || null,
+                })
+              })
+            }
+          }
+        } catch {}
+
         setProducts(Array.from(prodMap.values()).filter((p) => p.active && !p.is_archived))
       } catch {
         const sharedCats = SharedPosService.getCategories()
@@ -104,6 +135,7 @@ export default function MenuPage() {
           active: true,
           is_archived: false,
           available_until: null,
+          image: p.image || null,
         })))
       } finally {
         setLoading(false)
@@ -243,12 +275,12 @@ export default function MenuPage() {
                   >
                     <div className="relative size-16 sm:size-20 shrink-0 overflow-hidden rounded-xl bg-[#FAF5F1] border border-[#E5D8CF] shadow-2xs">
                       <img
-                        src={resolveProductImage(item.name, null, category.name)}
+                        src={resolveProductImage(item.name, item.image, category.name)}
                         alt={item.name}
                         loading="lazy"
                         onError={(e) => {
                           e.currentTarget.onerror = null
-                          e.currentTarget.src = "/vibrant-mixed-salad.png"
+                          e.currentTarget.src = "/placeholder.svg"
                         }}
                         className="size-full object-cover"
                       />

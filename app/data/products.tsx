@@ -26,7 +26,7 @@ export const products: MenuProduct[] = [
     name: "Ristretto",
     price: 500,
     category: "Coffee & Hot Drinks",
-    image: "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80",
+    image: "/uploads/prod_1794637814975_5gmi8.jpg",
     description: "Short, concentrated espresso extraction with a sweet, rich profile.",
     isVegan: true,
     isGlutenFree: true,

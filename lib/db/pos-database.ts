@@ -1007,7 +1007,7 @@ export const PosDatabase = {
 
         for (const [key, val] of Object.entries(updates)) {
           if (key === "id" || key === "created_at" || key === "category_name" || key === "cost_price") continue
-          if (key === "category_id" && val && !isUuid(val)) continue
+          if (key === "category_id" && val && !isUuid(String(val))) continue
           const col = key === "department" ? "department_override" : key === "cost" ? "cost" : key
           setClauses.push(`${col} = $${pIdx++}`)
           params.push(val)

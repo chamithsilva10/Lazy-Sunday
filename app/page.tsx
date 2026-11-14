@@ -4822,7 +4822,7 @@ function POSView({
                     loading="lazy"
                     onError={(e) => {
                       e.currentTarget.onerror = null
-                      e.currentTarget.src = "/vibrant-mixed-salad.png"
+                      e.currentTarget.src = "/placeholder.svg"
                     }}
                     className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
@@ -6496,6 +6496,10 @@ function ManagementView({
                           <img
                             src={p.image}
                             alt={p.name}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null
+                              e.currentTarget.src = "/placeholder.svg"
+                            }}
                             className="size-10 rounded-lg object-cover bg-gray-100 shrink-0 border border-gray-100"
                           />
                         )}
