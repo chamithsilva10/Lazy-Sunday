@@ -1013,9 +1013,9 @@ export const PosDatabase = {
           params.push(val)
         }
 
-        params.push(id)
         let query = ""
         if (isUuid(id)) {
+          params.push(id)
           query = `
             UPDATE pos_products
             SET ${setClauses.join(", ")}
@@ -1023,10 +1023,13 @@ export const PosDatabase = {
             RETURNING *
           `
         } else {
+          const nameMatch = updates.name || sqliteUpdated?.name || (DemoDbService.getProductById(id) as any)?.name || id
+          const skuMatch = updates.sku || sqliteUpdated?.sku || (DemoDbService.getProductById(id) as any)?.sku || id
+          params.push(nameMatch, skuMatch, id)
           query = `
             UPDATE pos_products
             SET ${setClauses.join(", ")}
-            WHERE name = $${pIdx} OR sku = $${pIdx}
+            WHERE name = $${pIdx} OR sku = $${pIdx + 1} OR id::text = $${pIdx + 2}
             RETURNING *
           `
         }
