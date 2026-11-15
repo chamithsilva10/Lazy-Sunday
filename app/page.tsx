@@ -172,6 +172,10 @@ export type TableInfo = {
   capacity: number
   status: "available" | "occupied" | "cleaning" | "reserved" | "bill_requested"
   guestName?: string
+  orderNumber?: string
+  orderTotal?: number
+  occupiedAt?: string
+  releasedAt?: string
 }
 
 export type OrderRecord = {
@@ -621,13 +625,18 @@ export default function POSPage() {
   const [orderType, setOrderType] = useState<"dine_in" | "takeaway" | "delivery">("dine_in")
   const [deliveryAddress, setDeliveryAddress] = useState<string>("")
   const [deliveryPhone, setDeliveryPhone] = useState<string>("")
+  const manualTableSelectionRef = useRef<string | null>(null)
 
-  // Auto-align selectedTable with free tables so staff never stays on an occupied table
+  // Auto-align selectedTable with free tables unless staff explicitly picked a seated table to ring up an order
   useEffect(() => {
     if (activeOpenOrder) return
     if (orderType === "dine_in" && tables.length > 0) {
       const cur = tables.find((t) => t.name.toLowerCase() === selectedTable?.toLowerCase())
-      if (!cur || cur.status !== "available") {
+      const isManuallySelected =
+        Boolean(cur) && manualTableSelectionRef.current === cur!.name.toLowerCase()
+      const isSeatedAwaitingOrder =
+        Boolean(cur) && cur!.status === "occupied" && !cur!.orderNumber
+      if (!cur || (cur.status !== "available" && !isManuallySelected && !isSeatedAwaitingOrder)) {
         const firstAvail = tables.find((t) => t.status === "available")
         if (firstAvail) {
           setSelectedTable(firstAvail.name)
@@ -1631,14 +1640,14 @@ export default function POSPage() {
       stock: 50,
     }
 
-    setSelectedTable("Table 05")
+    setSelectedTable("Table 5")
     setCart([
       { ...cappuccino, quantity: 2 },
       { ...latte, quantity: 1 },
       { ...burger, quantity: 1 },
       { ...vanilla, quantity: 1 },
     ])
-    toast.success("Loaded Test Order (Table 05: Cappuccino x2, Latte x1, Burger x1, Vanilla x1)")
+    toast.success("Loaded Test Order (Table 5: Cappuccino x2, Latte x1, Burger x1, Vanilla x1)")
   }
 
   // Promo code validation and apply
@@ -1759,10 +1768,11 @@ export default function POSPage() {
       station: (i.station as "kitchen" | "bar") || determineItemStation(i),
     }))
 
-    // 0. Prevent assigning new dine-in order to occupied table
+    // 0. Prevent accidentally overwriting an occupied table that already has an order unless explicitly selected
     if (orderType === "dine_in" && selectedTable && selectedTable !== "Takeaway") {
       const curTable = tables.find((t) => t.name.toLowerCase() === selectedTable.toLowerCase())
-      if (!isPayingExisting && curTable && curTable.status === "occupied") {
+      const isExplicitlyChosen = manualTableSelectionRef.current === selectedTable.toLowerCase()
+      if (!isPayingExisting && curTable && curTable.status === "occupied" && curTable.orderNumber && !isExplicitlyChosen) {
         toast.error(`Table ${selectedTable} is currently OCCUPIED. Please select an available table.`)
         return
       }
@@ -1887,7 +1897,14 @@ export default function POSPage() {
 
       // 3. Mark Table Status as OCCUPIED for dine-in tables (freed from Tables workspace when guests leave)
       if (orderType === "dine_in" && selectedTable && selectedTable !== "Takeaway") {
-        void SharedPosService.occupyTable(selectedTable, "Juice & Food", orderNum, total)
+        const curTable = tables.find((t) => t.name.toLowerCase() === selectedTable.toLowerCase())
+        void SharedPosService.occupyTable(
+          selectedTable,
+          "Juice & Food",
+          orderNum,
+          total,
+          selectedCust?.name || curTable?.guestName
+        )
       }
 
       setOrders((prev) => [newOrderRecord, ...prev.filter((o) => o.id !== newOrderRecord.id && o.order_number !== newOrderRecord.order_number)])
@@ -1914,6 +1931,7 @@ export default function POSPage() {
       { id: "line-2", method: "card", amount: "", tendered: "", reference: "", customerId: "" },
     ])
     setPaymentModalOpen(false)
+    manualTableSelectionRef.current = null
 
     // Advance selectedTable to next available table
     const nextAvail = tables.find((t) => t.status === "available" && t.name.toLowerCase() !== selectedTable.toLowerCase())
@@ -1956,10 +1974,11 @@ export default function POSPage() {
       station: (i.station as "kitchen" | "bar") || determineItemStation(i),
     }))
 
-    // 0. Prevent assigning new dine-in order to occupied table (handleSendToKitchenAndBar)
+    // 0. Prevent assigning new dine-in order to occupied table that already has an order unless explicitly selected
     if (orderType === "dine_in" && selectedTable && selectedTable !== "Takeaway") {
       const curTable = tables.find((t) => t.name.toLowerCase() === selectedTable.toLowerCase())
-      if (!isUpdatingOpen && curTable && curTable.status === "occupied") {
+      const isExplicitlyChosen = manualTableSelectionRef.current === selectedTable.toLowerCase()
+      if (!isUpdatingOpen && curTable && curTable.status === "occupied" && curTable.orderNumber && !isExplicitlyChosen) {
         toast.error(`Table ${selectedTable} is currently OCCUPIED. Please select an available table.`)
         return
       }
@@ -2031,7 +2050,8 @@ export default function POSPage() {
       }
 
       // Mark table occupied across POS, Tables, and Coffee screens
-      void SharedPosService.occupyTable(selectedTable, "Juice & Food", orderNum, total)
+      const curTableForKot = tables.find((t) => t.name.toLowerCase() === selectedTable.toLowerCase())
+      void SharedPosService.occupyTable(selectedTable, "Juice & Food", orderNum, total, curTableForKot?.guestName)
 
       setOrders((prev) => [newOrderRecord, ...prev.filter((o) => o.id !== newOrderRecord.id && o.order_number !== newOrderRecord.order_number)])
 
@@ -2042,6 +2062,7 @@ export default function POSPage() {
     setActiveOpenOrder(null)
     setCart([])
     setMobileCartOpen(false)
+    manualTableSelectionRef.current = null
 
     // Advance selectedTable to next available table
     const nextAvail = tables.find((t) => t.status === "available" && t.name.toLowerCase() !== selectedTable.toLowerCase())
@@ -2431,6 +2452,8 @@ export default function POSPage() {
   }
 
   function handleSelectTableAndStartOrder(tableName: string) {
+    manualTableSelectionRef.current = tableName.toLowerCase()
+    setOrderType("dine_in")
     setSelectedTable(tableName)
     const openForTable = orders.find(
       (o) => o.table_name?.toLowerCase() === tableName.toLowerCase() && (o.status === "open" || o.status === "bill_requested")
@@ -2442,7 +2465,6 @@ export default function POSPage() {
     } else {
       setActiveOpenOrder(null)
       setCart([])
-      SharedPosService.occupyTable(tableName, "Juice & Food")
       toast.info(`Selected ${tableName} for new POS Order`)
     }
     setView("POS")
@@ -2847,7 +2869,10 @@ export default function POSPage() {
               cart={cart}
               tables={tables}
               selectedTable={selectedTable}
-              setSelectedTable={setSelectedTable}
+              setSelectedTable={(next: string) => {
+                manualTableSelectionRef.current = String(next || "").toLowerCase()
+                setSelectedTable(next)
+              }}
               addToCart={addToCart}
               onSelectProduct={(p: Product) => {
                 const groups = getApplicableModifierGroups(p.name)
@@ -5206,14 +5231,17 @@ function POSView({
                   >
                     {tables.map((t: TableInfo) => {
                       const isAvail = t.status === "available"
+                      const isSeatedWithoutOrder = t.status === "occupied" && !t.orderNumber
                       const isCur = t.name.toLowerCase() === selectedTable?.toLowerCase()
                       const labelStatus = isAvail
                         ? "AVAILABLE"
                         : t.status === "reserved"
                         ? "RESERVED"
+                        : isSeatedWithoutOrder
+                        ? "SEATED"
                         : "OCCUPIED"
                       return (
-                        <option key={t.id} value={t.name} disabled={!isAvail && !isCur}>
+                        <option key={t.id} value={t.name} disabled={!isAvail && !isSeatedWithoutOrder && !isCur}>
                           {t.name} ({labelStatus})
                         </option>
                       )
@@ -5575,14 +5603,17 @@ function POSView({
                 >
                   {tables.map((t: TableInfo) => {
                     const isAvail = t.status === "available"
+                    const isSeatedWithoutOrder = t.status === "occupied" && !t.orderNumber
                     const isCur = t.name.toLowerCase() === selectedTable?.toLowerCase()
                     const labelStatus = isAvail
                       ? "AVAILABLE"
                       : t.status === "reserved"
                       ? "RESERVED"
+                      : isSeatedWithoutOrder
+                      ? "SEATED"
                       : "OCCUPIED"
                     return (
-                      <option key={t.id} value={t.name} disabled={!isAvail && !isCur}>
+                      <option key={t.id} value={t.name} disabled={!isAvail && !isSeatedWithoutOrder && !isCur}>
                         {t.name} ({labelStatus})
                       </option>
                     )

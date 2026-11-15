@@ -604,11 +604,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                   <select
                     value={selectedTable}
                     onChange={(e) => {
-                      const nextT = e.target.value
-                      setSelectedTable(nextT)
-                      if (nextT !== "Takeaway" && billItems.length > 0) {
-                        SharedPosService.occupyTable(nextT, "Coffee Bar", billNumber, grandTotal, customerName)
-                      }
+                      setSelectedTable(e.target.value)
                     }}
                     className="h-8 w-full text-xs rounded-lg border border-gray-200 mt-0.5 bg-white px-2 font-medium text-gray-900 outline-none focus:ring-1 focus:ring-[#D67B6B]"
                   >

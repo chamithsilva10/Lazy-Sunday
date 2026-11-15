@@ -115,8 +115,20 @@ function formatDateTime(iso: string) {
   }
 }
 
+function parseUtcDateMs(value?: string | null): number {
+  if (!value) return 0
+  const trimmed = String(value).trim()
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(trimmed)
+    ? trimmed.replace(" ", "T") + "Z"
+    : trimmed
+  const ms = new Date(normalized).getTime()
+  return Number.isNaN(ms) ? 0 : ms
+}
+
 function minutesSince(value: string) {
-  return Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000))
+  const ts = parseUtcDateMs(value)
+  if (!ts) return 0
+  return Math.max(0, Math.floor((Date.now() - ts) / 60000))
 }
 
 function bookingWindow(booking: { reserved_for: string; duration_minutes: number }) {
@@ -352,8 +364,10 @@ export function TablesWorkspace({
 
     // 2. Second priority: table explicit status, respecting release timestamps
     if (table.status === "occupied" || table.status === "bill_requested") {
-      if (table.releasedAt && table.occupiedAt) {
-        if (new Date(table.releasedAt).getTime() >= new Date(table.occupiedAt).getTime()) {
+      if (table.releasedAt) {
+        const releasedMs = parseUtcDateMs(table.releasedAt)
+        const occupiedMs = parseUtcDateMs(table.occupiedAt)
+        if (!occupiedMs || releasedMs >= occupiedMs) {
           return "available"
         }
       }
@@ -393,7 +407,7 @@ export function TablesWorkspace({
           o.order_number?.toLowerCase() === sessionOrderNum.toLowerCase() &&
           (tablesMatch(o.table_name, table.name) || !o.table_name)
       )
-      if (match) return match
+      if (match && (match.status === "open" || Number(match.total) > 0)) return match
     }
 
     // 2. Second priority: any active "open" (unpaid) order directly matching this table
@@ -402,17 +416,20 @@ export function TablesWorkspace({
     )
     if (openOrder) return openOrder
 
-    // 3. Third priority: Most recent order for this table (open or paid)
-    const releasedTime = table.releasedAt ? new Date(table.releasedAt).getTime() : 0
+    // 3. Third priority: Most recent order for this table (open or paid) created during this seating session
+    const releasedTime = parseUtcDateMs(table.releasedAt)
+    const seatedTime = parseUtcDateMs(session?.seated_at || table.occupiedAt)
     const now = Date.now()
 
     const recentOrder = orders.find((o) => {
       if (!tablesMatch(o.table_name, table.name)) return false
       if (o.status !== "open" && o.status !== "paid") return false
-      if (!o.created_at) return true
-      const orderTime = new Date(o.created_at).getTime()
-      if (now - orderTime > 16 * 60 * 60 * 1000) return false
+      if (o.status === "paid" && Number(o.total) <= 0) return false
+      if (!o.created_at) return false
+      const orderTime = parseUtcDateMs(o.created_at)
+      if (!orderTime || now - orderTime > 16 * 60 * 60 * 1000) return false
       if (releasedTime && releasedTime >= orderTime) return false
+      if (seatedTime && orderTime < seatedTime - 60000) return false
       return true
     })
 

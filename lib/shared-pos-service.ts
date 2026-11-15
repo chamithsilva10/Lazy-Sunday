@@ -1,6 +1,7 @@
 "use client"
 
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client"
+import { isDemoMode } from "@/lib/config/demo"
 import { resolveProductImage, PRODUCT_IMAGE_MAP } from "@/lib/product-images"
 import { determineItemStation } from "@/lib/station-routing"
 
@@ -14,6 +15,7 @@ export interface SharedTable {
   orderTotal?: number
   guestName?: string
   occupiedAt?: string
+  releasedAt?: string
   bookingId?: string
 }
 
@@ -40,6 +42,7 @@ export interface SharedSession {
   phone?: string | null
   guest_count: number
   seated_at: string
+  closed_at?: string
   status: "open" | "bill_requested" | "closed"
   notes?: string
 }
@@ -2466,6 +2469,45 @@ export const DEFAULT_BRANCHES: SharedBranch[] = [
 
 type Listener<T> = (data: T) => void
 
+export function normalizeUtcTimestamp(val?: string | null): string | undefined {
+  if (!val) return undefined
+  const trimmed = String(val).trim()
+  if (!trimmed) return undefined
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(trimmed)) {
+    return `${trimmed.replace(" ", "T")}Z`
+  }
+  return trimmed
+}
+
+export function parseUtcMs(val?: string | null): number {
+  const norm = normalizeUtcTimestamp(val)
+  if (!norm) return 0
+  const ms = new Date(norm).getTime()
+  return Number.isNaN(ms) ? 0 : ms
+}
+
+export function compareTableFloorOrder(a: { id?: string; name?: string }, b: { id?: string; name?: string }): number {
+  const rank = (name: string) => {
+    const n = (name || "").trim().toLowerCase()
+    if (n.startsWith("table")) return 0
+    if (n.startsWith("terrace") || n.startsWith("patio") || n.startsWith("garden")) return 1
+    if (n.startsWith("vip")) return 2
+    if (n.startsWith("bar")) return 3
+    return 4
+  }
+  const rA = rank(a.name || "")
+  const rB = rank(b.name || "")
+  if (rA !== rB) return rA - rB
+  return String(a.name || "").localeCompare(String(b.name || ""), undefined, { numeric: true, sensitivity: "base" })
+}
+
+function isRealCloudSupabase(): boolean {
+  return !isDemoMode() && isSupabaseConfigured()
+}
+
+const RELEASED_TABLES_KEY = "pos_released_tables_ledger_v1"
+const CLOSED_SESSIONS_KEY = "pos_closed_sessions_ledger_v1"
+
 export function normalizeTableName(str?: string | null): string {
   if (!str) return ""
   let clean = str.trim().toLowerCase()
@@ -2491,7 +2533,11 @@ export function tablesMatch(a?: string | null, b?: string | null): boolean {
   return false
 }
 
-const isTakeaway = (name?: string) => !name || name.trim().toLowerCase() === "takeaway"
+const isTakeaway = (name?: string) => {
+  if (!name) return true
+  const n = name.trim().toLowerCase()
+  return n === "takeaway" || n.includes("takeaway") || n === "delivery" || n.includes("delivery") || n === "walk-in"
+}
 const sameName = (a: string, b: string) => {
   if (!a || !b) return false
   if (a.trim().toLowerCase() === b.trim().toLowerCase()) return true
@@ -2502,6 +2548,9 @@ export class SharedPosService {
   private static tablesCache: SharedTable[] = DEFAULT_TABLES.map((t) => ({ ...t }))
   private static bookingsCache: SharedBooking[] = []
   private static sessionsCache: SharedSession[] = []
+  private static releasedTablesMap: Record<string, string> = {}
+  private static closedSessionIds: Set<string> = new Set()
+  private static lastHealTimeByTable: Record<string, number> = {}
   private static productsCache: SharedProduct[] = DEFAULT_PRODUCTS.map((p) => ({ ...p }))
   private static categoriesCache: SharedCategory[] = DEFAULT_CATEGORIES.map((c) => ({ ...c }))
   private static ordersCache: SharedOrder[] = []
@@ -2518,6 +2567,66 @@ export class SharedPosService {
   private static expensesCache: SharedExpense[] = []
   private static branchesCache: SharedBranch[] = []
   private static activeBranchId: string = "branch-hiri-main"
+
+  private static getTableReleasedAt(tableId?: string, tableName?: string, fallbackReleasedAt?: string): string | undefined {
+    const candidates: string[] = []
+    if (fallbackReleasedAt) candidates.push(fallbackReleasedAt)
+    if (tableId) {
+      const byId = this.releasedTablesMap[String(tableId).trim().toLowerCase()]
+      if (byId) candidates.push(byId)
+    }
+    if (tableName) {
+      const byName = this.releasedTablesMap[normalizeTableName(tableName)]
+      if (byName) candidates.push(byName)
+      const byRaw = this.releasedTablesMap[String(tableName).trim().toLowerCase()]
+      if (byRaw) candidates.push(byRaw)
+    }
+    if (candidates.length === 0) return undefined
+    return candidates.sort((a, b) => parseUtcMs(b) - parseUtcMs(a))[0]
+  }
+
+  private static recordTableReleased(tableId: string, tableName: string, releasedIso: string, sessionIdsToClose: string[] = []) {
+    if (tableId) this.releasedTablesMap[String(tableId).trim().toLowerCase()] = releasedIso
+    if (tableName) {
+      this.releasedTablesMap[normalizeTableName(tableName)] = releasedIso
+      this.releasedTablesMap[String(tableName).trim().toLowerCase()] = releasedIso
+    }
+    for (const sid of sessionIdsToClose) {
+      if (sid && sid !== "undefined") this.closedSessionIds.add(String(sid))
+    }
+    if (this.isBrowser()) {
+      try {
+        localStorage.setItem(RELEASED_TABLES_KEY, JSON.stringify(this.releasedTablesMap))
+        localStorage.setItem(CLOSED_SESSIONS_KEY, JSON.stringify(Array.from(this.closedSessionIds).slice(-200)))
+      } catch {}
+    }
+  }
+
+  private static clearTableReleased(tableId?: string, tableName?: string) {
+    if (tableId) delete this.releasedTablesMap[String(tableId).trim().toLowerCase()]
+    if (tableName) {
+      delete this.releasedTablesMap[normalizeTableName(tableName)]
+      delete this.releasedTablesMap[String(tableName).trim().toLowerCase()]
+    }
+    if (this.isBrowser()) {
+      try {
+        localStorage.setItem(RELEASED_TABLES_KEY, JSON.stringify(this.releasedTablesMap))
+      } catch {}
+    }
+  }
+
+  private static healStaleServerTable(tableId: string, tableName: string) {
+    if (!this.isBrowser()) return
+    const key = normalizeTableName(tableName || tableId)
+    const now = Date.now()
+    if (this.lastHealTimeByTable[key] && now - this.lastHealTimeByTable[key] < 8000) return
+    this.lastHealTimeByTable[key] = now
+    void fetch("/api/tables", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "release", tableId, tableName }),
+    }).catch(() => {})
+  }
 
   private static tableListeners = new Set<Listener<SharedTable[]>>()
   private static bookingListeners = new Set<Listener<SharedBooking[]>>()
@@ -2751,14 +2860,33 @@ export class SharedPosService {
     }
 
     // Clean-slate purge for Lazy Sunday tables & bookings to guarantee 0/14 active tables on fresh start
-    const LAZY_SUNDAY_TABLES_CLEAN_FLAG = "pos_lazy_sunday_clean_tables_zero_v4"
+    const LAZY_SUNDAY_TABLES_CLEAN_FLAG = "pos_lazy_sunday_clean_tables_zero_v5"
     if (this.isBrowser() && localStorage.getItem(LAZY_SUNDAY_TABLES_CLEAN_FLAG) !== "true") {
       try {
         localStorage.removeItem(BOOKINGS_KEY)
         localStorage.removeItem(SESSIONS_KEY)
+        localStorage.removeItem(RELEASED_TABLES_KEY)
+        localStorage.removeItem(CLOSED_SESSIONS_KEY)
         localStorage.setItem(TABLES_KEY, JSON.stringify(DEFAULT_TABLES.map((t) => ({ ...t, status: "available" }))))
         localStorage.setItem(LAZY_SUNDAY_TABLES_CLEAN_FLAG, "true")
       } catch {}
+    }
+
+    // Released tables & closed sessions ledgers (prevent serverless cold/warm stale sessions from resurrecting closed tables)
+    if (this.isBrowser()) {
+      try {
+        const rawReleased = localStorage.getItem(RELEASED_TABLES_KEY)
+        this.releasedTablesMap = rawReleased ? JSON.parse(rawReleased) : {}
+      } catch {
+        this.releasedTablesMap = {}
+      }
+      try {
+        const rawClosed = localStorage.getItem(CLOSED_SESSIONS_KEY)
+        const arr = rawClosed ? JSON.parse(rawClosed) : []
+        this.closedSessionIds = new Set(Array.isArray(arr) ? arr.map(String) : [])
+      } catch {
+        this.closedSessionIds = new Set()
+      }
     }
 
     // Tables
@@ -2771,6 +2899,7 @@ export class SharedPosService {
           try { localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache)) } catch {}
         }
       }
+      this.tablesCache = [...this.tablesCache].sort(compareTableFloorOrder)
     } catch {
       this.tablesCache = DEFAULT_TABLES.map((t) => ({ ...t }))
     }
@@ -2808,7 +2937,16 @@ export class SharedPosService {
     // Sessions
     try {
       const rawSessions = localStorage.getItem(SESSIONS_KEY)
-      this.sessionsCache = rawSessions ? JSON.parse(rawSessions) : []
+      const parsedSessions = rawSessions ? JSON.parse(rawSessions) : []
+      this.sessionsCache = Array.isArray(parsedSessions)
+        ? parsedSessions
+            .filter((s: any) => s && s.id && s.id !== "undefined")
+            .map((s: any) => ({
+              ...s,
+              seated_at: normalizeUtcTimestamp(s.seated_at) || new Date().toISOString(),
+              status: this.closedSessionIds.has(String(s.id)) ? ("closed" as const) : s.status,
+            }))
+        : []
     } catch {
       this.sessionsCache = []
     }
@@ -3283,7 +3421,7 @@ export class SharedPosService {
 
     // Cross-tab storage event fallback
     window.addEventListener("storage", (e) => {
-      if (e.key === TABLES_KEY || e.key === BOOKINGS_KEY || e.key === SESSIONS_KEY) {
+      if (e.key === TABLES_KEY || e.key === BOOKINGS_KEY || e.key === SESSIONS_KEY || e.key === RELEASED_TABLES_KEY || e.key === CLOSED_SESSIONS_KEY) {
         this.reloadTablesAndBookings()
       } else if (e.key === PRODUCTS_KEY || e.key === CATEGORIES_KEY) {
         this.reloadProductsAndCategories()
@@ -3400,8 +3538,15 @@ export class SharedPosService {
 
   private static reloadTablesAndBookings() {
     try {
+      const r = localStorage.getItem(RELEASED_TABLES_KEY)
+      if (r) this.releasedTablesMap = JSON.parse(r)
+      const c = localStorage.getItem(CLOSED_SESSIONS_KEY)
+      if (c) {
+        const arr = JSON.parse(c)
+        this.closedSessionIds = new Set(Array.isArray(arr) ? arr.map(String) : [])
+      }
       const t = localStorage.getItem(TABLES_KEY)
-      if (t) this.tablesCache = JSON.parse(t)
+      if (t) this.tablesCache = JSON.parse(t).sort(compareTableFloorOrder)
       const b = localStorage.getItem(BOOKINGS_KEY)
       if (b) this.bookingsCache = JSON.parse(b)
       const s = localStorage.getItem(SESSIONS_KEY)
@@ -3486,7 +3631,17 @@ export class SharedPosService {
   }
 
   private static startCloudRealtime() {
-    if (!this.isBrowser() || this.timer || !isSupabaseConfigured()) return
+    if (!this.isBrowser() || this.timer) return
+    if (!isRealCloudSupabase()) {
+      void this.refreshFromApi(false)
+      void this.refreshOrdersFromCloud()
+      this.timer = setInterval(() => {
+        if (typeof document !== "undefined" && document.visibilityState !== "visible") return
+        void this.refreshFromApi(false)
+        void this.refreshOrdersFromCloud()
+      }, POLL_MS)
+      return
+    }
     void this.refresh()
     void this.refreshIngredientsFromCloud()
     void this.refreshRecipesFromCloud()
@@ -3700,28 +3855,78 @@ export class SharedPosService {
 
         // 1. Process server sessions first so mergedTables can reference up-to-date active sessions
         if (tableRes && tableRes.sessions && Array.isArray(tableRes.sessions)) {
-          const serverSessions = tableRes.sessions.map((s: any) => ({
-            id: String(s.id),
-            table_id: String(s.table_id),
-            table_name: s.table_name || this.tablesCache.find((t) => t.id === String(s.table_id) || sameName(t.name, s.table_name))?.name || "Table",
-            customer_name: s.customer_name,
-            phone: s.phone,
-            guest_count: Number(s.guest_count) || 2,
-            seated_at: s.seated_at,
-            status: s.status,
-            notes: s.notes || "",
-          }))
+          const validServerSessions: SharedSession[] = []
+          for (const rawSess of tableRes.sessions) {
+            if (!rawSess || !rawSess.id || String(rawSess.id) === "undefined") continue
+            const sessId = String(rawSess.id)
+            const tableId = String(rawSess.table_id)
+            const localTable = this.tablesCache.find(
+              (t) => t.id === tableId || sameName(t.name, rawSess.table_name)
+            )
+            const tableName = rawSess.table_name || localTable?.name || "Table"
+            const seatedAtIso = normalizeUtcTimestamp(rawSess.seated_at) || new Date().toISOString()
 
-          // Merge: Keep all local active sessions (status !== 'closed') unless the server explicitly returned them as closed
-          const mergedSessions = [...serverSessions]
+            // Reject if session was explicitly closed locally
+            const localSessMatch = this.sessionsCache.find((ls) => ls.id === sessId)
+            if (this.closedSessionIds.has(sessId) || localSessMatch?.status === "closed") {
+              this.healStaleServerTable(tableId, tableName)
+              continue
+            }
+
+            // Reject if table was released AFTER (or within 10s of) this session's seated_at timestamp
+            // (protects against warm serverless Lambda instances returning pre-release sessions)
+            const releasedAt = this.getTableReleasedAt(tableId, tableName, localTable?.releasedAt)
+            if (releasedAt) {
+              const releasedMs = parseUtcMs(releasedAt)
+              const seatedMs = parseUtcMs(seatedAtIso)
+              if (releasedMs > 0 && seatedMs > 0 && seatedMs <= releasedMs + 10000) {
+                this.closedSessionIds.add(sessId)
+                this.healStaleServerTable(tableId, tableName)
+                continue
+              }
+            }
+
+            validServerSessions.push({
+              id: sessId,
+              table_id: tableId,
+              table_name: tableName,
+              customer_name: rawSess.customer_name,
+              phone: rawSess.phone,
+              guest_count: Number(rawSess.guest_count) || 2,
+              seated_at: seatedAtIso,
+              status: rawSess.status,
+              notes: rawSess.notes || "",
+            })
+          }
+
+          // Merge: Keep local active sessions unless closed or superseded by a newer release
+          const mergedByTable = new Map<string, SharedSession>()
+          for (const s of validServerSessions) {
+            const key = (s.table_id || s.table_name).toLowerCase()
+            if (!mergedByTable.has(key)) {
+              mergedByTable.set(key, s)
+            }
+          }
           for (const localSess of this.sessionsCache) {
-            if (localSess.status === "closed") continue
-            const inServer = serverSessions.find((s: any) => s.id === localSess.id)
-            if (!inServer) {
-              mergedSessions.push(localSess)
+            if (!localSess || !localSess.id || localSess.id === "undefined" || localSess.status === "closed") continue
+            if (this.closedSessionIds.has(String(localSess.id))) continue
+            const localTable = this.tablesCache.find(
+              (t) => t.id === localSess.table_id || sameName(t.name, localSess.table_name)
+            )
+            const releasedAt = this.getTableReleasedAt(localSess.table_id, localSess.table_name, localTable?.releasedAt)
+            if (releasedAt && parseUtcMs(localSess.seated_at) <= parseUtcMs(releasedAt) + 10000) {
+              continue
+            }
+            const key = (localSess.table_id || localSess.table_name).toLowerCase()
+            if (!mergedByTable.has(key)) {
+              mergedByTable.set(key, {
+                ...localSess,
+                seated_at: normalizeUtcTimestamp(localSess.seated_at) || new Date().toISOString(),
+              })
             }
           }
 
+          const mergedSessions = Array.from(mergedByTable.values())
           if (JSON.stringify(mergedSessions) !== JSON.stringify(this.sessionsCache)) {
             this.sessionsCache = mergedSessions
             try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache)) } catch {}
@@ -3767,14 +3972,38 @@ export class SharedPosService {
                 s.status !== "closed"
             )
 
-            // If table was explicitly released locally, PRESERVE local available state if not seated again
-            if (local && local.status === "available" && local.releasedAt) {
-              const releasedTime = new Date(local.releasedAt).getTime()
-              const occupiedTime = local.occupiedAt ? new Date(local.occupiedAt).getTime() : 0
-              if (releasedTime >= occupiedTime && !localSession) {
+            const effectiveReleasedAt = this.getTableReleasedAt(tableId, tableName, local?.releasedAt)
+            const serverOccupiedAtIso = normalizeUtcTimestamp(r.occupiedAt)
+
+            // If table was explicitly released locally and has no post-release session, preserve available/cleaning state
+            if (effectiveReleasedAt && !localSession) {
+              const releasedMs = parseUtcMs(effectiveReleasedAt)
+              const serverOccupiedMs = parseUtcMs(serverOccupiedAtIso)
+              if (r.status === "occupied" || r.status === "bill_requested") {
+                if (!serverOccupiedMs || serverOccupiedMs <= releasedMs + 10000) {
+                  this.healStaleServerTable(tableId, tableName)
+                  return {
+                    id: tableId,
+                    name: tableName,
+                    capacity: Number(r.capacity) || local?.capacity || 2,
+                    status: local?.status === "cleaning" ? "cleaning" : "available",
+                    releasedAt: effectiveReleasedAt,
+                    occupiedAt: undefined,
+                    guestName: undefined,
+                    orderNumber: undefined,
+                    orderTotal: undefined,
+                    department: undefined,
+                    bookingId: undefined,
+                  }
+                }
+              }
+              if (local && (local.status === "available" || local.status === "cleaning")) {
                 return {
                   ...local,
+                  id: tableId,
+                  name: tableName,
                   capacity: Number(r.capacity) || local.capacity || 2,
+                  releasedAt: effectiveReleasedAt,
                 }
               }
             }
@@ -3784,6 +4013,7 @@ export class SharedPosService {
               return {
                 ...local,
                 capacity: Number(r.capacity) || local.capacity || 2,
+                occupiedAt: normalizeUtcTimestamp(localSession?.seated_at || local.occupiedAt) || local.occupiedAt,
               }
             }
 
@@ -3794,7 +4024,7 @@ export class SharedPosService {
                 capacity: Number(r.capacity) || local?.capacity || 2,
                 status: localSession.status === "bill_requested" ? "bill_requested" : "occupied",
                 guestName: localSession.customer_name || local?.guestName,
-                occupiedAt: localSession.seated_at || local?.occupiedAt,
+                occupiedAt: normalizeUtcTimestamp(localSession.seated_at || local?.occupiedAt),
                 orderNumber: local?.orderNumber,
                 orderTotal: local?.orderTotal,
                 department: local?.department,
@@ -3803,18 +4033,32 @@ export class SharedPosService {
               }
             }
 
+            // Server reports occupied/bill_requested without any active session: only trust if not stale
+            if ((r.status === "occupied" || r.status === "bill_requested") && !r.occupiedAt && !r.orderNumber) {
+              return {
+                id: tableId,
+                name: tableName,
+                capacity: Number(r.capacity) || 2,
+                status: "available",
+                releasedAt: effectiveReleasedAt,
+              }
+            }
+
+            const finalStatus = r.status || "available"
+            const isOccupiedState = finalStatus === "occupied" || finalStatus === "bill_requested"
+
             return {
               id: tableId,
               name: tableName,
               capacity: Number(r.capacity) || 2,
-              status: r.status,
-              guestName: r.guestName ?? local?.guestName,
-              occupiedAt: r.occupiedAt ?? local?.occupiedAt,
-              bookingId: r.bookingId ?? local?.bookingId,
-              department: r.department ?? local?.department,
-              orderNumber: r.orderNumber ?? local?.orderNumber,
-              orderTotal: r.orderTotal ?? local?.orderTotal,
-              releasedAt: local?.releasedAt,
+              status: finalStatus,
+              guestName: isOccupiedState || finalStatus === "reserved" ? (r.guestName ?? local?.guestName) : undefined,
+              occupiedAt: isOccupiedState || finalStatus === "reserved" ? (serverOccupiedAtIso ?? normalizeUtcTimestamp(local?.occupiedAt)) : undefined,
+              bookingId: finalStatus === "reserved" ? (r.bookingId ?? local?.bookingId) : undefined,
+              department: isOccupiedState ? (r.department ?? local?.department) : undefined,
+              orderNumber: isOccupiedState ? (r.orderNumber ?? local?.orderNumber) : undefined,
+              orderTotal: isOccupiedState ? (r.orderTotal ?? local?.orderTotal) : undefined,
+              releasedAt: isOccupiedState ? undefined : effectiveReleasedAt,
             }
           })
 
@@ -3824,6 +4068,8 @@ export class SharedPosService {
               mergedTables.push(local)
             }
           }
+
+          mergedTables.sort(compareTableFloorOrder)
 
           if (JSON.stringify(mergedTables) !== JSON.stringify(this.tablesCache)) {
             this.tablesCache = mergedTables
@@ -3850,7 +4096,7 @@ export class SharedPosService {
   static async refresh(): Promise<void> {
     this.init()
     if (!this.isBrowser()) return
-    if (!isSupabaseConfigured()) {
+    if (!isRealCloudSupabase()) {
       await this.refreshFromApi()
       return
     }
@@ -3886,6 +4132,7 @@ export class SharedPosService {
           const session = sessionByTable.get(String(row.id)) || sessionByTable.get(row.name.toLowerCase())
           const booking = bookingByTable.get(String(row.id)) || bookingByTable.get(row.name.toLowerCase())
           const prev = previous.get(String(row.id))
+          const effectiveReleasedAt = this.getTableReleasedAt(String(row.id), row.name, prev?.releasedAt)
 
           let status: SharedTable["status"] = "available"
           if (session) {
@@ -3896,7 +4143,7 @@ export class SharedPosService {
             status = "cleaning"
           } else if (row.status === "occupied") {
             const hasActiveOrder =
-              this.ordersCache.some((o) => (o.status === "open" || o.status === "paid") && sameName(o.table_name, row.name)) ||
+              this.ordersCache.some((o) => o.status === "open" && sameName(o.table_name, row.name)) ||
               this.sessionsCache.some(
                 (s) => (s.table_id === String(row.id) || sameName(s.table_id, row.name) || sameName(s.table_name, row.name)) && s.status !== "closed"
               )
@@ -3916,8 +4163,9 @@ export class SharedPosService {
             guestName: session?.customer_name || booking?.customer_name || (status === "reserved" ? prev?.guestName : undefined),
             occupiedAt: session?.seated_at || (booking ? booking.reserved_for : (status === "reserved" ? prev?.occupiedAt : undefined)),
             bookingId: booking?.id || (status === "reserved" ? prev?.bookingId : undefined),
+            releasedAt: status === "occupied" || status === "bill_requested" ? undefined : effectiveReleasedAt,
           }
-        })
+        }).sort(compareTableFloorOrder)
         localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache))
         this.emitTables()
       }
@@ -3949,7 +4197,7 @@ export class SharedPosService {
           customer_name: s.customer_name,
           phone: s.phone,
           guest_count: Number(s.guest_count) || 2,
-          seated_at: s.seated_at,
+          seated_at: normalizeUtcTimestamp(s.seated_at) || new Date().toISOString(),
           status: s.status,
           notes: s.notes,
         }))
@@ -3983,6 +4231,8 @@ export class SharedPosService {
     }
 
     const nowIso = new Date().toISOString()
+    this.clearTableReleased(table.id, table.name)
+
     this.tablesCache = this.tablesCache.map((t) =>
       sameName(t.name, tableName)
         ? {
@@ -4006,9 +4256,10 @@ export class SharedPosService {
           sameName(s.table_name, table.name)) &&
         s.status !== "closed"
     )
+    const activeSessionId = existingSession ? existingSession.id : "ses-" + Date.now()
     if (!existingSession) {
       const newSession: SharedSession = {
-        id: "ses-" + Date.now(),
+        id: activeSessionId,
         table_id: table.id,
         table_name: table.name,
         customer_name: guestName || "Walk-in Guest",
@@ -4022,7 +4273,7 @@ export class SharedPosService {
       this.sessionsCache = this.sessionsCache.map((s) =>
         s.id === existingSession.id
           ? {
-              ...s,
+               ...s,
               status: "open",
               customer_name: guestName || s.customer_name,
               notes: orderNumber ? `Order #${orderNumber}` : s.notes,
@@ -4051,6 +4302,8 @@ export class SharedPosService {
             action: "occupy",
             tableId: table.id,
             tableName: table.name,
+            sessionId: activeSessionId,
+            seated_at: existingSession?.seated_at || nowIso,
             orderNumber,
             orderTotal,
             guestName: guestName || "Dine-in Guest",
@@ -4058,16 +4311,19 @@ export class SharedPosService {
           }),
         }).catch(() => {})
       }
-      const supabase = createClient()
-      void supabase.from("pos_tables").update({ status: "occupied" }).eq("id", table.id)
-      void supabase.from("table_sessions").upsert({
-        table_id: table.id,
-        customer_name: guestName || "Dine-in Guest",
-        guest_count: table.capacity,
-        seated_at: nowIso,
-        status: "open",
-        notes: orderNumber ? `Order #${orderNumber}` : "",
-      })
+      if (isRealCloudSupabase()) {
+        const supabase = createClient()
+        void supabase.from("pos_tables").update({ status: "occupied" }).eq("id", table.id)
+        void supabase.from("table_sessions").upsert({
+          id: activeSessionId,
+          table_id: table.id,
+          customer_name: guestName || "Dine-in Guest",
+          guest_count: table.capacity,
+          seated_at: existingSession?.seated_at || nowIso,
+          status: "open",
+          notes: orderNumber ? `Order #${orderNumber}` : "",
+        })
+      }
     } catch {}
   }
 
@@ -4078,6 +4334,13 @@ export class SharedPosService {
     if (!table) return "available"
 
     const nowIso = new Date().toISOString()
+    const closedIds: string[] = []
+    for (const s of this.sessionsCache) {
+      if ((s.table_id === table.id || sameName(s.table_id, table.name) || sameName(s.table_name, table.name)) && s.status !== "closed") {
+        if (s.id) closedIds.push(String(s.id))
+      }
+    }
+    this.recordTableReleased(table.id, table.name, nowIso, closedIds)
 
     // 1. Immediately update local state so UI updates with ZERO lag
     this.tablesCache = this.tablesCache.map((t) =>
@@ -4127,15 +4390,17 @@ export class SharedPosService {
       } catch {}
     }
 
-    try {
-      const supabase = createClient()
-      void supabase.from("pos_tables").update({ status: "available" }).eq("id", table.id)
-      void supabase
-        .from("table_sessions")
-        .update({ status: "closed", closed_at: new Date().toISOString() })
-        .eq("table_id", table.id)
-        .in("status", ["open", "bill_requested"])
-    } catch {}
+    if (isRealCloudSupabase()) {
+      try {
+        const supabase = createClient()
+        void supabase.from("pos_tables").update({ status: "available" }).eq("id", table.id)
+        void supabase
+          .from("table_sessions")
+          .update({ status: "closed", closed_at: nowIso })
+          .eq("table_id", table.id)
+          .in("status", ["open", "bill_requested"])
+      } catch {}
+    }
 
     return serverStatus
   }
@@ -4148,8 +4413,35 @@ export class SharedPosService {
     if (status === "occupied") return this.occupyTable(table.name)
 
     const nowIso = new Date().toISOString()
+    if (status === "cleaning") {
+      const closedIds: string[] = []
+      this.sessionsCache = this.sessionsCache.map((s) => {
+        if ((s.table_id === table.id || sameName(s.table_id, table.name) || sameName(s.table_name, table.name)) && s.status !== "closed") {
+          if (s.id) closedIds.push(String(s.id))
+          return { ...s, status: "closed" as const, closed_at: nowIso }
+        }
+        return s
+      })
+      this.recordTableReleased(table.id, table.name, nowIso, closedIds)
+      if (this.isBrowser()) {
+        try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache)) } catch {}
+      }
+      this.emitSessions()
+      this.broadcast("sessions")
+    }
+
     this.tablesCache = this.tablesCache.map((t) =>
-      t.id === table.id ? { ...t, status, releasedAt: status === "cleaning" ? nowIso : t.releasedAt } : t
+      t.id === table.id
+        ? {
+            ...t,
+            status,
+            releasedAt: status === "cleaning" ? nowIso : t.releasedAt,
+            occupiedAt: status === "cleaning" ? undefined : t.occupiedAt,
+            guestName: status === "cleaning" ? undefined : t.guestName,
+            orderNumber: status === "cleaning" ? undefined : t.orderNumber,
+            orderTotal: status === "cleaning" ? undefined : t.orderTotal,
+          }
+        : t
     )
 
     if (status === "bill_requested") {
@@ -4179,8 +4471,10 @@ export class SharedPosService {
           body: JSON.stringify({ tableId: table.id, tableName: table.name, status }),
         }).catch(() => {})
       }
-      const supabase = createClient()
-      void supabase.from("pos_tables").update({ status }).eq("id", table.id)
+      if (isRealCloudSupabase()) {
+        const supabase = createClient()
+        void supabase.from("pos_tables").update({ status }).eq("id", table.id)
+      }
     } catch {}
   }
 
@@ -4201,7 +4495,7 @@ export class SharedPosService {
     this.emitTables()
     this.broadcast("tables")
 
-    if (isSupabaseConfigured()) {
+    if (isRealCloudSupabase()) {
       try {
         await createClient().from("pos_tables").insert({ name: clean, capacity, status: "available" })
         await this.refresh()
@@ -4232,7 +4526,7 @@ export class SharedPosService {
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to create booking")
       }
-      await this.refreshFromApi()
+      await this.refreshFromApi(true)
       this.broadcast("bookings")
       this.broadcast("tables")
       return data.reservation
@@ -4259,7 +4553,7 @@ export class SharedPosService {
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to update booking")
       }
-      await this.refreshFromApi()
+      await this.refreshFromApi(true)
       this.broadcast("bookings")
       this.broadcast("tables")
       return data.reservation
@@ -4277,6 +4571,10 @@ export class SharedPosService {
 
   static async seatBooking(id: string, guestCount?: number) {
     this.init()
+    const targetBooking = this.bookingsCache.find((b) => b.id === id)
+    if (targetBooking) {
+      this.clearTableReleased(targetBooking.table_id, targetBooking.table_name)
+    }
     if (this.isBrowser()) {
       const res = await fetch("/api/tables/bookings", {
         method: "POST",
@@ -4287,7 +4585,11 @@ export class SharedPosService {
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to seat booking")
       }
-      await this.refreshFromApi()
+      if (data.session?.table_id) {
+        const tbl = this.tablesCache.find((t) => t.id === String(data.session.table_id))
+        this.clearTableReleased(String(data.session.table_id), tbl?.name || targetBooking?.table_name)
+      }
+      await this.refreshFromApi(true)
       this.broadcast("bookings")
       this.broadcast("tables")
       this.broadcast("sessions")
@@ -4299,7 +4601,9 @@ export class SharedPosService {
     this.init()
     const table = this.tablesCache.find((t) => t.id === tableNameOrId || sameName(t.name, tableNameOrId))
     const nowIso = new Date().toISOString()
+    const newSessionId = "ses-" + Date.now()
     if (table) {
+      this.clearTableReleased(table.id, table.name)
       this.tablesCache = this.tablesCache.map((t) =>
         t.id === table.id
           ? {
@@ -4307,6 +4611,8 @@ export class SharedPosService {
               status: "occupied",
               guestName: guestInfo?.customer_name || "Walk-in Guest",
               occupiedAt: nowIso,
+              orderNumber: undefined,
+              orderTotal: undefined,
               releasedAt: undefined,
             }
           : t
@@ -4316,7 +4622,7 @@ export class SharedPosService {
       )
       if (!existingSession) {
         const newSession: SharedSession = {
-          id: "ses-" + Date.now(),
+          id: newSessionId,
           table_id: table.id,
           table_name: table.name,
           customer_name: guestInfo?.customer_name || "Walk-in Guest",
@@ -4345,10 +4651,16 @@ export class SharedPosService {
         const res = await fetch("/api/tables", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "seat", tableName: tableNameOrId, guestInfo }),
+          body: JSON.stringify({
+            action: "seat",
+            tableName: tableNameOrId,
+            sessionId: newSessionId,
+            seated_at: nowIso,
+            guestInfo,
+          }),
         })
         const data = await res.json()
-        await this.refreshFromApi()
+        await this.refreshFromApi(true)
         return data?.session
       } catch {}
     }
@@ -4367,7 +4679,7 @@ export class SharedPosService {
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to update booking status")
       }
-      await this.refreshFromApi()
+      await this.refreshFromApi(true)
       this.broadcast("bookings")
       this.broadcast("tables")
       return
@@ -6664,14 +6976,20 @@ export class SharedPosService {
     const tgt = this.tablesCache.find((t) => t.id === targetTableIdOrName || sameName(t.name, targetTableIdOrName))
     if (!src || !tgt) return false
 
-    const sessionIndex = this.sessionsCache.findIndex((s) => s.table_id === src.id || sameName(s.table_name, src.name))
+    const nowIso = new Date().toISOString()
+    this.recordTableReleased(src.id, src.name, nowIso)
+    this.clearTableReleased(tgt.id, tgt.name)
+
+    const sessionIndex = this.sessionsCache.findIndex(
+      (s) => (s.table_id === src.id || sameName(s.table_name, src.name)) && s.status !== "closed"
+    )
     if (sessionIndex >= 0) {
       this.sessionsCache[sessionIndex].table_id = tgt.id
       this.sessionsCache[sessionIndex].table_name = tgt.name
     }
 
     this.ordersCache = this.ordersCache.map((o) => {
-      if (sameName(o.table_name, src.name) && o.status === "open") {
+      if (sameName(o.table_name, src.name) && (o.status === "open" || o.order_number === src.orderNumber)) {
         return { ...o, table_name: tgt.name }
       }
       return o
@@ -6681,9 +6999,11 @@ export class SharedPosService {
     tgt.guestName = src.guestName
     tgt.orderNumber = src.orderNumber
     tgt.orderTotal = src.orderTotal
-    tgt.occupiedAt = src.occupiedAt
+    tgt.occupiedAt = src.occupiedAt || nowIso
+    tgt.releasedAt = undefined
 
     src.status = "available"
+    src.releasedAt = nowIso
     src.guestName = undefined
     src.orderNumber = undefined
     src.orderTotal = undefined
@@ -6695,6 +7015,24 @@ export class SharedPosService {
         localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache))
         localStorage.setItem(ORDERS_KEY, JSON.stringify(this.ordersCache))
       } catch {}
+      void fetch("/api/tables", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "release", tableId: src.id, tableName: src.name }),
+      }).catch(() => {})
+      void fetch("/api/tables", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "occupy",
+          tableId: tgt.id,
+          tableName: tgt.name,
+          orderNumber: tgt.orderNumber,
+          orderTotal: tgt.orderTotal,
+          guestName: tgt.guestName || "Dine-in Guest",
+          seated_at: tgt.occupiedAt,
+        }),
+      }).catch(() => {})
     }
     this.emitTables()
     this.emitSessions()

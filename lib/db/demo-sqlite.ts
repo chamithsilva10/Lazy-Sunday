@@ -703,16 +703,38 @@ export const DemoDbService = {
   getTables(): any[] {
     const db = getDemoSqliteDb()
     const now = Date.now()
+    const normalizeIso = (val?: string | null) => {
+      if (!val) return val
+      const s = String(val).trim()
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)) {
+        return `${s.replace(" ", "T")}Z`
+      }
+      return s
+    }
+    const compareFloor = (a: any, b: any) => {
+      const rank = (name: string) => {
+        const n = String(name || "").trim().toLowerCase()
+        if (n.startsWith("table")) return 0
+        if (n.startsWith("terrace") || n.startsWith("patio") || n.startsWith("garden")) return 1
+        if (n.startsWith("vip")) return 2
+        if (n.startsWith("bar")) return 3
+        return 4
+      }
+      const rA = rank(a.name)
+      const rB = rank(b.name)
+      if (rA !== rB) return rA - rB
+      return String(a.name || "").localeCompare(String(b.name || ""), undefined, { numeric: true, sensitivity: "base" })
+    }
 
     if (!db) {
       const mem = getMemState()
       return [...mem.tables]
-        .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+        .sort(compareFloor)
         .map((r: any) => {
           const cutoff = Date.now() - 24 * 60 * 60 * 1000
           const session = mem.sessions
-            .filter((s) => (s.table_id === r.id || s.table_id === r.name) && (s.status === "open" || s.status === "bill_requested") && (!s.seated_at || new Date(s.seated_at).getTime() > cutoff))
-            .sort((a, b) => new Date(b.seated_at).getTime() - new Date(a.seated_at).getTime())[0]
+            .filter((s) => (s.table_id === r.id || s.table_id === r.name) && (s.status === "open" || s.status === "bill_requested") && (!s.seated_at || new Date(normalizeIso(s.seated_at)!).getTime() > cutoff))
+            .sort((a, b) => new Date(normalizeIso(b.seated_at)!).getTime() - new Date(normalizeIso(a.seated_at)!).getTime())[0]
 
           const bookings = mem.reservations
             .filter((b) => (b.table_id === r.id || (b.table_name || "").toLowerCase() === r.name.toLowerCase()) && ["pending", "confirmed", "arrived"].includes(b.status))
@@ -738,8 +760,11 @@ export const DemoDbService = {
             status = session.status === "bill_requested" ? "bill_requested" : "occupied"
           } else if (heldBooking) {
             status = "reserved"
+          } else if (status === "occupied" || status === "bill_requested") {
+            status = "available"
           }
 
+          const seatedIso = normalizeIso(session?.seated_at)
           const orderMatch = session?.notes?.match(/Order\s*#?([A-Za-z0-9-]+)/i)
           const sessionOrderNumber = orderMatch ? orderMatch[1] : undefined
 
@@ -750,7 +775,7 @@ export const DemoDbService = {
             status,
             section: r.section,
             guestName: session?.customer_name || heldBooking?.customer_name || nextBooking?.customer_name || undefined,
-            occupiedAt: session?.seated_at || heldBooking?.reserved_for || undefined,
+            occupiedAt: seatedIso || heldBooking?.reserved_for || undefined,
             bookingId: heldBooking?.id || undefined,
             orderNumber: sessionOrderNumber,
             activeSession: session ? {
@@ -758,7 +783,7 @@ export const DemoDbService = {
               customer_name: session.customer_name,
               phone: session.phone,
               guest_count: session.guest_count,
-              seated_at: session.seated_at,
+              seated_at: seatedIso,
               status: session.status,
               notes: session.notes,
             } : null,
@@ -784,7 +809,7 @@ export const DemoDbService = {
         })
     }
 
-    const rows = db.prepare("SELECT * FROM pos_tables ORDER BY name").all() as any[]
+    const rows = (db.prepare("SELECT * FROM pos_tables ORDER BY name").all() as any[]).sort(compareFloor)
 
     return rows.map((r: any) => {
       // Find active session (ignore stale sessions older than 24h)
@@ -819,8 +844,14 @@ export const DemoDbService = {
         status = session.status === "bill_requested" ? "bill_requested" : "occupied"
       } else if (heldBooking) {
         status = "reserved"
+      } else if (status === "occupied" || status === "bill_requested") {
+        status = "available"
+        try {
+          db.prepare("UPDATE pos_tables SET status = 'available' WHERE id = ?").run(r.id)
+        } catch {}
       }
 
+      const seatedIso = normalizeIso(session?.seated_at)
       const orderMatch = session?.notes?.match(/Order\s*#?([A-Za-z0-9-]+)/i)
       const sessionOrderNumber = orderMatch ? orderMatch[1] : undefined
 
@@ -831,7 +862,7 @@ export const DemoDbService = {
         status,
         section: r.section,
         guestName: session?.customer_name || heldBooking?.customer_name || nextBooking?.customer_name || undefined,
-        occupiedAt: session?.seated_at || heldBooking?.reserved_for || undefined,
+        occupiedAt: seatedIso || heldBooking?.reserved_for || undefined,
         bookingId: heldBooking?.id || undefined,
         orderNumber: sessionOrderNumber,
         activeSession: session ? {
@@ -839,7 +870,7 @@ export const DemoDbService = {
           customer_name: session.customer_name,
           phone: session.phone,
           guest_count: session.guest_count,
-          seated_at: session.seated_at,
+          seated_at: seatedIso,
           status: session.status,
           notes: session.notes,
         } : null,
@@ -871,12 +902,35 @@ export const DemoDbService = {
       const mem = getMemState()
       const table = findTableInMemory(mem, tableId)
       if (!table) return false
+      if (status === "available" || status === "cleaning") {
+        for (const s of mem.sessions) {
+          if ((s.table_id === table.id || s.table_id === table.name) && (s.status === "open" || s.status === "bill_requested")) {
+            s.status = "closed"
+          }
+        }
+      } else if (status === "bill_requested") {
+        for (const s of mem.sessions) {
+          if ((s.table_id === table.id || s.table_id === table.name) && s.status === "open") {
+            s.status = "bill_requested"
+          }
+        }
+      }
       table.status = status
       table.updated_at = new Date().toISOString()
       return true
     }
     try {
-      db.prepare("UPDATE pos_tables SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? OR name = ? COLLATE NOCASE").run(status, tableId, tableId)
+      const table = findTableInDb(db, tableId) as any
+      if (table && (status === "available" || status === "cleaning")) {
+        db.prepare(
+          "UPDATE table_sessions SET status = 'closed' WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested')"
+        ).run(table.id, table.name)
+      } else if (table && status === "bill_requested") {
+        db.prepare(
+          "UPDATE table_sessions SET status = 'bill_requested' WHERE (table_id = ? OR table_id = ?) AND status = 'open'"
+        ).run(table.id, table.name)
+      }
+      db.prepare("UPDATE pos_tables SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? OR name = ? COLLATE NOCASE").run(status, table?.id || tableId, table?.name || tableId)
       return true
     } catch {
       return false
@@ -959,7 +1013,11 @@ export const DemoDbService = {
         .sort((a, b) => new Date(b.seated_at).getTime() - new Date(a.seated_at).getTime())
         .map((s) => {
           const table = findTableInMemory(mem, s.table_id)
-          return { ...s, table_name: table?.name || s.table_id }
+          const seatedRaw = s.seated_at ? String(s.seated_at).trim() : ""
+          const seatedIso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(seatedRaw)
+            ? `${seatedRaw.replace(" ", "T")}Z`
+            : s.seated_at
+          return { ...s, seated_at: seatedIso, table_name: table?.name || s.table_id }
         })
     }
     let query = `
@@ -972,10 +1030,17 @@ export const DemoDbService = {
     }
     query += " ORDER BY s.seated_at DESC"
     const results = db.prepare(query).all() as any[]
-    return results.map((row) => ({
-      ...row,
-      table_name: row.table_name || row.table_id,
-    }))
+    return results.map((row) => {
+      const seatedRaw = row.seated_at ? String(row.seated_at).trim() : ""
+      const seatedIso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(seatedRaw)
+        ? `${seatedRaw.replace(" ", "T")}Z`
+        : row.seated_at
+      return {
+        ...row,
+        seated_at: seatedIso,
+        table_name: row.table_name || row.table_id,
+      }
+    })
   },
 
   recalculateTableStatus(tableIdOrName: string): any {
@@ -1416,14 +1481,15 @@ export const DemoDbService = {
 
       const sessionId = `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
       const guests = guestCount || res.party_size || 2
+      const nowIso = new Date().toISOString()
 
       db.prepare(`
         INSERT INTO table_sessions (id, table_id, customer_name, phone, guest_count, seated_at, status, notes)
-        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'open', ?)
-      `).run(sessionId, table.id, res.customer_name, res.phone, guests, res.special_requests || "Seated from reservation")
+        VALUES (?, ?, ?, ?, ?, ?, 'open', ?)
+      `).run(sessionId, table.id, res.customer_name, res.phone, guests, nowIso, res.special_requests || "Seated from reservation")
 
-      db.prepare("UPDATE reservations SET status = 'seated', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id)
-      db.prepare("UPDATE pos_tables SET status = 'occupied', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(table.id)
+      db.prepare("UPDATE reservations SET status = 'seated', updated_at = ? WHERE id = ?").run(nowIso, id)
+      db.prepare("UPDATE pos_tables SET status = 'occupied', updated_at = ? WHERE id = ?").run(nowIso, table.id)
 
       const session = db.prepare("SELECT * FROM table_sessions WHERE id = ?").get(sessionId)
       return { success: true, session }
@@ -1433,6 +1499,8 @@ export const DemoDbService = {
   },
 
   seatWalkIn(tableIdOrName: string, guestInfo?: {
+    sessionId?: string
+    seated_at?: string
     customer_name?: string
     phone?: string
     guest_count?: number
@@ -1462,12 +1530,12 @@ export const DemoDbService = {
       }
 
       const newSession = {
-        id: `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        id: guestInfo?.sessionId || `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         table_id: table.id,
         customer_name: guestInfo?.customer_name?.trim() || "Walk-in",
         phone: guestInfo?.phone || null,
         guest_count: guestInfo?.guest_count || 2,
-        seated_at: new Date().toISOString(),
+        seated_at: guestInfo?.seated_at || new Date().toISOString(),
         status: "open",
         notes: guestInfo?.notes || "Walk-in seated",
       }
@@ -1494,16 +1562,17 @@ export const DemoDbService = {
         return { success: false, error: `Cannot seat: Table ${table.name} is already occupied.` }
       }
 
-      const sessionId = `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      const sessionId = guestInfo?.sessionId || `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
       const guests = guestInfo?.guest_count || 2
       const customerName = guestInfo?.customer_name?.trim() || "Walk-in"
+      const nowIso = guestInfo?.seated_at || new Date().toISOString()
 
       db.prepare(`
         INSERT INTO table_sessions (id, table_id, customer_name, phone, guest_count, seated_at, status, notes)
-        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'open', ?)
-      `).run(sessionId, table.id, customerName, guestInfo?.phone || null, guests, guestInfo?.notes || "Walk-in seated")
+        VALUES (?, ?, ?, ?, ?, ?, 'open', ?)
+      `).run(sessionId, table.id, customerName, guestInfo?.phone || null, guests, nowIso, guestInfo?.notes || "Walk-in seated")
 
-      db.prepare("UPDATE pos_tables SET status = 'occupied', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(table.id)
+      db.prepare("UPDATE pos_tables SET status = 'occupied', updated_at = ? WHERE id = ?").run(nowIso, table.id)
 
       const session = db.prepare("SELECT * FROM table_sessions WHERE id = ?").get(sessionId)
       return { success: true, session }
@@ -1513,6 +1582,8 @@ export const DemoDbService = {
   },
 
   occupyTable(tableIdOrName: string, info?: {
+    sessionId?: string
+    seated_at?: string
     orderNumber?: string
     orderTotal?: number
     guestName?: string
@@ -1540,6 +1611,7 @@ export const DemoDbService = {
 
       const customerName = info?.guestName?.trim() || "Dine-in Guest"
       const noteText = info?.orderNumber ? `Order #${info.orderNumber}` : "Dine-in occupied"
+      const nowIso = info?.seated_at || new Date().toISOString()
 
       let session: any
       if (existingSession) {
@@ -1549,11 +1621,11 @@ export const DemoDbService = {
         session = existingSession
       } else {
         session = {
-          id: `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          id: info?.sessionId || `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           table_id: table.id,
           customer_name: customerName,
           guest_count: table.capacity || 2,
-          seated_at: new Date().toISOString(),
+          seated_at: nowIso,
           status: "open",
           notes: noteText,
         }
@@ -1561,7 +1633,7 @@ export const DemoDbService = {
       }
 
       table.status = "occupied"
-      table.updated_at = new Date().toISOString()
+      table.updated_at = nowIso
       return { success: true, session: { ...session }, table: { ...table, status: "occupied" } }
     }
     try {
@@ -1581,6 +1653,7 @@ export const DemoDbService = {
 
       const customerName = info?.guestName?.trim() || "Dine-in Guest"
       const noteText = info?.orderNumber ? `Order #${info.orderNumber}` : "Dine-in occupied"
+      const nowIso = info?.seated_at || new Date().toISOString()
 
       let sessionId: string
       if (existingSession) {
@@ -1589,14 +1662,14 @@ export const DemoDbService = {
           "UPDATE table_sessions SET customer_name = COALESCE(?, customer_name), notes = ?, status = 'open' WHERE id = ?"
         ).run(customerName, noteText, sessionId)
       } else {
-        sessionId = `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+        sessionId = info?.sessionId || `ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
         db.prepare(`
           INSERT INTO table_sessions (id, table_id, customer_name, guest_count, seated_at, status, notes)
-          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 'open', ?)
-        `).run(sessionId, table.id, customerName, table.capacity || 2, noteText)
+          VALUES (?, ?, ?, ?, ?, 'open', ?)
+        `).run(sessionId, table.id, customerName, table.capacity || 2, nowIso, noteText)
       }
 
-      db.prepare("UPDATE pos_tables SET status = 'occupied', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(table.id)
+      db.prepare("UPDATE pos_tables SET status = 'occupied', updated_at = ? WHERE id = ?").run(nowIso, table.id)
 
       const session = db.prepare("SELECT * FROM table_sessions WHERE id = ?").get(sessionId)
       return { success: true, session, table: { ...table, status: "occupied" } }
@@ -1607,6 +1680,8 @@ export const DemoDbService = {
 
   releaseTable(tableIdOrName: string): { success: boolean; status?: string; error?: string } {
     const db = getDemoSqliteDb()
+    const now = Date.now()
+    const nowIso = new Date().toISOString()
     if (!db) {
       const mem = getMemState()
       const table = findTableInMemory(mem, tableIdOrName)
@@ -1615,6 +1690,19 @@ export const DemoDbService = {
       for (const s of mem.sessions) {
         if ((s.table_id === table.id || s.table_id === table.name) && (s.status === "open" || s.status === "bill_requested")) {
           s.status = "closed"
+        }
+      }
+      for (const r of mem.reservations) {
+        if (r.table_id === table.id || (r.table_name || "").toLowerCase() === table.name.toLowerCase()) {
+          if (r.status === "seated" || r.status === "arrived") {
+            r.status = "completed"
+          } else if (r.status === "confirmed" || r.status === "pending") {
+            const start = new Date(r.reserved_for).getTime() - 30 * 60000
+            const end = new Date(r.reserved_for).getTime() + (Number(r.duration_minutes) || 90) * 60000
+            if (now >= start && now <= end) {
+              r.status = "completed"
+            }
+          }
         }
       }
       const updated = this.recalculateTableStatus(table.id)
@@ -1629,6 +1717,22 @@ export const DemoDbService = {
       db.prepare(
         "UPDATE table_sessions SET status = 'closed' WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested')"
       ).run(table.id, table.name)
+
+      // Complete any currently active / seated reservation for this table so releasing the table frees it cleanly
+      const activeRes = db.prepare(
+        "SELECT * FROM reservations WHERE (table_id = ? OR table_name = ? COLLATE NOCASE) AND status IN ('pending', 'confirmed', 'arrived', 'seated')"
+      ).all(table.id, table.name) as any[]
+      for (const r of activeRes) {
+        if (r.status === "seated" || r.status === "arrived") {
+          db.prepare("UPDATE reservations SET status = 'completed', updated_at = ? WHERE id = ?").run(nowIso, r.id)
+        } else {
+          const start = new Date(r.reserved_for).getTime() - 30 * 60000
+          const end = new Date(r.reserved_for).getTime() + (Number(r.duration_minutes) || 90) * 60000
+          if (now >= start && now <= end) {
+            db.prepare("UPDATE reservations SET status = 'completed', updated_at = ? WHERE id = ?").run(nowIso, r.id)
+          }
+        }
+      }
 
       const updated = this.recalculateTableStatus(table.id)
       return { success: true, status: updated?.status || "available" }

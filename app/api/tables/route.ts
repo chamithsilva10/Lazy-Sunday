@@ -24,7 +24,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { action, tableId, tableName, status, guestInfo, orderNumber, orderTotal, guestName, department } = body
+    const { action, tableId, tableName, status, guestInfo, orderNumber, orderTotal, guestName, department, sessionId, seated_at } = body
     const targetId = tableId || tableName
 
     // Takeaway or Delivery orders do not occupy physical floor dining tables
@@ -37,6 +37,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: "Table identifier is required" }, { status: 400 })
       }
       const res = await PosDatabase.occupyTable(targetId, {
+        sessionId,
+        seated_at,
         orderNumber,
         orderTotal,
         guestName,

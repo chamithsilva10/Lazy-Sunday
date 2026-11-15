@@ -595,6 +595,8 @@ export const PosDatabase = {
   },
 
   async occupyTable(tableIdOrName: string, info?: {
+    sessionId?: string
+    seated_at?: string
     orderNumber?: string
     orderTotal?: number
     guestName?: string
@@ -660,6 +662,8 @@ export const PosDatabase = {
   },
 
   async seatWalkIn(tableIdOrName: string, guestInfo?: {
+    sessionId?: string
+    seated_at?: string
     customer_name?: string
     phone?: string
     guest_count?: number
