@@ -42,8 +42,8 @@ assert(
   "thermal-printer.ts must default to LAZY SUNDAY branding"
 )
 assert(
-  thermalPrinterSrc.includes("SPECIALTY COFFEE"),
-  "thermal-printer.ts must include SPECIALTY COFFEE subtitle"
+  thermalPrinterSrc.includes("CAFE") || thermalPrinterSrc.includes("SPECIALTY COFFEE"),
+  "thermal-printer.ts must include CAFE subtitle"
 )
 assert(
   thermalPrinterSrc.includes("TOTAL /"),

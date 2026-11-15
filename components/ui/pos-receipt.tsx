@@ -78,7 +78,7 @@ function generateBarcodeBars(seed: string, count = 42): number[] {
 
 export function PosReceipt({
   brandName = "LAZY SUNDAY",
-  brandSubtitle = "RESTAURANT & BAR",
+  brandSubtitle = "CAFE",
   brandAddress = "Tel: +94 76 912 9153",
   logoUrl,
   showLogo = true,

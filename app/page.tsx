@@ -2494,7 +2494,7 @@ export default function POSPage() {
           </div>
           <div>
             <p className="font-serif text-[17px] font-bold leading-tight text-[#343428]">Lazy Sunday</p>
-            <p className="text-[10px] uppercase tracking-[.2em] text-[#808068]">Restaurant &amp; Bar</p>
+            <p className="text-[10px] uppercase tracking-[.2em] text-[#808068]">Cafe</p>
           </div>
         </div>
 
@@ -2605,7 +2605,7 @@ export default function POSPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <SheetTitle className="font-serif text-lg font-bold leading-tight truncate text-[#343428]">Lazy Sunday</SheetTitle>
-                <SheetDescription className="text-[10px] uppercase tracking-[.2em] text-[#808068]">Restaurant &amp; Bar</SheetDescription>
+                <SheetDescription className="text-[10px] uppercase tracking-[.2em] text-[#808068]">Cafe</SheetDescription>
               </div>
             </div>
 

@@ -66,7 +66,7 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
   }
 
   const brandName = orderData.brand_name || "LAZY SUNDAY"
-  const brandSubtitle = orderData.brand_subtitle || "SPECIALTY COFFEE"
+  const brandSubtitle = orderData.brand_subtitle || "CAFE"
   const brandAddress = orderData.brand_address || "Tel: +94 76 912 9153"
   const currency = orderData.currency || "LKR"
 
