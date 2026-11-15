@@ -709,8 +709,9 @@ export const DemoDbService = {
       return [...mem.tables]
         .sort((a, b) => String(a.name).localeCompare(String(b.name)))
         .map((r: any) => {
+          const cutoff = Date.now() - 24 * 60 * 60 * 1000
           const session = mem.sessions
-            .filter((s) => (s.table_id === r.id || s.table_id === r.name) && (s.status === "open" || s.status === "bill_requested"))
+            .filter((s) => (s.table_id === r.id || s.table_id === r.name) && (s.status === "open" || s.status === "bill_requested") && (!s.seated_at || new Date(s.seated_at).getTime() > cutoff))
             .sort((a, b) => new Date(b.seated_at).getTime() - new Date(a.seated_at).getTime())[0]
 
           const bookings = mem.reservations
@@ -786,9 +787,9 @@ export const DemoDbService = {
     const rows = db.prepare("SELECT * FROM pos_tables ORDER BY name").all() as any[]
 
     return rows.map((r: any) => {
-      // Find active session
+      // Find active session (ignore stale sessions older than 24h)
       const session = db.prepare(
-        "SELECT * FROM table_sessions WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested') ORDER BY seated_at DESC LIMIT 1"
+        "SELECT * FROM table_sessions WHERE (table_id = ? OR table_id = ?) AND status IN ('open', 'bill_requested') AND (seated_at IS NULL OR datetime(seated_at) >= datetime('now', '-24 hours')) ORDER BY seated_at DESC LIMIT 1"
       ).get(r.id, r.name) as any
 
       // Find active or upcoming bookings
@@ -964,13 +965,17 @@ export const DemoDbService = {
     let query = `
       SELECT s.*, t.name AS table_name 
       FROM table_sessions s 
-      LEFT JOIN pos_tables t ON s.table_id = t.id
+      LEFT JOIN pos_tables t ON (s.table_id = t.id OR s.table_id = t.name)
     `
     if (openOnly) {
-      query += " WHERE s.status IN ('open', 'bill_requested')"
+      query += " WHERE s.status IN ('open', 'bill_requested') AND (s.seated_at IS NULL OR datetime(s.seated_at) >= datetime('now', '-24 hours'))"
     }
     query += " ORDER BY s.seated_at DESC"
-    return db.prepare(query).all() as any[]
+    const results = db.prepare(query).all() as any[]
+    return results.map((row) => ({
+      ...row,
+      table_name: row.table_name || row.table_id,
+    }))
   },
 
   recalculateTableStatus(tableIdOrName: string): any {

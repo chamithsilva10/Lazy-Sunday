@@ -300,7 +300,9 @@ export function TablesWorkspace({
   const sessionFor = (table: Table) =>
     sessions.find(
       (item) =>
-        (item.table_id === table.id || (item.table_name && item.table_name !== "Table" && tablesMatch(item.table_name, table.name))) &&
+        (item.table_id === table.id ||
+          tablesMatch(item.table_id, table.name) ||
+          (item.table_name && item.table_name !== "Table" && tablesMatch(item.table_name, table.name))) &&
         item.status !== "closed"
     )
 
@@ -348,17 +350,7 @@ export function TablesWorkspace({
       return session.status === "bill_requested" ? "bill_requested" : "occupied"
     }
 
-    // 2. Second priority: active open (unpaid) dine-in order
-    const openOrder = orders.find(
-      (o) => o.status === "open" && tablesMatch(o.table_name, table.name)
-    )
-    if (openOrder) return "occupied"
-
-    // 3. Third priority: active reservation currently holding this table
-    const held = heldBookingFor(table)
-    if (held) return "reserved"
-
-    // 4. Fourth priority: table explicit status, respecting release timestamps
+    // 2. Second priority: table explicit status, respecting release timestamps
     if (table.status === "occupied" || table.status === "bill_requested") {
       if (table.releasedAt && table.occupiedAt) {
         if (new Date(table.releasedAt).getTime() >= new Date(table.occupiedAt).getTime()) {
@@ -367,6 +359,16 @@ export function TablesWorkspace({
       }
       return table.status
     }
+
+    // 3. Third priority: active open (unpaid) dine-in order
+    const openOrder = orders.find(
+      (o) => o.status === "open" && tablesMatch(o.table_name, table.name)
+    )
+    if (openOrder) return "occupied"
+
+    // 4. Fourth priority: active reservation currently holding this table
+    const held = heldBookingFor(table)
+    if (held) return "reserved"
 
     if (table.status === "cleaning" || table.status === "reserved") {
       return table.status
@@ -384,13 +386,7 @@ export function TablesWorkspace({
     const orderMatch = session?.notes?.match(/Order\s*#?([A-Za-z0-9-]+)/i)
     const sessionOrderNum = orderMatch ? orderMatch[1] : table.orderNumber
 
-    // 1. First priority: any active "open" (unpaid) order directly matching this table
-    const openOrder = orders.find(
-      (o) => o.status === "open" && tablesMatch(o.table_name, table.name)
-    )
-    if (openOrder) return openOrder
-
-    // 2. Second priority: order referenced explicitly by session notes or table.orderNumber, MUST match this table
+    // 1. First priority: order referenced explicitly by session notes or table.orderNumber, MUST match this table
     if (sessionOrderNum) {
       const match = orders.find(
         (o) =>
@@ -399,6 +395,12 @@ export function TablesWorkspace({
       )
       if (match) return match
     }
+
+    // 2. Second priority: any active "open" (unpaid) order directly matching this table
+    const openOrder = orders.find(
+      (o) => o.status === "open" && tablesMatch(o.table_name, table.name)
+    )
+    if (openOrder) return openOrder
 
     // 3. Third priority: Most recent order for this table (open or paid)
     const releasedTime = table.releasedAt ? new Date(table.releasedAt).getTime() : 0
@@ -409,7 +411,7 @@ export function TablesWorkspace({
       if (o.status !== "open" && o.status !== "paid") return false
       if (!o.created_at) return true
       const orderTime = new Date(o.created_at).getTime()
-      if (now - orderTime > 12 * 60 * 60 * 1000) return false
+      if (now - orderTime > 16 * 60 * 60 * 1000) return false
       if (releasedTime && releasedTime >= orderTime) return false
       return true
     })

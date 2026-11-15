@@ -3698,6 +3698,61 @@ export class SharedPosService {
         let bookingsChanged = false
         let sessionsChanged = false
 
+        // 1. Process server sessions first so mergedTables can reference up-to-date active sessions
+        if (tableRes && tableRes.sessions && Array.isArray(tableRes.sessions)) {
+          const serverSessions = tableRes.sessions.map((s: any) => ({
+            id: String(s.id),
+            table_id: String(s.table_id),
+            table_name: s.table_name || this.tablesCache.find((t) => t.id === String(s.table_id) || sameName(t.name, s.table_name))?.name || "Table",
+            customer_name: s.customer_name,
+            phone: s.phone,
+            guest_count: Number(s.guest_count) || 2,
+            seated_at: s.seated_at,
+            status: s.status,
+            notes: s.notes || "",
+          }))
+
+          // Merge: Keep all local active sessions (status !== 'closed') unless the server explicitly returned them as closed
+          const mergedSessions = [...serverSessions]
+          for (const localSess of this.sessionsCache) {
+            if (localSess.status === "closed") continue
+            const inServer = serverSessions.find((s: any) => s.id === localSess.id)
+            if (!inServer) {
+              mergedSessions.push(localSess)
+            }
+          }
+
+          if (JSON.stringify(mergedSessions) !== JSON.stringify(this.sessionsCache)) {
+            this.sessionsCache = mergedSessions
+            try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache)) } catch {}
+            sessionsChanged = true
+          }
+        }
+
+        // 2. Process bookings
+        if (bookingRes && bookingRes.success && Array.isArray(bookingRes.reservations)) {
+          const newBookings = bookingRes.reservations.map((b: any) => ({
+            id: String(b.id),
+            customer_name: b.customer_name,
+            phone: b.phone,
+            party_size: Number(b.party_size) || 2,
+            reserved_for: b.reserved_for,
+            duration_minutes: Number(b.duration_minutes) || 90,
+            table_id: String(b.table_id || ""),
+            table_name: b.table_name || this.tablesCache.find((t) => t.id === String(b.table_id))?.name || "Table",
+            status: b.status,
+            special_requests: b.special_requests || "",
+            source: b.source || "staff",
+            created_at: b.created_at,
+          }))
+          if (JSON.stringify(newBookings) !== JSON.stringify(this.bookingsCache)) {
+            this.bookingsCache = newBookings
+            try { localStorage.setItem(BOOKINGS_KEY, JSON.stringify(this.bookingsCache)) } catch {}
+            bookingsChanged = true
+          }
+        }
+
+        // 3. Process tables with authoritative sessions already in place
         if (tableRes && tableRes.success && Array.isArray(tableRes.tables)) {
           const mergedTables: SharedTable[] = tableRes.tables.map((r: any) => {
             const tableId = String(r.id)
@@ -3705,18 +3760,26 @@ export class SharedPosService {
             const local = this.tablesCache.find((t) => t.id === tableId || sameName(t.name, tableName))
 
             const localSession = this.sessionsCache.find(
-              (s) => (s.table_id === tableId || sameName(s.table_name, tableName)) && s.status !== "closed"
+              (s) =>
+                (s.table_id === tableId ||
+                  sameName(s.table_id, tableName) ||
+                  sameName(s.table_name, tableName)) &&
+                s.status !== "closed"
             )
 
-            // 1. If table was explicitly released locally, PRESERVE local available state
+            // If table was explicitly released locally, PRESERVE local available state if not seated again
             if (local && local.status === "available" && local.releasedAt) {
-              return {
-                ...local,
-                capacity: Number(r.capacity) || local.capacity || 2,
+              const releasedTime = new Date(local.releasedAt).getTime()
+              const occupiedTime = local.occupiedAt ? new Date(local.occupiedAt).getTime() : 0
+              if (releasedTime >= occupiedTime && !localSession) {
+                return {
+                  ...local,
+                  capacity: Number(r.capacity) || local.capacity || 2,
+                }
               }
             }
 
-            // 2. If table is occupied locally with an active session or order, PRESERVE it!
+            // If table is occupied locally with an active session or order, PRESERVE it!
             if (local && (local.status === "occupied" || local.status === "bill_requested") && (localSession || local.orderNumber)) {
               return {
                 ...local,
@@ -3766,58 +3829,6 @@ export class SharedPosService {
             this.tablesCache = mergedTables
             try { localStorage.setItem(TABLES_KEY, JSON.stringify(this.tablesCache)) } catch {}
             tablesChanged = true
-          }
-        }
-
-        if (bookingRes && bookingRes.success && Array.isArray(bookingRes.reservations)) {
-          const newBookings = bookingRes.reservations.map((b: any) => ({
-            id: String(b.id),
-            customer_name: b.customer_name,
-            phone: b.phone,
-            party_size: Number(b.party_size) || 2,
-            reserved_for: b.reserved_for,
-            duration_minutes: Number(b.duration_minutes) || 90,
-            table_id: String(b.table_id || ""),
-            table_name: b.table_name || this.tablesCache.find((t) => t.id === String(b.table_id))?.name || "Table",
-            status: b.status,
-            special_requests: b.special_requests || "",
-            source: b.source || "staff",
-            created_at: b.created_at,
-          }))
-          if (JSON.stringify(newBookings) !== JSON.stringify(this.bookingsCache)) {
-            this.bookingsCache = newBookings
-            try { localStorage.setItem(BOOKINGS_KEY, JSON.stringify(this.bookingsCache)) } catch {}
-            bookingsChanged = true
-          }
-        }
-
-        if (tableRes && tableRes.sessions && Array.isArray(tableRes.sessions)) {
-          const serverSessions = tableRes.sessions.map((s: any) => ({
-            id: String(s.id),
-            table_id: String(s.table_id),
-            table_name: s.table_name || this.tablesCache.find((t) => t.id === String(s.table_id))?.name || "Table",
-            customer_name: s.customer_name,
-            phone: s.phone,
-            guest_count: Number(s.guest_count) || 2,
-            seated_at: s.seated_at,
-            status: s.status,
-            notes: s.notes || "",
-          }))
-
-          // Merge: Keep all local active sessions (status !== 'closed') unless the server explicitly returned them as closed
-          const mergedSessions = [...serverSessions]
-          for (const localSess of this.sessionsCache) {
-            if (localSess.status === "closed") continue
-            const inServer = serverSessions.find((s: any) => s.id === localSess.id)
-            if (!inServer) {
-              mergedSessions.push(localSess)
-            }
-          }
-
-          if (JSON.stringify(mergedSessions) !== JSON.stringify(this.sessionsCache)) {
-            this.sessionsCache = mergedSessions
-            try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(this.sessionsCache)) } catch {}
-            sessionsChanged = true
           }
         }
 
@@ -3885,9 +3896,9 @@ export class SharedPosService {
             status = "cleaning"
           } else if (row.status === "occupied") {
             const hasActiveOrder =
-              this.ordersCache.some((o) => o.status === "open" && sameName(o.table_name, row.name)) ||
+              this.ordersCache.some((o) => (o.status === "open" || o.status === "paid") && sameName(o.table_name, row.name)) ||
               this.sessionsCache.some(
-                (s) => (s.table_id === String(row.id) || sameName(s.table_name, row.name)) && s.status !== "closed"
+                (s) => (s.table_id === String(row.id) || sameName(s.table_id, row.name) || sameName(s.table_name, row.name)) && s.status !== "closed"
               )
             status = hasActiveOrder ? "occupied" : "available"
           } else if (row.status === "reserved" || prev?.status === "reserved") {
@@ -3981,14 +3992,19 @@ export class SharedPosService {
             orderNumber: orderNumber || t.orderNumber,
             orderTotal: orderTotal !== undefined ? orderTotal : t.orderTotal,
             guestName: guestName || t.guestName || "Dine-in Guest",
-            occupiedAt: t.occupiedAt || nowIso,
+            occupiedAt: nowIso,
+            releasedAt: undefined,
           }
         : t,
     )
 
     // Save or update active session
     const existingSession = this.sessionsCache.find(
-      (s) => (s.table_id === table.id || sameName(s.table_name, table.name)) && s.status !== "closed"
+      (s) =>
+        (s.table_id === table.id ||
+          sameName(s.table_id, table.name) ||
+          sameName(s.table_name, table.name)) &&
+        s.status !== "closed"
     )
     if (!existingSession) {
       const newSession: SharedSession = {
@@ -4081,7 +4097,7 @@ export class SharedPosService {
     )
 
     this.sessionsCache = this.sessionsCache.map((s) =>
-      (s.table_id === table.id || sameName(s.table_name, table.name)) && s.status !== "closed"
+      (s.table_id === table.id || sameName(s.table_id, table.name) || sameName(s.table_name, table.name)) && s.status !== "closed"
         ? { ...s, status: "closed" as const, closed_at: nowIso }
         : s,
     )
