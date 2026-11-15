@@ -1,5 +1,7 @@
 "use client"
 
+import { LAZY_SUNDAY_LOGO_BLACK_DATA_URL } from "./brand-logo"
+
 export interface ThermalReceiptItem {
   name: string
   price: number
@@ -205,7 +207,14 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
         </style>
       </head>
       <body>
-        <div style="text-align: center; margin-bottom: 10px;">
+        <div style="text-align: center; margin-bottom: 8px;">
+          <div style="margin-bottom: 5px;">
+            <img
+              src="${LAZY_SUNDAY_LOGO_BLACK_DATA_URL}"
+              alt="Lazy Sunday"
+              style="width: 54px; height: 54px; object-fit: contain; display: block; margin: 0 auto;"
+            />
+          </div>
           <div style="font-size: 19px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #000; margin-top: 2px;">
             ${brandName}
           </div>

@@ -2,6 +2,10 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import {
+  LAZY_SUNDAY_LOGO_COLOR_DATA_URL,
+  LAZY_SUNDAY_LOGO_BLACK_DATA_URL,
+} from "@/lib/brand-logo"
 
 export interface PosReceiptItem {
   id?: string | number
@@ -25,6 +29,8 @@ export interface PosReceiptProps {
   brandName?: string
   brandSubtitle?: string
   brandAddress?: string
+  logoUrl?: string
+  showLogo?: boolean
   currency?: string
   receiptNumber: string
   orderNumber: string
@@ -74,6 +80,8 @@ export function PosReceipt({
   brandName = "LAZY SUNDAY",
   brandSubtitle = "RESTAURANT & BAR",
   brandAddress = "Tel: +94 76 912 9153",
+  logoUrl,
+  showLogo = true,
   currency = "LKR",
   receiptNumber,
   orderNumber,
@@ -139,6 +147,22 @@ export function PosReceipt({
       <article className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden print:p-2 print:border-none print:shadow-none print:rounded-none">
         {/* Top Header */}
         <header className="text-center space-y-1">
+          {showLogo && (
+            <div className="flex justify-center mb-1.5">
+              {/* Vibrant full-color logo on screens */}
+              <img
+                src={logoUrl || LAZY_SUNDAY_LOGO_COLOR_DATA_URL}
+                alt="Lazy Sunday"
+                className="w-14 h-14 object-contain block mx-auto print:hidden"
+              />
+              {/* Solid high-contrast black logo when printed directly */}
+              <img
+                src={LAZY_SUNDAY_LOGO_BLACK_DATA_URL}
+                alt="Lazy Sunday"
+                className="w-14 h-14 object-contain hidden print:block mx-auto"
+              />
+            </div>
+          )}
           <h2 className="font-sans text-xl font-extrabold tracking-[0.16em] uppercase text-black pt-0.5">
             {brandName}
           </h2>
