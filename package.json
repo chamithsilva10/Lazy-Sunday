@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "next build --webpack",
     "dev": "next dev --webpack --port 3005",
     "dev:demo": "DEMO_MODE=true NEXT_PUBLIC_DEMO_MODE=true next dev --webpack --port 3005",
     "init:db": "node scripts/init-demo-sql.mjs",
