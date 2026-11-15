@@ -12,17 +12,28 @@ export interface PosReceiptItem {
   name: string
   quantity: number
   price: number
+  base_price?: number
   modifiers?: string[]
+  selected_choices?: Array<{
+    group_id?: string
+    group_name?: string
+    option_id?: string
+    option_name: string
+    price?: number
+  }>
 }
 
 export interface PosSplitPaymentLine {
   id?: string
+  diner_id?: string
+  diner_name?: string
   method: string
   amount: number
   tendered?: number
   change_due?: number
   reference?: string
   customer_name?: string
+  status?: string
 }
 
 export interface PosReceiptProps {
@@ -41,6 +52,7 @@ export interface PosReceiptProps {
   timeStr?: string
   paymentMethod: string
   splitPayments?: PosSplitPaymentLine[]
+  splitConfig?: any
   items: PosReceiptItem[]
   subtotal: number
   serviceCharge: number
@@ -92,6 +104,7 @@ export function PosReceipt({
   timeStr,
   paymentMethod = "CASH",
   splitPayments,
+  splitConfig,
   items,
   subtotal,
   serviceCharge,
@@ -207,15 +220,27 @@ export function PosReceipt({
         <div className="py-1 space-y-1.5 text-xs text-black">
           {items.map((item, idx) => {
             const lineTotal = item.price * item.quantity
+            const hasStructuredChoices = Array.isArray(item.selected_choices) && item.selected_choices.length > 0
             return (
               <div key={idx} className="flex items-baseline justify-between py-0.5">
                 <span className="w-[14%] font-medium">{item.quantity}</span>
                 <div className="flex-1 px-1">
                   <p className="font-medium leading-tight">{item.name}</p>
-                  {item.modifiers && item.modifiers.length > 0 && (
-                    <p className="text-[10px] text-gray-600 mt-0.5">
-                      {item.modifiers.map((m) => `+ ${m}`).join(", ")}
-                    </p>
+                  {hasStructuredChoices ? (
+                    <div className="mt-0.5 space-y-0.5">
+                      {item.selected_choices!.map((sc, scIdx) => (
+                        <p key={scIdx} className="text-[10px] text-gray-700 leading-tight">
+                          + {sc.group_name ? `${sc.group_name}: ` : ""}{sc.option_name}
+                          {Number(sc.price) > 0 ? ` (+${currency} ${Number(sc.price).toLocaleString()})` : ""}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    item.modifiers && item.modifiers.length > 0 && (
+                      <p className="text-[10px] text-gray-600 mt-0.5">
+                        {item.modifiers.map((m) => `+ ${m}`).join(", ")}
+                      </p>
+                    )
                   )}
                 </div>
                 <span className="w-[32%] text-right font-medium tabular-nums">
@@ -264,20 +289,83 @@ export function PosReceipt({
 
         <div className="border-t-[1.5px] border-black my-2.5" />
 
+        {/* Diner Split Breakdown (if splitConfig is present) */}
+        {splitConfig && Array.isArray(splitConfig.calculated_shares) && splitConfig.calculated_shares.length > 0 && (
+          <>
+            <div className="py-1 space-y-1.5 text-[11px] text-black">
+              <div className="flex items-center justify-between font-extrabold uppercase tracking-wider text-[10px] text-black">
+                <span>
+                  SPLIT BILL ({splitConfig.method === "by_items" ? "BY PRODUCTS" : splitConfig.method === "by_percentage" ? "BY PERCENTAGE" : "BY AMOUNT"})
+                </span>
+                <span>SHARE ({currency})</span>
+              </div>
+              {splitConfig.calculated_shares.map((share: any, sIdx: number) => (
+                <div key={share.diner_id || sIdx} className="border border-gray-200 rounded-md p-1.5 bg-gray-50/60 print:border-black">
+                  <div className="flex justify-between items-baseline font-bold">
+                    <span>
+                      {share.diner_name}
+                      {splitConfig.method === "by_percentage" && share.percentage != null ? ` (${Number(share.percentage).toFixed(1)}%)` : ""}
+                    </span>
+                    <span className="tabular-nums">{formatCurrency(share.total_owed)}</span>
+                  </div>
+                  {Array.isArray(share.assigned_items) && share.assigned_items.length > 0 && (
+                    <div className="text-[9.5px] text-gray-600 mt-0.5 space-y-0.5">
+                      {share.assigned_items.map((ai: any, aiIdx: number) => (
+                        <div key={aiIdx} className="flex justify-between">
+                          <span>• {ai.name} ({ai.share_label})</span>
+                          <span className="tabular-nums">{formatCurrency(ai.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex justify-between text-[9.5px] text-gray-700 mt-0.5 pt-0.5 border-t border-dashed border-gray-200">
+                    <span>
+                      Paid: {formatCurrency(share.amount_paid || 0)}
+                    </span>
+                    <span className="font-bold uppercase">
+                      {share.status === "paid"
+                        ? "PAID ✓"
+                        : `DUE: ${formatCurrency(share.remaining_balance ?? share.total_owed)}`}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-black my-2.5" />
+          </>
+        )}
+
         {/* Payment & Change Section */}
         <div className="space-y-1 text-xs text-black leading-relaxed">
           {isGuestBill ? (
             <div className="text-center font-bold text-xs uppercase tracking-wider py-1">
-              PLEASE PAY AT CASHIER COUNTER
+              {splitConfig && Number(splitConfig.remaining_balance) > 0
+                ? `REMAINING BALANCE DUE: ${currency} ${formatCurrency(Number(splitConfig.remaining_balance))}`
+                : "PLEASE PAY AT CASHIER COUNTER"}
             </div>
           ) : isSplit ? (
             <>
-              {splitPayments.map((sp, idx) => (
-                <div key={idx} className="flex justify-between">
-                  <span>{sp.method.toUpperCase()}{sp.reference ? ` (${sp.reference})` : ""}</span>
-                  <span className="tabular-nums">{formatCurrency(sp.amount)}</span>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-0.5">
+                Recorded Split Payments
+              </div>
+              {splitPayments
+                .filter((sp) => sp.status !== "refunded" && sp.status !== "voided")
+                .map((sp, idx) => (
+                  <div key={idx} className="flex justify-between">
+                    <span>
+                      {sp.diner_name ? `${sp.diner_name} · ` : ""}
+                      {sp.method.toUpperCase()}
+                      {sp.reference ? ` (${sp.reference})` : ""}
+                    </span>
+                    <span className="tabular-nums">{formatCurrency(sp.amount)}</span>
+                  </div>
+                ))}
+              {splitConfig && Number(splitConfig.remaining_balance) > 0 && (
+                <div className="flex justify-between font-bold text-amber-800 pt-1 border-t border-dashed border-gray-300">
+                  <span>Unpaid Balance Due</span>
+                  <span className="tabular-nums">{formatCurrency(Number(splitConfig.remaining_balance))}</span>
                 </div>
-              ))}
+              )}
               {changeAmount !== undefined && changeAmount > 0 && (
                 <div className="flex justify-between font-semibold">
                   <span>Change</span>

@@ -5,10 +5,18 @@ import { LAZY_SUNDAY_LOGO_BLACK_DATA_URL } from "./brand-logo"
 export interface ThermalReceiptItem {
   name: string
   price: number
+  base_price?: number
   quantity: number
   notes?: string
   category?: string
   modifiers?: string[]
+  selected_choices?: Array<{
+    group_id?: string
+    group_name?: string
+    option_id?: string
+    option_name: string
+    price?: number
+  }>
 }
 
 export interface ThermalReceiptOrder {
@@ -28,6 +36,8 @@ export interface ThermalReceiptOrder {
   discount?: number
   total: number
   payment_method?: string
+  split_payments?: any[]
+  split_config?: any
   cash_received?: number
   change_amount?: number
   order_type?: string
@@ -40,6 +50,13 @@ export interface ThermalTicketItem {
   notes?: string
   category?: string
   modifiers?: string[]
+  selected_choices?: Array<{
+    group_id?: string
+    group_name?: string
+    option_id?: string
+    option_name: string
+    price?: number
+  }>
 }
 
 export interface ThermalTicketOrder {
@@ -88,13 +105,26 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
     : `DINE IN / TABLE ${tableNumOnly.length < 2 ? `0${tableNumOnly}` : tableNumOnly}`
 
   const itemsHtml = orderData.items
-    .map(
-      (it) => `
+    .map((it) => {
+      const choicesHtml =
+        Array.isArray(it.selected_choices) && it.selected_choices.length > 0
+          ? it.selected_choices
+              .map(
+                (sc) =>
+                  `<div style="font-size: 10px; color: #333; margin-top: 1px;">+ ${sc.group_name ? `${sc.group_name}: ` : ""}${sc.option_name}${
+                    Number(sc.price) > 0 ? ` (+${currency} ${Number(sc.price).toLocaleString()})` : ""
+                  }</div>`
+              )
+              .join("")
+          : it.modifiers && it.modifiers.length > 0
+          ? `<div style="font-size: 10px; color: #333; margin-top: 1px;">${it.modifiers.map((m) => `+ ${m}`).join(", ")}</div>`
+          : ""
+      return `
     <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; padding: 3.5px 0; color: #000;">
       <span style="width: 14%; font-weight: 500;">${it.quantity}</span>
       <div style="flex: 1; padding: 0 4px;">
         <div style="font-weight: 500; line-height: 1.25;">${it.name}</div>
-        ${it.modifiers && it.modifiers.length > 0 ? `<div style="font-size: 10px; color: #333; margin-top: 1px;">${it.modifiers.map((m) => `+ ${m}`).join(", ")}</div>` : ""}
+        ${choicesHtml}
         ${it.notes ? `<div style="font-size: 9.5px; color: #000; font-weight: 600; margin-top: 1px;">Note: ${it.notes}</div>` : ""}
       </div>
       <span style="width: 32%; text-align: right; font-variant-numeric: tabular-nums; font-weight: 500;">
@@ -102,27 +132,94 @@ export function printThermalReceiptDoc(orderData: ThermalReceiptOrder, isGuestBi
       </span>
     </div>
   `
-    )
+    })
     .join("")
 
   const isCash = (orderData.payment_method || "cash").toLowerCase() === "cash"
-  const isSplit = (orderData.payment_method || "").toLowerCase() === "split" && Array.isArray((orderData as any).split_payments) && (orderData as any).split_payments.length > 0
+  const isSplit =
+    ((orderData.payment_method || "").toLowerCase() === "split" &&
+      Array.isArray(orderData.split_payments) &&
+      orderData.split_payments.length > 0) ||
+    Boolean(orderData.split_config)
+
+  const splitConfig = orderData.split_config
+  const dinerBreakdownHtml =
+    splitConfig && Array.isArray(splitConfig.calculated_shares) && splitConfig.calculated_shares.length > 0
+      ? `
+      <div style="margin: 4px 0 6px 0;">
+        <div style="font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;">
+          SPLIT BILL (${splitConfig.method === "by_items" ? "BY PRODUCTS" : splitConfig.method === "by_percentage" ? "BY PERCENTAGE" : "BY AMOUNT"})
+        </div>
+        ${splitConfig.calculated_shares
+          .map(
+            (sh: any) => `
+          <div style="border: 1px solid #000; border-radius: 4px; padding: 4px 6px; margin-bottom: 4px;">
+            <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 11px;">
+              <span>${sh.diner_name}${splitConfig.method === "by_percentage" && sh.percentage != null ? ` (${Number(sh.percentage).toFixed(1)}%)` : ""}</span>
+              <span style="font-variant-numeric: tabular-nums;">${Number(sh.total_owed || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            ${
+              Array.isArray(sh.assigned_items) && sh.assigned_items.length > 0
+                ? `<div style="font-size: 9.5px; color: #333; margin-top: 2px;">
+                    ${sh.assigned_items
+                      .map(
+                        (ai: any) =>
+                          `<div style="display: flex; justify-content: space-between;"><span>• ${ai.name} (${ai.share_label})</span><span>${Number(ai.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`
+                      )
+                      .join("")}
+                   </div>`
+                : ""
+            }
+            <div style="display: flex; justify-content: space-between; font-size: 9.5px; margin-top: 2px; border-top: 1px dashed #999; padding-top: 2px;">
+              <span>Paid: ${Number(sh.amount_paid || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span style="font-weight: 700;">${
+                sh.status === "paid"
+                  ? "PAID ✓"
+                  : `DUE: ${Number(sh.remaining_balance ?? sh.total_owed ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              }</span>
+            </div>
+          </div>
+        `
+          )
+          .join("")}
+      </div>
+    `
+      : ""
 
   let paymentSectionHtml = ""
   if (isGuestBill) {
     paymentSectionHtml = `
+      ${dinerBreakdownHtml}
       <div style="text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 0;">
-        PLEASE PAY AT CASHIER COUNTER
+        ${
+          splitConfig && Number(splitConfig.remaining_balance) > 0
+            ? `REMAINING BALANCE DUE: ${currency} ${Number(splitConfig.remaining_balance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : "PLEASE PAY AT CASHIER COUNTER"
+        }
       </div>
     `
   } else if (isSplit) {
     paymentSectionHtml = `
-      ${((orderData as any).split_payments || []).map((sp: any) => `
+      ${dinerBreakdownHtml}
+      ${(orderData.split_payments || [])
+        .filter((sp: any) => sp.status !== "refunded" && sp.status !== "voided")
+        .map(
+          (sp: any) => `
         <div style="display: flex; justify-content: space-between;">
-          <span>${String(sp.method || "Payment").charAt(0).toUpperCase() + String(sp.method || "Payment").slice(1)}${sp.reference ? ` (${sp.reference})` : ""}</span>
+          <span>${sp.diner_name ? `${sp.diner_name} · ` : ""}${String(sp.method || "Payment").toUpperCase()}${sp.reference ? ` (${sp.reference})` : ""}</span>
           <span style="font-variant-numeric: tabular-nums;">${Number(sp.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
-      `).join("")}
+      `
+        )
+        .join("")}
+      ${
+        splitConfig && Number(splitConfig.remaining_balance) > 0
+          ? `<div style="display: flex; justify-content: space-between; font-weight: 700; margin-top: 2px; border-top: 1px dashed #000; padding-top: 2px;">
+              <span>Unpaid Balance Due</span>
+              <span style="font-variant-numeric: tabular-nums;">${Number(splitConfig.remaining_balance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>`
+          : ""
+      }
       ${(orderData.change_amount || 0) > 0 ? `
         <div style="display: flex; justify-content: space-between; font-weight: 600;">
           <span>Change</span>
@@ -359,18 +456,29 @@ export function printTicketSlipDoc(
     : `DINE IN / TABLE ${tableNumOnly.length < 2 ? `0${tableNumOnly}` : tableNumOnly}`
 
   const itemsHtml = order.items
-    .map(
-      (it) => `
+    .map((it) => {
+      const choicesHtml =
+        Array.isArray(it.selected_choices) && it.selected_choices.length > 0
+          ? it.selected_choices
+              .map(
+                (sc) =>
+                  `<div style="font-size: 10.5px; color: #333; margin-top: 1px;">+ ${sc.group_name ? `${sc.group_name}: ` : ""}${sc.option_name}</div>`
+              )
+              .join("")
+          : it.modifiers && it.modifiers.length > 0
+          ? `<div style="font-size: 10.5px; color: #333; margin-top: 1px;">${it.modifiers.map((m) => `+ ${m}`).join(", ")}</div>`
+          : ""
+      return `
     <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; padding: 4px 0; color: #000;">
       <span style="width: 14%; font-weight: 800; font-size: 16px;">${it.quantity}</span>
       <div style="flex: 1; padding: 0 4px;">
         <div style="font-weight: 700; line-height: 1.25; font-size: 13px;">${it.name}</div>
-        ${it.modifiers && it.modifiers.length > 0 ? `<div style="font-size: 10.5px; color: #333; margin-top: 1px;">${it.modifiers.map((m) => `+ ${m}`).join(", ")}</div>` : ""}
+        ${choicesHtml}
         ${it.notes ? `<div style="border: 1px solid #000; padding: 2px 5px; margin-top: 3px; font-size: 10px; font-weight: 700; text-transform: uppercase;">* NOTE: ${it.notes} *</div>` : ""}
       </div>
     </div>
   `
-    )
+    })
     .join("")
 
   const totalItems = order.items.reduce((s, i) => s + (i.quantity || 1), 0)

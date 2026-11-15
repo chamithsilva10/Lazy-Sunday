@@ -191,6 +191,11 @@ export function getDemoSqliteDb() {
     try { dbInstance.exec("ALTER TABLE pos_orders ADD COLUMN is_void INTEGER DEFAULT 0;") } catch {}
     try { dbInstance.exec("ALTER TABLE pos_orders ADD COLUMN void_reason TEXT;") } catch {}
     try { dbInstance.exec("ALTER TABLE pos_orders ADD COLUMN stock_deducted INTEGER DEFAULT 1;") } catch {}
+    try { dbInstance.exec("ALTER TABLE pos_orders ADD COLUMN split_config TEXT;") } catch {}
+    try { dbInstance.exec("ALTER TABLE pos_products ADD COLUMN choice_groups TEXT;") } catch {}
+    try { dbInstance.exec("ALTER TABLE order_items ADD COLUMN modifiers TEXT;") } catch {}
+    try { dbInstance.exec("ALTER TABLE order_items ADD COLUMN selected_choices TEXT;") } catch {}
+    try { dbInstance.exec("ALTER TABLE order_items ADD COLUMN base_price REAL;") } catch {}
 
     return dbInstance
   } catch (err) {
@@ -410,6 +415,7 @@ export const DemoDbService = {
         description: r.description || "",
         temperature: r.temperature || "none",
         dietary_tags: typeof r.dietary_tags === "string" ? JSON.parse(r.dietary_tags || "[]") : (Array.isArray(r.dietary_tags) ? r.dietary_tags : []),
+        choice_groups: typeof r.choice_groups === "string" && r.choice_groups ? JSON.parse(r.choice_groups) : (Array.isArray(r.choice_groups) ? r.choice_groups : undefined),
         active: r.active === 1,
         is_archived: r.is_archived === 1,
         updated_at: r.updated_at,
@@ -460,6 +466,7 @@ export const DemoDbService = {
       description: row.description || "",
       temperature: row.temperature || "none",
       dietary_tags: typeof row.dietary_tags === "string" ? JSON.parse(row.dietary_tags || "[]") : (Array.isArray(row.dietary_tags) ? row.dietary_tags : []),
+      choice_groups: typeof row.choice_groups === "string" && row.choice_groups ? JSON.parse(row.choice_groups) : (Array.isArray(row.choice_groups) ? row.choice_groups : undefined),
       active: Boolean(row.active),
       is_archived: Boolean(row.is_archived),
       updated_at: row.updated_at,
@@ -497,6 +504,7 @@ export const DemoDbService = {
         ...(updates.description !== undefined ? { description: String(updates.description).trim() } : {}),
         ...(updates.temperature !== undefined ? { temperature: updates.temperature } : {}),
         ...(updates.dietary_tags !== undefined ? { dietary_tags: typeof updates.dietary_tags === "string" ? JSON.parse(updates.dietary_tags || "[]") : (updates.dietary_tags || []) } : {}),
+        ...(updates.choice_groups !== undefined ? { choice_groups: typeof updates.choice_groups === "string" ? JSON.parse(updates.choice_groups || "[]") : updates.choice_groups } : {}),
         ...(updates.active !== undefined || updates.is_active !== undefined ? { active: Boolean(updates.active ?? updates.is_active) } : {}),
         ...(updates.is_archived !== undefined ? { is_archived: Boolean(updates.is_archived) } : {}),
         updated_at: new Date().toISOString(),
@@ -563,6 +571,10 @@ export const DemoDbService = {
       setClauses.push("dietary_tags = ?")
       params.push(typeof updates.dietary_tags === "string" ? updates.dietary_tags : JSON.stringify(updates.dietary_tags || []))
     }
+    if (updates.choice_groups !== undefined) {
+      setClauses.push("choice_groups = ?")
+      params.push(updates.choice_groups === null ? null : typeof updates.choice_groups === "string" ? updates.choice_groups : JSON.stringify(updates.choice_groups))
+    }
     if (updates.active !== undefined || updates.is_active !== undefined) {
       setClauses.push("active = ?")
       params.push((updates.active ?? updates.is_active) ? 1 : 0)
@@ -595,13 +607,16 @@ export const DemoDbService = {
     const description = data.description || ""
     const temperature = data.temperature || "none"
     const dietaryTags = typeof data.dietary_tags === "string" ? data.dietary_tags : JSON.stringify(data.dietary_tags || [])
+    const choiceGroupsJson = data.choice_groups !== undefined && data.choice_groups !== null
+      ? (typeof data.choice_groups === "string" ? data.choice_groups : JSON.stringify(data.choice_groups))
+      : null
 
     if (db) {
       db.prepare(`
         INSERT INTO pos_products (
           id, name, sku, barcode, category_id, category_name, price, cost_price, stock,
-          station, department, image, description, temperature, dietary_tags, is_archived, active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)
+          station, department, image, description, temperature, dietary_tags, choice_groups, is_archived, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)
       `).run(
         id,
         data.name.trim(),
@@ -617,7 +632,8 @@ export const DemoDbService = {
         image,
         description,
         temperature,
-        dietaryTags
+        dietaryTags,
+        choiceGroupsJson
       )
       return this.getProductById(id)
     }
@@ -640,6 +656,7 @@ export const DemoDbService = {
       description,
       temperature,
       dietary_tags: Array.isArray(data.dietary_tags) ? data.dietary_tags : [],
+      choice_groups: Array.isArray(data.choice_groups) ? data.choice_groups : undefined,
       active: true,
       is_archived: false,
       updated_at: new Date().toISOString(),
@@ -1851,11 +1868,14 @@ export const DemoDbService = {
         product_id: i.product_id,
         name: i.product_name,
         price: Number(i.unit_price),
+        base_price: i.base_price != null ? Number(i.base_price) : Number(i.unit_price),
         quantity: Number(i.quantity),
         line_total: Number(i.line_total),
         station: i.station as "bar" | "kitchen",
         category: i.category || "",
         notes: i.notes || "",
+        modifiers: typeof i.modifiers === "string" && i.modifiers ? JSON.parse(i.modifiers) : (Array.isArray(i.modifiers) ? i.modifiers : undefined),
+        selected_choices: typeof i.selected_choices === "string" && i.selected_choices ? JSON.parse(i.selected_choices) : (Array.isArray(i.selected_choices) ? i.selected_choices : undefined),
       }))
 
       if (filters?.station && filters.station !== "all") {
@@ -1866,6 +1886,13 @@ export const DemoDbService = {
       if (o.split_payments) {
         try {
           splitPayments = JSON.parse(o.split_payments)
+        } catch {}
+      }
+
+      let splitConfig: any | undefined = undefined
+      if (o.split_config) {
+        try {
+          splitConfig = JSON.parse(o.split_config)
         } catch {}
       }
 
@@ -1886,6 +1913,7 @@ export const DemoDbService = {
         total: Number(o.total),
         payment_method: o.payment_method,
         split_payments: splitPayments,
+        split_config: splitConfig,
         cash_received: Number(o.cash_received),
         change_amount: Number(o.change_amount),
         status: o.status,
@@ -1895,7 +1923,7 @@ export const DemoDbService = {
         customer_name: o.customer_name || "Walk-in",
         customer_id: o.customer_id,
         created_at: o.created_at,
-      })
+      } as any)
     }
 
     return orders
@@ -1923,6 +1951,14 @@ export const DemoDbService = {
       const row = db.prepare("SELECT * FROM pos_orders WHERE id = ? OR order_number = ? LIMIT 1").get(idOrNumber, idOrNumber) as any
       if (!row) return null
       const items = db.prepare("SELECT * FROM order_items WHERE order_id = ?").all(row.id) as any[]
+      let parsedSplitPayments = undefined
+      if (row.split_payments) {
+        try { parsedSplitPayments = JSON.parse(row.split_payments) } catch {}
+      }
+      let parsedSplitConfig = undefined
+      if (row.split_config) {
+        try { parsedSplitConfig = JSON.parse(row.split_config) } catch {}
+      }
       return {
         ...row,
         subtotal: Number(row.subtotal || 0),
@@ -1933,6 +1969,8 @@ export const DemoDbService = {
         total: Number(row.total || 0),
         cash_received: Number(row.cash_received || 0),
         change_amount: Number(row.change_amount || 0),
+        split_payments: parsedSplitPayments,
+        split_config: parsedSplitConfig,
         is_void: Boolean(row.is_void),
         items: items.map((i: any) => ({
           id: i.id,
@@ -1940,12 +1978,15 @@ export const DemoDbService = {
           name: i.product_name,
           product_name_snapshot: i.product_name,
           price: Number(i.unit_price),
+          base_price: i.base_price != null ? Number(i.base_price) : Number(i.unit_price),
           unit_price_snapshot: Number(i.unit_price),
           quantity: Number(i.quantity),
           line_total: Number(i.line_total),
           station: i.station,
           item_status: i.item_status,
           notes: i.notes,
+          modifiers: typeof i.modifiers === "string" && i.modifiers ? JSON.parse(i.modifiers) : undefined,
+          selected_choices: typeof i.selected_choices === "string" && i.selected_choices ? JSON.parse(i.selected_choices) : undefined,
         })),
         tickets: [],
       }
@@ -1962,6 +2003,8 @@ export const DemoDbService = {
       "kitchen_status",
       "bar_status",
       "payment_method",
+      "split_payments",
+      "split_config",
       "notes",
       "subtotal",
       "service_charge",
@@ -2020,11 +2063,14 @@ export const DemoDbService = {
         product_id: item.product_id || item.id || null,
         name: item.name || "Item",
         price: Number(item.price || 0),
+        base_price: item.base_price != null ? Number(item.base_price) : Number(item.price || 0),
         quantity: Number(item.quantity || 1),
         line_total: item.line_total != null ? Number(item.line_total) : Number(item.price || 0) * Number(item.quantity || 1),
         station: item.station || "kitchen",
         category: item.category || "General",
         notes: item.notes || "",
+        modifiers: Array.isArray(item.modifiers) ? item.modifiers : undefined,
+        selected_choices: Array.isArray(item.selected_choices) ? item.selected_choices : undefined,
       }))
 
       const existingIdx = mem.orders.findIndex(
@@ -2055,6 +2101,7 @@ export const DemoDbService = {
         existing.total = Number(order.total || 0)
         existing.payment_method = order.payment_method || existing.payment_method || "cash"
         if (order.split_payments) existing.split_payments = order.split_payments
+        if ((order as any).split_config) existing.split_config = (order as any).split_config
         existing.cash_received = order.cash_received != null ? Number(order.cash_received) : Number(order.total || 0)
         existing.change_amount = Number(order.change_amount || 0)
         existing.status = order.status || "paid"
@@ -2100,6 +2147,7 @@ export const DemoDbService = {
         total: Number(order.total || 0),
         payment_method: order.payment_method || "cash",
         split_payments: order.split_payments,
+        split_config: (order as any).split_config,
         cash_received: order.cash_received != null ? Number(order.cash_received) : Number(order.total || 0),
         change_amount: Number(order.change_amount || 0),
         status: order.status || "paid",
@@ -2150,7 +2198,7 @@ export const DemoDbService = {
         db.prepare(`
           UPDATE pos_orders SET
             subtotal = ?, service_charge = ?, discount = ?, tax = ?, total = ?,
-            payment_method = ?, split_payments = ?, cash_received = ?, change_amount = ?,
+            payment_method = ?, split_payments = ?, split_config = COALESCE(?, split_config), cash_received = ?, change_amount = ?,
             status = ?, payment_status = ?, kitchen_status = ?, bar_status = ?,
             stock_deducted = 1, updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
@@ -2162,6 +2210,7 @@ export const DemoDbService = {
           order.total || 0,
           order.payment_method || "cash",
           order.split_payments ? JSON.stringify(order.split_payments) : null,
+          (order as any).split_config ? JSON.stringify((order as any).split_config) : null,
           order.cash_received != null ? order.cash_received : (order.total || 0),
           order.change_amount || 0,
           order.status || "paid",
@@ -2175,8 +2224,8 @@ export const DemoDbService = {
           db.prepare("DELETE FROM order_items WHERE order_id = ?").run(existingOrder.id)
           const insertItem = db.prepare(`
             INSERT INTO order_items (
-              id, order_id, product_id, product_name, unit_price, quantity, line_total, station, category, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              id, order_id, product_id, product_name, unit_price, base_price, quantity, line_total, station, category, notes, modifiers, selected_choices
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `)
           for (const item of order.items) {
             const lineTotal = item.line_total != null ? item.line_total : ((item.price || 0) * (item.quantity || 1))
@@ -2187,11 +2236,14 @@ export const DemoDbService = {
               pId,
               item.name || "Item",
               item.price || 0,
+              (item as any).base_price != null ? (item as any).base_price : (item.price || 0),
               item.quantity || 1,
               lineTotal,
               item.station || "kitchen",
               item.category || "General",
-              item.notes || null
+              item.notes || null,
+              Array.isArray((item as any).modifiers) ? JSON.stringify((item as any).modifiers) : null,
+              Array.isArray((item as any).selected_choices) ? JSON.stringify((item as any).selected_choices) : null
             )
           }
         }
@@ -2217,13 +2269,13 @@ export const DemoDbService = {
         INSERT INTO pos_orders (
           id, order_number, receipt_number, table_name, cashier_name, department, order_type,
           subtotal, service_charge, service_charge_rate, discount, tax, total,
-          payment_method, split_payments, cash_received, change_amount,
+          payment_method, split_payments, split_config, cash_received, change_amount,
           status, payment_status, kitchen_status, bar_status, customer_name, customer_id,
           idempotency_key, stock_deducted, created_at
         ) VALUES (
           ?, ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?, ?, ?,
-          ?, ?, ?, ?,
+          ?, ?, ?, ?, ?,
           ?, ?, ?, ?, ?, ?,
           ?, 1, ?
         )
@@ -2245,6 +2297,7 @@ export const DemoDbService = {
         order.total || 0,
         order.payment_method || "cash",
         order.split_payments ? JSON.stringify(order.split_payments) : null,
+        (order as any).split_config ? JSON.stringify((order as any).split_config) : null,
         order.cash_received != null ? order.cash_received : (order.total || 0),
         order.change_amount || 0,
         order.status || "paid",
@@ -2260,9 +2313,9 @@ export const DemoDbService = {
       // Insert line items
       const insertItem = db.prepare(`
         INSERT INTO order_items (
-          id, order_id, product_id, product_name, unit_price, quantity, line_total, station, category, notes
+          id, order_id, product_id, product_name, unit_price, base_price, quantity, line_total, station, category, notes, modifiers, selected_choices
         ) VALUES (
-          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
       `)
 
@@ -2279,11 +2332,14 @@ export const DemoDbService = {
           pId,
           item.name || "Item",
           item.price || 0,
+          (item as any).base_price != null ? (item as any).base_price : (item.price || 0),
           item.quantity || 1,
           lineTotal,
           item.station || "kitchen",
           item.category || "General",
-          item.notes || null
+          item.notes || null,
+          Array.isArray((item as any).modifiers) ? JSON.stringify((item as any).modifiers) : null,
+          Array.isArray((item as any).selected_choices) ? JSON.stringify((item as any).selected_choices) : null
         )
 
         // Decrement product inventory

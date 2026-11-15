@@ -125,7 +125,10 @@ export async function PATCH(
     const updatePayload: Record<string, any> = {}
     if (body.status) updatePayload.status = body.status
     if (body.payment_status) updatePayload.payment_status = body.payment_status
-    if (body.notes) updatePayload.notes = body.notes
+    if (body.payment_method) updatePayload.payment_method = body.payment_method
+    if (body.split_payments !== undefined) updatePayload.split_payments = body.split_payments
+    if (body.split_config !== undefined) updatePayload.split_config = body.split_config
+    if (body.notes !== undefined) updatePayload.notes = body.notes
 
     const updated = await PosDatabase.updateOrder(orderNumber, updatePayload)
     if (!updated) {

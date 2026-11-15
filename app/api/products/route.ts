@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
                 price: o.price !== undefined ? Number(o.price) : p.price,
                 stock: o.stock !== undefined ? Number(o.stock) : p.stock,
                 image: o.image || p.image,
+                choice_groups: o.choice_groups !== undefined ? o.choice_groups : p.choice_groups,
                 updated_at: o.updated_at || p.updated_at,
               }
             }
@@ -133,6 +134,7 @@ export async function POST(request: NextRequest) {
       description: description?.trim() || "",
       temperature,
       dietary_tags,
+      choice_groups: (parsed.data as any).choice_groups,
       department: effectiveDepartment || (determinedStation === "bar" ? "Coffee Bar" : "Juice & Food"),
       active,
       track_stock,

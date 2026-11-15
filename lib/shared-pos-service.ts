@@ -64,6 +64,7 @@ export interface SharedProduct {
   description?: string
   temperature?: "hot" | "iced" | "none"
   dietary_tags?: string[]
+  choice_groups?: any[]
   department?: string
   station?: "kitchen" | "bar" | "none"
   active?: boolean
@@ -76,6 +77,7 @@ export interface SharedOrderItem {
   id: string
   name: string
   price: number
+  base_price?: number
   quantity: number
   category?: string
   image?: string
@@ -84,10 +86,14 @@ export interface SharedOrderItem {
   station?: "kitchen" | "bar" | "none"
   round?: number
   notes?: string
+  modifiers?: string[]
+  selected_choices?: any[]
 }
 
 export interface SplitPaymentLine {
   id?: string
+  diner_id?: string
+  diner_name?: string
   method: "cash" | "card" | "qr" | "bank_transfer" | "credit" | string
   amount: number
   tendered?: number
@@ -95,6 +101,10 @@ export interface SplitPaymentLine {
   reference?: string
   customer_id?: string
   customer_name?: string
+  status?: "paid" | "refunded" | "voided" | string
+  created_at?: string
+  refunded_at?: string
+  refund_reason?: string
 }
 
 export interface SharedOrder {
@@ -112,10 +122,11 @@ export interface SharedOrder {
   total: number
   payment_method: "cash" | "card" | "qr" | "transfer" | "bank_transfer" | "credit" | "split" | string
   split_payments?: SplitPaymentLine[]
+  split_config?: any
   cash_received?: number
   change_amount?: number
   status: "open" | "paid" | "completed" | "refunded" | "cancelled" | string
-  payment_status?: "paid" | "unpaid" | "refunded" | string
+  payment_status?: "paid" | "partial" | "unpaid" | "refunded" | string
   kitchen_status?: "pending" | "preparing" | "ready" | "served"
   bar_status?: "pending" | "preparing" | "ready" | "served"
   ticket_source?: "coffee_bill"
@@ -4790,6 +4801,7 @@ export class SharedPosService {
             description: p.description || "",
             temperature: p.temperature || "none",
             dietary_tags: Array.isArray(p.dietary_tags) ? p.dietary_tags : [],
+            choice_groups: Array.isArray(p.choice_groups) ? p.choice_groups : undefined,
             department: p.department || p.department_override || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
             station,
             active: p.active !== false,
@@ -4836,6 +4848,12 @@ export class SharedPosService {
             finalStock = existing.stock
           }
 
+          const finalChoices = Array.isArray(mp.choice_groups) && mp.choice_groups.length > 0
+            ? (existing?.choice_groups && existing?.updated_at && mp.updated_at && new Date(existing.updated_at).getTime() > new Date(mp.updated_at).getTime()
+                ? existing.choice_groups
+                : mp.choice_groups)
+            : existing?.choice_groups
+
           cacheMap.set(key, {
             ...existing,
             ...mp,
@@ -4843,6 +4861,7 @@ export class SharedPosService {
             price: finalPrice,
             image: finalImage,
             stock: finalStock,
+            choice_groups: finalChoices,
             user_customized: existing?.user_customized,
             updated_at: existing?.updated_at && mp.updated_at && new Date(existing.updated_at).getTime() > new Date(mp.updated_at).getTime() ? existing.updated_at : (mp.updated_at || existing?.updated_at),
           })
@@ -4883,6 +4902,7 @@ export class SharedPosService {
       description: product.description || "",
       temperature: product.temperature || "none",
       dietary_tags: product.dietary_tags || [],
+      choice_groups: product.choice_groups !== undefined ? product.choice_groups : prevItem?.choice_groups,
       department,
       station,
       active: product.active !== false,
@@ -4972,6 +4992,7 @@ export class SharedPosService {
             description: cleanProduct.description,
             department: cleanProduct.department,
             station: cleanProduct.station,
+            choice_groups: cleanProduct.choice_groups,
             active: cleanProduct.active,
           }),
         }).catch((err) => console.warn("Failed posting product to /api/products", err))
@@ -4988,6 +5009,7 @@ export class SharedPosService {
             description: cleanProduct.description,
             department: cleanProduct.department,
             station: cleanProduct.station,
+            choice_groups: cleanProduct.choice_groups,
             active: cleanProduct.active,
           }),
         }).catch((err) => console.warn("Failed updating product on /api/products/[id]", err))
@@ -5273,6 +5295,31 @@ export class SharedPosService {
   }
 
   private static mapDbOrderToShared(o: any): SharedOrder {
+    const fallbackItemsMap = new Map<string, any>()
+    if (Array.isArray(o.items)) {
+      o.items.forEach((fi: any, idx: number) => {
+        fallbackItemsMap.set(`${fi.id || fi.name}-${idx}`, fi)
+      })
+    }
+    let parsedNotesObj: any = null
+    if (typeof o.notes === "string" && (o.notes.includes("split_payments") || o.notes.includes("split_config"))) {
+      try {
+        parsedNotesObj = JSON.parse(o.notes)
+      } catch {
+        parsedNotesObj = null
+      }
+    }
+    const splitPayments = Array.isArray(o.split_payments)
+      ? o.split_payments
+      : parsedNotesObj?.split_payments
+    const splitConfig = o.split_config || parsedNotesObj?.split_config
+    const hasPartialSplit =
+      o.payment_status === "partial" ||
+      (o.status === "open" &&
+        ((splitConfig && Number(splitConfig.total_paid) > 0 && Number(splitConfig.remaining_balance) > 0) ||
+          (Array.isArray(splitPayments) &&
+            splitPayments.some((sp: any) => sp.status !== "refunded" && sp.status !== "voided" && Number(sp.amount) > 0))))
+
     return {
       id: String(o.id),
       order_number: o.order_number,
@@ -5282,13 +5329,20 @@ export class SharedPosService {
       department: o.department || "Juice & Food",
       order_type: o.order_type || (o.table_name === "Takeaway" ? "takeaway" : "dine_in"),
       items: Array.isArray(o.order_items) && o.order_items.length > 0
-        ? o.order_items.map((i: any) => ({
-            id: i.product_id || i.id,
-            name: i.product_name_snapshot,
-            price: Number(i.unit_price_snapshot) || 0,
-            quantity: Number(i.quantity) || 1,
-            station: i.station,
-          }))
+        ? o.order_items.map((i: any, idx: number) => {
+            const fallbackItem = Array.isArray(o.items) ? o.items[idx] : undefined
+            return {
+              id: i.product_id || i.id,
+              name: i.product_name_snapshot || i.name,
+              price: Number(i.unit_price_snapshot ?? i.price) || 0,
+              base_price: i.base_price != null ? Number(i.base_price) : fallbackItem?.base_price,
+              quantity: Number(i.quantity) || 1,
+              station: i.station,
+              modifiers: Array.isArray(i.modifiers) ? i.modifiers : fallbackItem?.modifiers,
+              selected_choices: Array.isArray(i.selected_choices) ? i.selected_choices : fallbackItem?.selected_choices,
+              notes: i.notes || fallbackItem?.notes,
+            }
+          })
         : Array.isArray(o.items)
         ? o.items
         : [],
@@ -5298,15 +5352,12 @@ export class SharedPosService {
       discount: Number(o.discount) || 0,
       total: Number(o.total) || 0,
       payment_method: o.payment_method || "cash",
-      split_payments: Array.isArray(o.split_payments)
-        ? o.split_payments
-        : (typeof o.notes === "string" && o.notes.includes("split_payments")
-          ? (() => { try { return JSON.parse(o.notes).split_payments } catch { return undefined } })()
-          : undefined),
+      split_payments: splitPayments,
+      split_config: splitConfig,
       cash_received: o.cash_received != null ? Number(o.cash_received) : undefined,
       change_amount: o.change_amount != null ? Number(o.change_amount) : undefined,
       status: o.status || "paid",
-      payment_status: o.payment_status || (o.status === "open" ? "unpaid" : "paid"),
+      payment_status: hasPartialSplit ? "partial" : (o.payment_status || (o.status === "open" ? "unpaid" : "paid")),
       kitchen_status: o.kitchen_status || "served",
       bar_status: o.bar_status || "served",
       stock_deducted: Boolean(o.stock_deducted),
@@ -5537,10 +5588,19 @@ export class SharedPosService {
       total: Number(normalizedOrder.total) || 0,
       payment_method: normalizedOrder.payment_method || "cash",
       split_payments: normalizedOrder.split_payments,
+      split_config: normalizedOrder.split_config,
+      payment_status: normalizedOrder.payment_status,
       cash_received: Number(normalizedOrder.cash_received) || Number(normalizedOrder.total) || 0,
       change_amount: Number(normalizedOrder.change_amount) || 0,
       status: normalizedOrder.status || "paid",
-      notes: normalizedOrder.notes || (normalizedOrder.split_payments?.length ? JSON.stringify({ split_payments: normalizedOrder.split_payments }) : ""),
+      notes:
+        normalizedOrder.notes ||
+        (normalizedOrder.split_config || normalizedOrder.split_payments?.length
+          ? JSON.stringify({
+              split_payments: normalizedOrder.split_payments,
+              split_config: normalizedOrder.split_config,
+            })
+          : ""),
       idempotency_key: idempotencyKey,
       action: action,
     }
@@ -5570,21 +5630,33 @@ export class SharedPosService {
     if (committed.status) normalizedOrder.status = committed.status
     if (committed.created_at) normalizedOrder.created_at = committed.created_at
 
-    // Ensure payment_status is strictly aligned with status
+    // Ensure payment_status is strictly aligned with status and partial split state
     if (normalizedOrder.status === "paid") {
       normalizedOrder.payment_status = "paid"
     } else if (normalizedOrder.status === "open") {
-      normalizedOrder.payment_status = "unpaid"
+      const hasPartial =
+        normalizedOrder.payment_status === "partial" ||
+        (normalizedOrder.split_config &&
+          Number(normalizedOrder.split_config.total_paid) > 0 &&
+          Number(normalizedOrder.split_config.remaining_balance) > 0) ||
+        (Array.isArray(normalizedOrder.split_payments) &&
+          normalizedOrder.split_payments.some(
+            (sp: any) => sp.status !== "refunded" && sp.status !== "voided" && Number(sp.amount) > 0
+          ))
+      normalizedOrder.payment_status = hasPartial ? "partial" : "unpaid"
     }
 
     // Upsert into orders cache: NEVER overwrite an order belonging to a different table
-    normalizedOrder.stock_deducted = true
     const existingById = this.ordersCache.findIndex((o) => o.id === normalizedOrder.id)
     const existingByNum = this.ordersCache.findIndex(
       (o) =>
         o.order_number === normalizedOrder.order_number &&
         (sameName(o.table_name, normalizedOrder.table_name) || !o.table_name || !normalizedOrder.table_name)
     )
+    const prevOrder =
+      existingById >= 0 ? this.ordersCache[existingById] : existingByNum >= 0 ? this.ordersCache[existingByNum] : undefined
+    const alreadyDeducted = Boolean(prevOrder?.stock_deducted)
+    normalizedOrder.stock_deducted = true
 
     if (existingById >= 0) {
       this.ordersCache[existingById] = { ...this.ordersCache[existingById], ...normalizedOrder }
@@ -5598,12 +5670,31 @@ export class SharedPosService {
     this.emitOrders()
     this.broadcast("orders", normalizedOrder)
 
-    // Deduct products stock locally to keep UI responsive
+    // Deduct products stock locally to keep UI responsive (only deduct net new quantities if already deducted)
     let stockChanged = false
+    const prevQtyByProd = new Map<string, number>()
+    if (alreadyDeducted && prevOrder?.items) {
+      for (const pi of prevOrder.items) {
+        const key = String(pi.id || pi.name).toLowerCase()
+        prevQtyByProd.set(key, (prevQtyByProd.get(key) || 0) + (Number(pi.quantity) || 1))
+      }
+    }
+    const newQtyByProd = new Map<string, { item: SharedOrderItem; qty: number }>()
     for (const item of normalizedOrder.items) {
+      const key = String(item.id || item.name).toLowerCase()
+      const existingEntry = newQtyByProd.get(key)
+      newQtyByProd.set(key, {
+        item,
+        qty: (existingEntry?.qty || 0) + (Number(item.quantity) || 1),
+      })
+    }
+
+    for (const [key, { item, qty }] of newQtyByProd.entries()) {
+      const netDelta = Math.max(0, qty - (prevQtyByProd.get(key) || 0))
+      if (netDelta <= 0) continue
       const target = this.productsCache.find((p) => p.id === item.id || (item as any).product_id === p.id || sameName(p.name, item.name))
       if (target) {
-        const remaining = Math.max(0, target.stock - (item.quantity || 1))
+        const remaining = Math.max(0, target.stock - netDelta)
         this.productsCache = this.productsCache.map((p) => (p.id === target.id ? { ...p, stock: remaining } : p))
         stockChanged = true
         if (this.isBrowser()) {

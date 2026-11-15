@@ -108,6 +108,7 @@ async function handleProductUpdate(
       category_id: payload.category_id || existingBefore?.category_id || null,
       station: payload.station || existingBefore?.station || "bar",
       department: payload.department || existingBefore?.department || "Coffee Bar",
+      choice_groups: (payload as any).choice_groups !== undefined ? (payload as any).choice_groups : existingBefore?.choice_groups,
       active: payload.active !== false && payload.is_active !== false,
       is_archived: payload.is_archived === true,
       updated_at: new Date().toISOString(),

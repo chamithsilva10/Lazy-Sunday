@@ -57,7 +57,15 @@ import {
 import { createClient, getBrowserSession, isSupabaseConfigured } from "@/lib/supabase/client"
 import { isDemoMode, playCashDrawerSound } from "@/lib/config/demo"
 import { BarcodeScannerModal } from "@/app/components/barcode-scanner-modal"
-import { ModifierModal, getApplicableModifierGroups } from "@/app/components/modifier-modal"
+import {
+  ModifierModal,
+  getApplicableModifierGroups,
+  type ProductChoiceGroup,
+  type SelectedChoiceSnapshot,
+} from "@/app/components/modifier-modal"
+import { SplitBillModal } from "@/app/components/split-bill-modal"
+import { ProductChoicesEditor } from "@/app/components/product-choices-editor"
+import type { OrderSplitConfig } from "@/lib/split-bill-utils"
 import { MOCK_PRODUCTS } from "@/lib/mock/pos-mock-data"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -144,6 +152,7 @@ export type Product = {
   description?: string
   temperature?: "hot" | "iced" | "none"
   dietary_tags?: string[]
+  choice_groups?: ProductChoiceGroup[]
   user_customized?: boolean
   updated_at?: string
 }
@@ -160,10 +169,12 @@ const DEFAULT_POS_CATEGORIES: { id: string; name: string }[] = [
 // kitchen/bar see which lines were added to an already-open tab.
 export type CartItem = Product & {
   cartItemId?: string
+  base_price?: number
   quantity: number
   round?: number
   notes?: string
   modifiers?: string[]
+  selected_choices?: SelectedChoiceSnapshot[]
 }
 
 export type TableInfo = {
@@ -194,6 +205,8 @@ export type OrderRecord = {
   payment_method: PaymentMethod | string
   split_payments?: {
     id?: string
+    diner_id?: string
+    diner_name?: string
     method: string
     amount: number
     tendered?: number
@@ -201,7 +214,10 @@ export type OrderRecord = {
     reference?: string
     customer_id?: string
     customer_name?: string
+    status?: string
+    created_at?: string
   }[]
+  split_config?: OrderSplitConfig
   cash_received?: number
   change_amount?: number
   status: "open" | "paid" | "completed" | "refunded" | "cancelled" | string
@@ -231,13 +247,18 @@ function toOrderRecord(o: any): OrderRecord {
     if (Array.isArray(raw) && raw.length > 0) {
       return raw.map((i: any) => ({
         id: String(i.id || i.product_id || ""),
+        cartItemId: i.cartItemId,
         name: String(i.name || i.product_name_snapshot || "Item"),
         price: Number(i.price ?? i.unit_price_snapshot ?? 0),
+        base_price: i.base_price != null ? Number(i.base_price) : undefined,
         quantity: Number(i.quantity ?? 1),
         category: i.category || (i.station === "bar" ? "Coffee Bar" : "General"),
         image: i.image || "/placeholder.svg",
         stock: Number(i.stock ?? 50),
         round: i.round,
+        notes: i.notes,
+        modifiers: Array.isArray(i.modifiers) ? i.modifiers : undefined,
+        selected_choices: Array.isArray(i.selected_choices) ? i.selected_choices : undefined,
         department: i.department || (i.station === "bar" ? "Coffee Bar" : undefined),
       }))
     }
@@ -246,16 +267,37 @@ function toOrderRecord(o: any): OrderRecord {
         id: String(i.product_id || i.id),
         name: String(i.product_name_snapshot || i.name || "Item"),
         price: Number(i.unit_price_snapshot ?? i.price ?? 0),
+        base_price: i.base_price != null ? Number(i.base_price) : undefined,
         quantity: Number(i.quantity ?? 1),
         category: i.category || (i.station === "bar" ? "Coffee Bar" : "General"),
         image: i.image || "/placeholder.svg",
         stock: Number(i.stock ?? 50),
         round: i.round,
+        notes: i.notes,
+        modifiers: Array.isArray(i.modifiers) ? i.modifiers : undefined,
+        selected_choices: Array.isArray(i.selected_choices) ? i.selected_choices : undefined,
         department: i.department || (i.station === "bar" ? "Coffee Bar" : "Juice & Food"),
       }))
     }
     return []
   }
+
+  let parsedNotes: any = null
+  if (typeof o.notes === "string" && (o.notes.includes("split_payments") || o.notes.includes("split_config"))) {
+    try {
+      parsedNotes = JSON.parse(o.notes)
+    } catch {
+      parsedNotes = null
+    }
+  }
+  const splitPayments = Array.isArray(o.split_payments) ? o.split_payments : parsedNotes?.split_payments
+  const splitConfig = o.split_config || parsedNotes?.split_config
+  const hasPartialSplit =
+    o.payment_status === "partial" ||
+    (o.status === "open" &&
+      ((splitConfig && Number(splitConfig.total_paid) > 0 && Number(splitConfig.remaining_balance) > 0) ||
+        (Array.isArray(splitPayments) &&
+          splitPayments.some((sp: any) => sp.status !== "refunded" && sp.status !== "voided" && Number(sp.amount) > 0))))
 
   return {
     id: String(o.id),
@@ -271,14 +313,12 @@ function toOrderRecord(o: any): OrderRecord {
     discount: Number(o.discount ?? 0),
     total: Number(o.total ?? 0),
     payment_method: o.payment_method || "cash",
-    split_payments: Array.isArray(o.split_payments)
-      ? o.split_payments
-      : (typeof o.notes === "string" && o.notes.includes("split_payments")
-        ? (() => { try { return JSON.parse(o.notes).split_payments } catch { return undefined } })()
-        : undefined),
+    split_payments: splitPayments,
+    split_config: splitConfig,
     cash_received: o.cash_received != null ? Number(o.cash_received) : undefined,
     change_amount: o.change_amount != null ? Number(o.change_amount) : undefined,
     status: o.status || "paid",
+    payment_status: hasPartialSplit ? "partial" : (o.payment_status || (o.status === "open" ? "unpaid" : "paid")),
     kitchen_status: o.kitchen_status,
     bar_status: o.bar_status,
     ticket_source: o.ticket_source,
@@ -395,6 +435,9 @@ function printReportReceipt(order: ReportOrderRecord) {
       name: i.name,
       price: i.price,
       quantity: i.quantity,
+      modifiers: (i as any).modifiers,
+      selected_choices: (i as any).selected_choices,
+      notes: (i as any).notes,
     })),
     subtotal: order.subtotal,
     service_charge: order.service_charge || 0,
@@ -402,6 +445,8 @@ function printReportReceipt(order: ReportOrderRecord) {
     discount: order.discount || 0,
     total: order.total,
     payment_method: order.payment_method || "cash",
+    split_payments: order.split_payments,
+    split_config: (order as any).split_config,
     cash_received: (order as any).cash_received || order.total,
     change_amount: (order as any).change_amount || 0,
     order_type: (order as any).order_type || "dine_in",
@@ -443,18 +488,23 @@ function mergeOrderRecords(...orderArrays: (OrderRecord[] | undefined | null)[])
         const kitchenServed = !hasKitchen || existing.kitchen_status === "served" || incoming.kitchen_status === "served"
         const barServed = !hasBar || existing.bar_status === "served" || incoming.bar_status === "served"
         const isFullyServed = (kitchenServed && barServed) && (hasKitchen || hasBar)
+        const isReopenedPartial = incoming.status === "open" && incoming.payment_status === "partial"
         const completed =
-          existing.status === "completed" ||
-          incoming.status === "completed" ||
-          (isFullyServed && (existing.status === "paid" || incoming.status === "paid"))
+          !isReopenedPartial && (
+            existing.status === "completed" ||
+            incoming.status === "completed" ||
+            (isFullyServed && (existing.status === "paid" || incoming.status === "paid"))
+          )
 
         const merged: OrderRecord = {
           ...existing,
           ...incoming,
           items: incoming.items && incoming.items.length > 0 ? incoming.items : existing.items,
+          split_config: incoming.split_config || existing.split_config,
+          split_payments: incoming.split_payments && incoming.split_payments.length > 0 ? incoming.split_payments : existing.split_payments,
           kitchen_status: hasKitchen ? (existing.kitchen_status === "served" || incoming.kitchen_status === "served" ? "served" : (incoming.kitchen_status || existing.kitchen_status)) : undefined,
           bar_status: hasBar ? (existing.bar_status === "served" || incoming.bar_status === "served" ? "served" : (incoming.bar_status || existing.bar_status)) : undefined,
-          status: completed ? "completed" : existing.status === "paid" ? "paid" : incoming.status,
+          status: isReopenedPartial ? "open" : completed ? "completed" : existing.status === "paid" ? "paid" : incoming.status,
         }
         if (numKey) map.set(numKey, merged)
         if (idKey) map.set(idKey, merged)
@@ -713,6 +763,7 @@ export default function POSPage() {
     station: "kitchen" as "kitchen" | "bar",
     stationManuallySelected: false,
     image: "",
+    choice_groups: [] as ProductChoiceGroup[],
   })
   const [isUploadingImage, setIsUploadingImage] = useState(false)
 
@@ -892,6 +943,7 @@ export default function POSPage() {
           dietary_tags: p.dietary_tags || [],
           department: p.department || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
           station,
+          choice_groups: Array.isArray(p.choice_groups) ? p.choice_groups : [],
           user_customized: p.user_customized,
           updated_at: p.updated_at,
         })
@@ -942,6 +994,7 @@ export default function POSPage() {
             dietary_tags: p.dietary_tags || existing?.dietary_tags || [],
             department: p.department_override || existing?.department || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
             station,
+            choice_groups: Array.isArray(p.choice_groups) ? p.choice_groups : (existing?.choice_groups || []),
             user_customized: existing?.user_customized,
             updated_at: existing?.updated_at || p.updated_at,
           })
@@ -1009,6 +1062,7 @@ export default function POSPage() {
                 dietary_tags: Array.isArray(p.dietary_tags) ? p.dietary_tags : (existing?.dietary_tags || []),
                 department: p.department || p.department_override || existing?.department || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
                 station,
+                choice_groups: Array.isArray(p.choice_groups) ? p.choice_groups : (existing?.choice_groups || []),
                 user_customized: existing?.user_customized || p.user_customized,
                 updated_at: existing?.updated_at && p.updated_at && new Date(existing.updated_at).getTime() > new Date(p.updated_at).getTime() ? existing.updated_at : (p.updated_at || existing?.updated_at),
               })
@@ -1069,6 +1123,7 @@ export default function POSPage() {
           dietary_tags: p.dietary_tags || [],
           department: p.department || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
           station,
+          choice_groups: Array.isArray(p.choice_groups) ? p.choice_groups : [],
         }
       }))
       const unifiedOrders = mergeOrderRecords(
@@ -1187,6 +1242,7 @@ export default function POSPage() {
           dietary_tags: p.dietary_tags || [],
           department: p.department || (station === "bar" ? "Coffee Bar" : "Juice & Food"),
           station,
+          choice_groups: Array.isArray(p.choice_groups) ? p.choice_groups : [],
         }
       }))
     })
@@ -1523,7 +1579,13 @@ export default function POSPage() {
   }
 
   // Cart operations
-  function addToCart(p: Product, customModifiers?: string[], extraPrice = 0, itemNotes?: string) {
+  function addToCart(
+    p: Product,
+    customModifiers?: string[],
+    extraPrice = 0,
+    itemNotes?: string,
+    selectedChoices?: SelectedChoiceSnapshot[]
+  ) {
     const itemStation = (p.station as "kitchen" | "bar") || determineItemStation(p)
     const validMods = (customModifiers && customModifiers.length > 0) ? customModifiers.slice().filter(Boolean) : []
     const modKey = validMods.slice().sort().join("|")
@@ -1544,10 +1606,12 @@ export default function POSPage() {
         {
           ...p,
           cartItemId,
+          base_price: p.price,
           price: finalPrice,
           quantity: 1,
           station: itemStation,
           modifiers: validMods,
+          selected_choices: selectedChoices && selectedChoices.length > 0 ? selectedChoices : undefined,
           notes: itemNotes,
         },
       ]
@@ -1942,6 +2006,194 @@ export default function POSPage() {
     toast.success(`Payment Completed! Order #${orderNum} recorded. Table ${selectedTable} marked occupied.`)
   }
 
+  // Save Split Bill Configuration & Diner Payments (Partial or Full Settlement)
+  async function handleSaveSplitOrder(config: OrderSplitConfig, finalizeAsPaid: boolean) {
+    if (!cart.length) {
+      toast.error("Current order is empty! Add products to proceed.")
+      return
+    }
+
+    const isPayingExisting = Boolean(activeOpenOrder)
+    let orderNum = activeOpenOrder?.order_number || ""
+    let receiptNum = activeOpenOrder?.receipt_number || ""
+
+    if (!isPayingExisting) {
+      try {
+        const allocated = await SharedPosService.allocateNextOrderNumber()
+        orderNum = allocated.orderNumber
+        receiptNum = allocated.receiptNumber
+        setOrderCount(allocated.seq)
+      } catch {
+        const fallback = getNextOrderNumberInfo()
+        orderNum = fallback.orderNum
+        receiptNum = fallback.receiptNum
+        setOrderCount(fallback.nextSeq)
+      }
+    } else if (!receiptNum) {
+      receiptNum = `LS-RC-${orderNum.replace(/^LS-/, "")}`
+    }
+
+    const purchasedItems: CartItem[] = cart.map((i) => ({
+      ...i,
+      station: (i.station as "kitchen" | "bar") || determineItemStation(i),
+    }))
+
+    // Prevent accidentally overwriting an occupied table unless explicitly selected
+    if (orderType === "dine_in" && selectedTable && selectedTable !== "Takeaway") {
+      const curTable = tables.find((t) => t.name.toLowerCase() === selectedTable.toLowerCase())
+      const isExplicitlyChosen = manualTableSelectionRef.current === selectedTable.toLowerCase()
+      if (!isPayingExisting && curTable && curTable.status === "occupied" && curTable.orderNumber && !isExplicitlyChosen) {
+        toast.error(`Table ${selectedTable} is currently OCCUPIED. Please select an available table.`)
+        return
+      }
+    }
+
+    // Validate ingredient stock if creating a new order
+    if (!isPayingExisting) {
+      const stockValidation = SharedPosService.validateOrderStock(purchasedItems)
+      if (!stockValidation.valid) {
+        toast.error(stockValidation.warnings[0], { duration: 6000 })
+        return
+      }
+    }
+
+    const nowIso = new Date().toISOString()
+    const activeSplitPayments = (config.payments || []).filter(
+      (p) => p.status !== "refunded" && p.status !== "voided"
+    )
+    const totalPaidSoFar = activeSplitPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    const finalCashReceived = activeSplitPayments.reduce((s, p) => s + (Number(p.tendered) || Number(p.amount) || 0), 0)
+    const finalChangeAmount = activeSplitPayments.reduce((s, p) => s + (Number(p.change_due) || 0), 0)
+
+    const orderId = isPayingExisting
+      ? activeOpenOrder!.id
+      : (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `ord-${Date.now()}`)
+
+    const resolvedPaymentStatus: "unpaid" | "partial" | "paid" = finalizeAsPaid
+      ? "paid"
+      : totalPaidSoFar > 0
+      ? "partial"
+      : "unpaid"
+
+    const newOrderRecord: OrderRecord = {
+      id: orderId,
+      order_number: orderNum,
+      receipt_number: receiptNum,
+      table_name: orderType === "takeaway" ? "Takeaway" : orderType === "delivery" ? `Delivery (${deliveryPhone || "Guest"})` : selectedTable,
+      cashier_name: cashierName,
+      department: "Juice & Food",
+      items: purchasedItems,
+      subtotal,
+      service_charge: serviceCharge,
+      service_charge_rate: serviceChargeRate,
+      discount: discountNum,
+      total,
+      payment_method: "split",
+      split_payments: config.payments,
+      split_config: config,
+      cash_received: finalCashReceived,
+      change_amount: finalChangeAmount,
+      status: finalizeAsPaid ? "paid" : "open",
+      payment_status: resolvedPaymentStatus,
+      kitchen_status: isPayingExisting ? (activeOpenOrder!.kitchen_status || "pending") : "pending",
+      bar_status: isPayingExisting ? (activeOpenOrder!.bar_status || "pending") : "pending",
+      order_type: orderType,
+      delivery_address: orderType === "delivery" ? deliveryAddress : undefined,
+      delivery_phone: orderType === "delivery" ? deliveryPhone : undefined,
+      created_at: isPayingExisting ? activeOpenOrder!.created_at : nowIso,
+    }
+
+    const idempotencyKey = `idem_${orderId}_split_${Date.now()}`
+
+    try {
+      const savedOrder = await SharedPosService.saveOrder({
+        ...newOrderRecord,
+        idempotency_key: idempotencyKey,
+        action: finalizeAsPaid ? "pay_tab" : (isPayingExisting ? "add_items" : "send_kitchen"),
+      })
+      if (savedOrder?.order_number) newOrderRecord.order_number = savedOrder.order_number
+      if (savedOrder?.receipt_number) newOrderRecord.receipt_number = savedOrder.receipt_number
+      if (savedOrder?.id) newOrderRecord.id = savedOrder.id
+    } catch (saveErr: any) {
+      console.error("Split order persistence failed:", saveErr)
+      toast.error(saveErr?.message || "Failed to save split bill. Please try again.")
+      throw saveErr
+    }
+
+    // Deduct inventory stock only if creating a brand new order
+    if (!isPayingExisting) {
+      const updatedProducts = products.map((p) => {
+        const bought = purchasedItems.find(
+          (item) =>
+            item.id === p.id ||
+            (item as any).product_id === p.id ||
+            item.name?.toLowerCase() === p.name.toLowerCase()
+        )
+        if (bought) {
+          const remaining = Math.max(0, p.stock - bought.quantity)
+          return { ...p, stock: remaining }
+        }
+        return p
+      })
+      setProducts(updatedProducts)
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("pos_products_updated"))
+      }
+
+      const newMovements = purchasedItems.map((item) => ({
+        id: String(Date.now() + Math.random()),
+        product_id: item.id,
+        product_name: item.name,
+        quantity_change: -item.quantity,
+        reason: `Sale #${orderNum}`,
+        created_at: nowIso,
+      }))
+      setMovements((prev) => [...newMovements, ...prev])
+    }
+
+    // Occupy dine-in table
+    if (orderType === "dine_in" && selectedTable && selectedTable !== "Takeaway") {
+      const curTable = tables.find((t) => t.name.toLowerCase() === selectedTable.toLowerCase())
+      void SharedPosService.occupyTable(
+        selectedTable,
+        "Juice & Food",
+        orderNum,
+        total,
+        curTable?.guestName
+      )
+    }
+
+    setOrders((prev) => [
+      newOrderRecord,
+      ...prev.filter((o) => o.id !== newOrderRecord.id && o.order_number !== newOrderRecord.order_number),
+    ])
+
+    if (finalizeAsPaid) {
+      if (activeSplitPayments.some((p) => p.method === "cash")) {
+        playCashDrawerSound()
+      }
+      setCompletedReceipt(newOrderRecord)
+      setActiveOpenOrder(null)
+      setCart([])
+      setDiscount("0")
+      setAppliedPromoCode("")
+      setPromoCodeInput("")
+      setTax("")
+      setIsTaxIncluded(true)
+      setPaymentModalOpen(false)
+      setSplitModalOpen(false)
+      manualTableSelectionRef.current = null
+
+      const nextAvail = tables.find((t) => t.status === "available" && t.name.toLowerCase() !== selectedTable.toLowerCase())
+      if (nextAvail) {
+        setSelectedTable(nextAvail.name)
+      }
+      toast.success(`Split Bill Settled! Order #${orderNum} marked PAID across ${config.diners.length} diners.`)
+    } else {
+      setActiveOpenOrder(newOrderRecord)
+    }
+  }
+
   // Send open order to Kitchen & Bar (for dine-in tables paying later)
   async function handleSendToKitchenAndBar() {
     if (!cart.length) {
@@ -2010,10 +2262,12 @@ export default function POSPage() {
       service_charge_rate: serviceChargeRate,
       discount: discountNum,
       total,
-      payment_method: "cash",
-      payment_status: "unpaid",
-      cash_received: 0,
-      change_amount: 0,
+      payment_method: activeOpenOrder?.split_config ? "split" : "cash",
+      split_payments: activeOpenOrder?.split_payments,
+      split_config: activeOpenOrder?.split_config,
+      payment_status: activeOpenOrder?.payment_status === "partial" ? "partial" : "unpaid",
+      cash_received: activeOpenOrder?.cash_received || 0,
+      change_amount: activeOpenOrder?.change_amount || 0,
       status: "open",
       order_type: selectedTable && selectedTable !== "Takeaway" ? "dine_in" : "takeaway",
       kitchen_status: "pending",
@@ -2101,6 +2355,8 @@ export default function POSPage() {
           name: it.name,
           quantity: it.quantity,
           category: it.category,
+          modifiers: it.modifiers,
+          selected_choices: it.selected_choices,
           notes: it.notes,
         })),
       },
@@ -2249,6 +2505,7 @@ export default function POSPage() {
       station,
       department,
       department_override: department,
+      choice_groups: form.choice_groups || [],
     }
 
     let savedId = editingProductId || `prod-${Date.now()}`
@@ -2320,6 +2577,7 @@ export default function POSPage() {
       category_id: catId || undefined,
       station,
       department,
+      choice_groups: form.choice_groups || [],
       user_customized: true,
       updated_at: nowIso,
     }
@@ -2875,7 +3133,7 @@ export default function POSPage() {
               }}
               addToCart={addToCart}
               onSelectProduct={(p: Product) => {
-                const groups = getApplicableModifierGroups(p.name)
+                const groups = getApplicableModifierGroups(p)
                 if (groups.length > 0) {
                   setModifierProduct(p)
                 } else {
@@ -2915,7 +3173,14 @@ export default function POSPage() {
               setPromoCodeInput={setPromoCodeInput}
               appliedPromoCode={appliedPromoCode}
               onApplyPromoCode={handleApplyPromoCode}
-              onOpenSplitModal={() => setSplitModalOpen(true)}
+              onOpenSplitModal={() => {
+                if (cart.length === 0) {
+                  toast.error("Cart is empty! Add items before splitting the bill.")
+                  return
+                }
+                setMobileCartOpen(false)
+                setSplitModalOpen(true)
+              }}
               onPrintKot={() => {
                 if (cart.length === 0) {
                   toast.error("Cart is empty")
@@ -2962,7 +3227,9 @@ export default function POSPage() {
                   service_charge_rate: serviceChargeRate,
                   discount: discountNum,
                   total,
-                  payment_method: paymentMethod || "cash",
+                  payment_method: activeOpenOrder?.split_config ? "split" : (paymentMethod || "cash"),
+                  split_payments: activeOpenOrder?.split_payments,
+                  split_config: activeOpenOrder?.split_config,
                   order_type: orderType,
                   status: "open",
                   kitchen_status: "pending",
@@ -3010,6 +3277,7 @@ export default function POSPage() {
                   station: initialStation,
                   stationManuallySelected: false,
                   image: "",
+                  choice_groups: [],
                 })
                 setDialogType(type)
               }}
@@ -3030,6 +3298,7 @@ export default function POSPage() {
                   station: currentStation,
                   stationManuallySelected: true,
                   image: p.image || "",
+                  choice_groups: Array.isArray(p.choice_groups) ? p.choice_groups : [],
                 })
                 setDialogType("product")
               }}
@@ -3041,6 +3310,14 @@ export default function POSPage() {
               }}
               onPrintTicket={printTicketSlip}
               onPayOpenOrder={handlePayOpenOrder}
+              onOpenSplitForOrder={(order: OrderRecord) => {
+                setActiveOpenOrder(order)
+                setCart(order.items.map((it) => ({ ...it })))
+                setSelectedTable(order.table_name || "Takeaway")
+                setDiscount(String(order.discount || 0))
+                setView("POS")
+                setSplitModalOpen(true)
+              }}
               onUpdateOrderStatus={updateOrderStatus}
               onSelectTableAndStartOrder={handleSelectTableAndStartOrder}
               onSignOut={signOut}
@@ -3775,6 +4052,31 @@ export default function POSPage() {
                 {/* SPLIT PAYMENT / MIXED TENDER VIEW */}
                 {paymentMode === "split" && (
                   <div className="space-y-3.5 pt-1">
+                    {/* Quick Launch for Flexible Diner Bill Splitting (By Products / % / LKR Amount) */}
+                    <div className="rounded-2xl border-2 border-[#D67B6B]/40 bg-[#FAF5F1] p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs">
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-bold text-[#343428] flex items-center gap-1.5">
+                          <Split className="size-3.5 text-[#D67B6B]" />
+                          Flexible Bill Split by Diner (Products, Percentage, or LKR)
+                        </p>
+                        <p className="text-[11px] text-[#808068]">
+                          Assign products to diners, split shared items, or let each diner pay separately.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => {
+                          setPaymentModalOpen(false)
+                          setSplitModalOpen(true)
+                        }}
+                        className="bg-[#D67B6B] hover:bg-[#c26555] text-white font-bold text-xs h-9 px-3.5 rounded-xl shrink-0 gap-1.5 shadow-xs"
+                      >
+                        <Split className="size-3.5" />
+                        Open Diner Split Bill
+                      </Button>
+                    </div>
+
                     {/* Live Summary Bar Always Visible */}
                     <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100/70 p-3 sm:p-3.5 shadow-sm">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
@@ -4288,6 +4590,7 @@ export default function POSPage() {
                 orderType={completedReceipt.order_type}
                 paymentMethod={completedReceipt.payment_method}
                 splitPayments={completedReceipt.split_payments}
+                splitConfig={completedReceipt.split_config}
                 items={completedReceipt.items}
                 subtotal={completedReceipt.subtotal}
                 serviceCharge={completedReceipt.service_charge}
@@ -4329,82 +4632,69 @@ export default function POSPage() {
       />
 
       {/* ========================================================= */}
-      {/* SPLIT BILL MODAL                                          */}
+      {/* FLEXIBLE SPLIT BILL MODAL (BY PRODUCTS / % / LKR AMOUNT)   */}
       {/* ========================================================= */}
-      <Dialog open={splitModalOpen} onOpenChange={setSplitModalOpen}>
-        <DialogContent className="w-[92vw] sm:max-w-md rounded-2xl p-5 space-y-4">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2 text-gray-900">
-              <Split className="size-5 text-[#D67B6B]" />
-              Split Bill Between Guests
-            </DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">
-              Divide total order balance equally or into individual customer chits.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="bg-[#FAF5F1] p-4 rounded-xl border border-[#E5D8CF] space-y-3">
-            <div className="flex justify-between items-center text-sm font-semibold">
-              <span className="text-gray-600">Total Order Amount:</span>
-              <span className="font-mono text-base font-bold text-[#D67B6B]">
-                Rs. {total.toLocaleString()}
-              </span>
-            </div>
-
-            <div className="space-y-1.5 pt-2 border-t border-gray-200">
-              <label className="text-xs font-bold text-gray-700 block">
-                Split Count (Number of Guests):
-              </label>
-              <div className="flex items-center gap-2">
-                {[2, 3, 4, 5].map((ways) => (
-                  <button
-                    key={ways}
-                    type="button"
-                    onClick={() => setSplitWays(ways)}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
-                      splitWays === ways
-                        ? "bg-[#D67B6B] text-white border-[#D67B6B] shadow-xs"
-                        : "bg-white text-gray-700 border-gray-300 hover:bg-[#FAF5F1]"
-                    }`}
-                  >
-                    {ways} Ways
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-3 bg-white rounded-xl border border-[#EAB8B5] flex justify-between items-center">
-              <div>
-                <p className="text-xs font-bold text-[#808068]">Amount per Guest:</p>
-                <p className="text-[10px] text-gray-500">Split into {splitWays} equal payments</p>
-              </div>
-              <span className="font-mono text-lg font-bold text-[#D67B6B]">
-                Rs. {Math.round(total / splitWays).toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setSplitModalOpen(false)}
-              className="rounded-xl h-10 text-xs border-[#E5D8CF]"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setSplitModalOpen(false)
-                toast.success(`Bill split ${splitWays} ways at Rs. ${Math.round(total / splitWays).toLocaleString()} each`)
-                openPaymentModal()
-              }}
-              className="bg-[#D67B6B] text-white hover:bg-[#c26555] rounded-xl h-10 text-xs font-bold px-4 shadow-sm"
-            >
-              Proceed to Split Checkout
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SplitBillModal
+        open={splitModalOpen}
+        onOpenChange={setSplitModalOpen}
+        orderNumber={activeOpenOrder ? activeOpenOrder.order_number : getNextOrderNumberInfo().orderNum}
+        tableName={
+          orderType === "takeaway"
+            ? "Takeaway"
+            : orderType === "delivery"
+            ? `Delivery (${deliveryPhone || "Guest"})`
+            : selectedTable
+        }
+        items={cart.map((it) => ({
+          id: it.id,
+          cartItemId: it.cartItemId,
+          name: it.name,
+          price: it.price,
+          quantity: it.quantity,
+          modifiers: it.modifiers,
+          selected_choices: it.selected_choices,
+          notes: it.notes,
+        }))}
+        subtotal={subtotal}
+        discount={discountNum}
+        serviceCharge={serviceCharge}
+        serviceChargeRate={serviceChargeRate}
+        tax={isTaxIncluded ? 0 : taxNum}
+        isTaxIncluded={isTaxIncluded}
+        total={total}
+        customers={customers}
+        existingSplitConfig={activeOpenOrder?.split_config || null}
+        onSaveSplitOrder={handleSaveSplitOrder}
+        onPrintSplitBill={(config) => {
+          const { orderNum, receiptNum } = getNextOrderNumberInfo()
+          const splitBillOrder: OrderRecord = {
+            id: activeOpenOrder ? activeOpenOrder.id : `split-bill-${Date.now()}`,
+            order_number: activeOpenOrder ? activeOpenOrder.order_number : orderNum,
+            receipt_number: activeOpenOrder ? activeOpenOrder.receipt_number : receiptNum,
+            table_name:
+              orderType === "takeaway"
+                ? "Takeaway"
+                : orderType === "delivery"
+                ? "Delivery"
+                : selectedTable,
+            cashier_name: cashierName,
+            items: cart.map((i) => ({ ...i })),
+            subtotal,
+            service_charge: serviceCharge,
+            service_charge_rate: serviceChargeRate,
+            discount: discountNum,
+            total,
+            payment_method: "split",
+            split_payments: config.payments,
+            split_config: config,
+            order_type: orderType,
+            status: activeOpenOrder?.status || "open",
+            payment_status: activeOpenOrder?.payment_status || "unpaid",
+            created_at: activeOpenOrder?.created_at || new Date().toISOString(),
+          }
+          printThermalReceipt(splitBillOrder, true)
+        }}
+      />
 
       {/* ========================================================= */}
       {/* KOT TICKET PREVIEW MODAL                                  */}
@@ -4603,11 +4893,11 @@ export default function POSPage() {
 
       {/* Admin Dialogs */}
       <Dialog open={!!dialogType} onOpenChange={() => { setDialogType(null); setShowAddCategoryInline(false); }}>
-        <DialogContent className="w-[92vw] sm:max-w-md rounded-2xl max-h-[92vh] overflow-y-auto">
+        <DialogContent className={`w-[94vw] ${dialogType === "product" ? "sm:max-w-xl" : "sm:max-w-md"} rounded-2xl max-h-[92vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>
               {dialogType === "product"
-                ? editingProductId ? "Edit Product" : "Add Product"
+                ? editingProductId ? "Edit Product & Menu Choices" : "Add Product & Menu Choices"
                 : dialogType === "table"
                 ? "Add Table"
                 : dialogType === "category"
@@ -4616,7 +4906,7 @@ export default function POSPage() {
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
               {dialogType === "product"
-                ? editingProductId ? "Update item details, preparation station, and price." : "Add a new menu product to POS register."
+                ? editingProductId ? "Update item details, preparation station, price, and configurable menu choices." : "Add a new menu product and configure optional/required choice groups."
                 : dialogType === "table"
                 ? "Configure a new dining table for floor management."
                 : dialogType === "category"
@@ -4843,6 +5133,14 @@ export default function POSPage() {
                 onChange={(e) => setForm({ ...form, stock: e.target.value })}
                 className="h-11 rounded-xl"
               />
+
+              {/* Configurable Menu Choice Groups Editor */}
+              <ProductChoicesEditor
+                productName={form.name}
+                value={form.choice_groups || []}
+                onChange={(groups) => setForm((f) => ({ ...f, choice_groups: groups }))}
+              />
+
               <Button
                 onClick={saveProduct}
                 disabled={isUploadingImage}
@@ -4921,8 +5219,8 @@ export default function POSPage() {
         product={modifierProduct}
         isOpen={Boolean(modifierProduct)}
         onClose={() => setModifierProduct(null)}
-        onAdd={(product, modifiers, extraPrice, notes) => {
-          addToCart(product, modifiers, extraPrice, notes)
+        onAdd={(product, modifiers, extraPrice, notes, selectedChoices) => {
+          addToCart(product, modifiers, extraPrice, notes, selectedChoices)
           setModifierProduct(null)
         }}
       />
@@ -5085,6 +5383,11 @@ function POSView({
                   {p.stock <= 0 && (
                     <Badge variant="secondary" className="absolute left-1.5 top-1.5 text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0 bg-[#FAF5F1] text-[#808068] border border-[#EAB8B5]">
                       Available
+                    </Badge>
+                  )}
+                  {getApplicableModifierGroups(p).length > 0 && (
+                    <Badge variant="secondary" className="absolute right-1.5 top-1.5 text-[8px] sm:text-[9px] px-1.5 py-0 bg-[#808068]/90 text-white border-0 shadow-xs">
+                      Options
                     </Badge>
                   )}
                 </div>
@@ -5464,6 +5767,30 @@ function POSView({
                   </p>
                 </div>
               </div>
+
+              {activeOpenOrder?.split_config && (() => {
+                const paidAmt = (activeOpenOrder.split_config.payments || [])
+                  .filter((p: any) => p.status !== "refunded" && p.status !== "voided")
+                  .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0)
+                const remAmt = Math.max(0, total - paidAmt)
+                return (
+                  <div className="rounded-lg border border-indigo-200 bg-indigo-50/80 px-2.5 py-1.5 flex items-center justify-between text-[11px]">
+                    <div>
+                      <span className="font-bold text-indigo-900">⚡ Split Active ({activeOpenOrder.split_config.diners?.length || 2} diners)</span>
+                      <p className="text-[10px] text-indigo-700 font-mono">
+                        Paid: Rs. {paidAmt.toLocaleString()} · Due: Rs. {remAmt.toLocaleString()}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={onOpenSplitModal}
+                      className="h-6 px-2 text-[10px] bg-indigo-700 hover:bg-indigo-800 text-white rounded-md font-bold"
+                    >
+                      Pay Shares
+                    </Button>
+                  </div>
+                )
+              })()}
 
               {/* Action Buttons: Row 1 = 4 Secondary Actions, Row 2 = Primary Pay Button */}
               <div className="space-y-1.5">
@@ -5865,6 +6192,30 @@ function POSView({
               </div>
             </div>
 
+            {activeOpenOrder?.split_config && (() => {
+              const paidAmt = (activeOpenOrder.split_config.payments || [])
+                .filter((p: any) => p.status !== "refunded" && p.status !== "voided")
+                .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0)
+              const remAmt = Math.max(0, total - paidAmt)
+              return (
+                <div className="rounded-xl border border-indigo-200 bg-indigo-50/80 px-3 py-2 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-indigo-900">⚡ Split Bill Active ({activeOpenOrder.split_config.diners?.length || 2} diners)</span>
+                    <p className="text-[11px] text-indigo-700 font-mono">
+                      Paid: Rs. {paidAmt.toLocaleString()} · Remaining Due: Rs. {remAmt.toLocaleString()}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={onOpenSplitModal}
+                    className="h-7 px-2.5 text-xs bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg font-bold"
+                  >
+                    Pay Shares
+                  </Button>
+                </div>
+              )
+            })()}
+
             {/* Action Buttons: Row 1 = 4 Secondary Actions, Row 2 = Primary Pay Button */}
             <div className="space-y-1.5 pt-0.5">
               <div className="grid grid-cols-4 gap-1">
@@ -5952,6 +6303,7 @@ function ManagementView({
   onPrintReceipt,
   onPrintTicket,
   onPayOpenOrder,
+  onOpenSplitForOrder,
   onUpdateOrderStatus,
   onSelectTableAndStartOrder,
   onSignOut,
@@ -6568,6 +6920,10 @@ function ManagementView({
                               <CheckCircle2 className="size-3 text-emerald-600" />
                               Completed ✓
                             </Badge>
+                          ) : o.status === "open" && o.payment_status === "partial" ? (
+                            <Badge className="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] uppercase font-bold px-2 py-0.5">
+                              PARTIALLY PAID (SPLIT)
+                            </Badge>
                           ) : o.status === "open" ? (
                             <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] uppercase font-bold px-2 py-0.5">
                               OPEN TAB
@@ -6653,13 +7009,26 @@ function ManagementView({
                         </p>
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
                           {o.status === "open" && (
-                            <Button
-                              size="sm"
-                              onClick={() => onPayOpenOrder(o)}
-                              className="bg-[#D67B6B] hover:bg-[#c26555] text-white text-xs h-7 px-2.5 rounded-lg font-semibold shadow-xs"
-                            >
-                              Pay Tab
-                            </Button>
+                            <>
+                              {onOpenSplitForOrder && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => onOpenSplitForOrder(o)}
+                                  className="border-indigo-300 text-indigo-800 bg-indigo-50/70 hover:bg-indigo-100 text-xs h-7 px-2.5 rounded-lg font-semibold gap-1"
+                                >
+                                  <Split className="size-3" />
+                                  {o.split_config ? "Continue Split" : "Split Bill"}
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                onClick={() => onPayOpenOrder(o)}
+                                className="bg-[#D67B6B] hover:bg-[#c26555] text-white text-xs h-7 px-2.5 rounded-lg font-semibold shadow-xs"
+                              >
+                                Pay Tab
+                              </Button>
+                            </>
                           )}
                           {hasKitchen && o.kitchen_status !== "served" && (
                             <Button
@@ -6717,7 +7086,7 @@ function ManagementView({
       {/* ========================================================= */}
       {(view === "Tables" || view === "TableBooked") && (
         <TablesWorkspace
-          role={effectiveRole}
+          role={effectiveRole === "admin" ? "admin" : "cashier"}
           initialTab={view === "TableBooked" ? "bookings" : "floor"}
           onStartOrder={onSelectTableAndStartOrder}
         />
@@ -6780,6 +7149,11 @@ function ManagementView({
                             >
                               {(p.station === "bar" || determineItemStation(p) === "bar") ? "🍹 Bar (Drinks/Juice)" : "🍳 Kitchen (Food)"}
                             </Badge>
+                            {Array.isArray(p.choice_groups) && p.choice_groups.length > 0 && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-semibold bg-[#FAF5F1] text-[#D67B6B] border-[#EAB8B5]">
+                                ✨ {p.choice_groups.length} Choice {p.choice_groups.length === 1 ? "Group" : "Groups"}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -6820,7 +7194,7 @@ function ManagementView({
       {/* 6. INVENTORY CONTROL VIEW                                 */}
       {/* ========================================================= */}
       {view === "Inventory" && (
-        <InventoryWorkspace supabase={supabase} products={inventoryProducts} role={effectiveRole} />
+        <InventoryWorkspace supabase={supabase} products={inventoryProducts} role={effectiveRole === "admin" ? "admin" : "cashier"} />
       )}
 
       {/* ========================================================= */}

@@ -11,18 +11,23 @@ const orderItemSchema = z.object({
   product_id: z.string().optional(),
   name: z.string().min(1).max(200),
   price: z.coerce.number().min(0),
+  base_price: z.coerce.number().min(0).optional(),
   quantity: z.coerce.number().int().min(1).max(500),
   category: z.string().optional(),
   department: z.string().optional(),
   station: z.enum(["kitchen", "bar", "none"]).optional(),
   notes: z.string().max(500).optional(),
+  modifiers: z.array(z.string()).optional(),
+  selected_choices: z.array(z.any()).optional(),
   image: z.string().optional(),
   stock: z.coerce.number().optional(),
   round: z.coerce.number().optional(),
-})
+}).passthrough()
 
 const splitPaymentItemSchema = z.object({
   id: z.string().optional(),
+  diner_id: z.string().optional(),
+  diner_name: z.string().optional(),
   method: z.string(),
   amount: z.coerce.number().min(0),
   tendered: z.coerce.number().optional(),
@@ -30,7 +35,11 @@ const splitPaymentItemSchema = z.object({
   reference: z.string().optional(),
   customer_id: z.string().optional(),
   customer_name: z.string().optional(),
-})
+  status: z.string().optional(),
+  paid_at: z.string().optional(),
+  refunded_at: z.string().optional(),
+  refund_reason: z.string().optional(),
+}).passthrough()
 
 const orderCreateSchema = z.object({
   id: z.string().optional(),
@@ -48,14 +57,16 @@ const orderCreateSchema = z.object({
   tax: z.coerce.number().default(0),
   total: z.coerce.number().min(0),
   payment_method: z.string().default("cash"),
+  payment_status: z.string().optional(),
   split_payments: z.array(splitPaymentItemSchema).optional(),
+  split_config: z.any().optional(),
   cash_received: z.coerce.number().optional(),
   change_amount: z.coerce.number().optional(),
   status: z.enum(["open", "paid", "completed", "refunded", "cancelled"]).default("paid"),
-  notes: z.string().max(1000).optional(),
+  notes: z.string().max(4000).optional(),
   idempotency_key: z.string().optional(),
   action: z.string().optional(),
-})
+}).passthrough()
 
 export async function GET(request: NextRequest) {
   const auth = await authorizeStaff(request, "cashier")
@@ -265,12 +276,16 @@ export async function POST(request: NextRequest) {
       const itemStation = i.station || determineItemStation(i)
       return {
         id: i.id || i.product_id,
+        product_id: i.product_id || i.id,
         name: i.name,
         price: i.price,
+        base_price: i.base_price ?? i.price,
         quantity: i.quantity,
         station: itemStation,
         category: i.category,
         notes: i.notes || "",
+        modifiers: i.modifiers,
+        selected_choices: i.selected_choices,
       }
     })
 
@@ -332,11 +347,13 @@ export async function POST(request: NextRequest) {
         tax: orderData.tax,
         total: orderData.total,
         payment_method: orderData.payment_method,
+        payment_status: orderData.payment_status,
         split_payments: orderData.split_payments,
+        split_config: orderData.split_config,
         cash_received: orderData.cash_received,
         change_amount: orderData.change_amount,
         status: orderData.status,
-        notes: orderData.notes || (orderData.split_payments?.length ? JSON.stringify({ split_payments: orderData.split_payments }) : ""),
+        notes: orderData.notes || (orderData.split_payments?.length ? JSON.stringify({ split_payments: orderData.split_payments, split_config: orderData.split_config }) : ""),
         idempotency_key: orderData.idempotency_key,
         action: orderData.action,
       },
