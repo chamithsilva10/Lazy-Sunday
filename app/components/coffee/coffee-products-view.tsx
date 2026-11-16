@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { normalizeRole } from "@/lib/rbac/permissions"
+import { ProductChoicesEditor } from "@/app/components/product-choices-editor"
+import type { ProductChoiceGroup } from "@/app/components/modifier-modal"
 
 interface CoffeeProductsViewProps {
   role?: string
@@ -80,6 +82,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
     price: "",
     image_url: "/latte-coffee.png",
     status: "active" as CoffeeStatus,
+    choice_groups: [] as ProductChoiceGroup[],
   })
 
   // Load products
@@ -162,6 +165,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
       price: "",
       image_url: "/latte-coffee.png",
       status: "active",
+      choice_groups: [],
     })
     setDialogOpen(true)
   }
@@ -176,6 +180,9 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
       price: String(product.price),
       image_url: product.image_url || "/latte-coffee.png",
       status: product.status,
+      choice_groups: Array.isArray((product as any).choice_groups)
+        ? (product as any).choice_groups
+        : [],
     })
     setDialogOpen(true)
   }
@@ -204,6 +211,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                 price: priceNum,
                 image_url: formData.image_url,
                 status: formData.status,
+                choice_groups: formData.choice_groups,
                 updated_at: new Date().toISOString(),
               }
             : p
@@ -221,6 +229,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
           department: "Coffee Bar",
           station: "bar",
           active: formData.status === "active",
+          choice_groups: formData.choice_groups,
         })
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("pos_products_updated"))
@@ -237,6 +246,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
             price: priceNum,
             image_url: formData.image_url,
             status: formData.status,
+            choice_groups: formData.choice_groups,
           }),
         })
 
@@ -250,9 +260,10 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
           price: priceNum,
           image_url: formData.image_url,
           status: formData.status,
+          choice_groups: formData.choice_groups,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        }
+        } as any
         const updated = [newProduct, ...products]
         setProducts(updated)
         CoffeeStorageService.saveLocalProducts(updated)
@@ -267,6 +278,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
           department: "Coffee Bar",
           station: "bar",
           active: formData.status === "active",
+          choice_groups: formData.choice_groups,
         })
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("pos_products_updated"))
@@ -283,6 +295,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
             price: priceNum,
             image_url: formData.image_url,
             status: formData.status,
+            choice_groups: formData.choice_groups,
           }),
         })
 
@@ -444,7 +457,14 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                         />
                         <div>
                           <p className="font-semibold text-gray-900">{p.name}</p>
-                          <p className="text-[11px] text-gray-500 font-mono">ID: {p.id.substring(0, 10)}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[11px] text-gray-500 font-mono">ID: {p.id.substring(0, 10)}</span>
+                            {Array.isArray((p as any).choice_groups) && (p as any).choice_groups.length > 0 && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-semibold bg-[#FAF5F1] text-[#D67B6B] border-[#EAB8B5]">
+                                ✨ {(p as any).choice_groups.length} Choice {(p as any).choice_groups.length === 1 ? "Group" : "Groups"}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -561,7 +581,7 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
 
       {/* Add / Edit Coffee Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl bg-white p-6">
+        <DialogContent className="sm:max-w-xl rounded-2xl bg-white p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl font-bold">
               {editingProduct ? "Edit Coffee Product" : "Add New Coffee Kind"}
@@ -702,6 +722,13 @@ export function CoffeeProductsView({ role }: CoffeeProductsViewProps) {
                 className="h-8 text-xs rounded-lg bg-white/70"
               />
             </div>
+
+            {/* Configurable Menu Choice Groups Editor */}
+            <ProductChoicesEditor
+              productName={formData.name}
+              value={formData.choice_groups || []}
+              onChange={(groups) => setFormData((f) => ({ ...f, choice_groups: groups }))}
+            />
           </div>
 
           <DialogFooter className="flex gap-2 sm:justify-end">

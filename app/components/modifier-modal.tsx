@@ -22,6 +22,7 @@ export interface ProductChoiceGroup {
   title?: string
   instructions?: string
   required: boolean
+  enabled?: boolean
   selection_type: "single" | "multiple"
   min_selections: number
   max_selections: number
@@ -51,6 +52,7 @@ export function normalizeChoiceGroups(groups?: any[] | null): ProductChoiceGroup
       const selectionType: "single" | "multiple" =
         g.selection_type === "multiple" ? "multiple" : "single"
       const required = Boolean(g.required ?? true)
+      const enabled = g.enabled !== false
       const options: ProductChoiceOption[] = Array.isArray(g.options)
         ? g.options
             .filter((o: any) => o && String(o.label || "").trim().length > 0)
@@ -75,6 +77,7 @@ export function normalizeChoiceGroups(groups?: any[] | null): ProductChoiceGroup
         title: name,
         instructions: g.instructions ? String(g.instructions).trim() : "",
         required,
+        enabled,
         selection_type: selectionType,
         min_selections: minSelections,
         max_selections: maxSelections,
@@ -97,6 +100,52 @@ export function getDefaultChoiceGroupsForProduct(productName: string): ProductCh
     !name.includes("brownie") &&
     !name.includes("muffin")
 
+  const isMilkTea =
+    name.includes("milk tea") ||
+    name.includes("bubble tea") ||
+    name === "tea" ||
+    name.includes("iced tea") ||
+    name.includes("black tea") ||
+    name.includes("green tea")
+
+  // 1. Milk Tea — Temperature: Iced or Hot, Milk choice: Oat milk or Coconut milk
+  if (isMilkTea) {
+    groups.push({
+      id: "temperature",
+      name: "Temperature",
+      title: "Temperature",
+      instructions: "Served iced or hot",
+      required: true,
+      enabled: true,
+      selection_type: "single",
+      min_selections: 1,
+      max_selections: 1,
+      options: [
+        { id: "temp-iced", label: "Iced", price: 0, available: true },
+        { id: "temp-hot", label: "Hot", price: 0, available: true },
+      ],
+      defaultOption: name.includes("hot") ? "Hot" : "Iced",
+    })
+    groups.push({
+      id: "milk_choice",
+      name: "Milk choice",
+      title: "Milk choice",
+      instructions: "Select your preferred milk option",
+      required: true,
+      enabled: true,
+      selection_type: "single",
+      min_selections: 1,
+      max_selections: 1,
+      options: [
+        { id: "milk-fresh", label: "Fresh Dairy Milk", price: 0, available: true },
+        { id: "milk-oat", label: "Oat milk", price: 200, available: true },
+        { id: "milk-coconut", label: "Coconut milk", price: 150, available: true },
+      ],
+      defaultOption: "Fresh Dairy Milk",
+    })
+    return groups
+  }
+
   const isCoffeeOrMilkDrink =
     name === "coffee" ||
     name.includes("flat white") ||
@@ -109,7 +158,7 @@ export function getDefaultChoiceGroupsForProduct(productName: string): ProductCh
     name.includes("chai latte") ||
     isChocolateDrink
 
-  // 1. Creamy Mushrooms / Bacon and Eggs — Choose a side: Hashbrowns or Sourdough
+  // 2. Creamy Mushrooms / Bacon and Eggs — Choose a side: Hashbrowns or Sourdough
   if (name.includes("creamy mushrooms") || name.includes("bacon and eggs")) {
     groups.push({
       id: "choose_side",
@@ -117,6 +166,7 @@ export function getDefaultChoiceGroupsForProduct(productName: string): ProductCh
       title: "Choose a side",
       instructions: "Select 1 side to accompany your dish",
       required: true,
+      enabled: true,
       selection_type: "single",
       min_selections: 1,
       max_selections: 1,
@@ -128,7 +178,7 @@ export function getDefaultChoiceGroupsForProduct(productName: string): ProductCh
     })
   }
 
-  // 2. Egg Preparation for Bacon and Eggs
+  // 3. Egg Preparation for Bacon and Eggs
   if (name.includes("bacon and eggs")) {
     groups.push({
       id: "egg_style",
@@ -136,6 +186,7 @@ export function getDefaultChoiceGroupsForProduct(productName: string): ProductCh
       title: "Egg Preparation",
       instructions: "Choose how you would like your eggs prepared",
       required: true,
+      enabled: true,
       selection_type: "single",
       min_selections: 1,
       max_selections: 1,
@@ -148,7 +199,7 @@ export function getDefaultChoiceGroupsForProduct(productName: string): ProductCh
     })
   }
 
-  // 3. Coffee / Milk Drinks — Choose milk: Oat milk or Coconut milk (or Dairy Milk)
+  // 4. Coffee / Milk Drinks — Choose milk: Oat milk or Coconut milk (or Dairy Milk)
   if (isCoffeeOrMilkDrink) {
     groups.push({
       id: "choose_milk",
@@ -156,6 +207,7 @@ export function getDefaultChoiceGroupsForProduct(productName: string): ProductCh
       title: "Choose milk",
       instructions: "Select your preferred milk option",
       required: true,
+      enabled: true,
       selection_type: "single",
       min_selections: 1,
       max_selections: 1,
@@ -168,7 +220,7 @@ export function getDefaultChoiceGroupsForProduct(productName: string): ProductCh
     })
   }
 
-  // 4. Temperature: Hot / Iced
+  // 5. Temperature: Hot / Iced
   if (
     name === "coffee" ||
     name.includes("long black") ||
@@ -189,6 +241,7 @@ export function getDefaultChoiceGroupsForProduct(productName: string): ProductCh
       title: "Temperature",
       instructions: "Served hot or iced",
       required: true,
+      enabled: true,
       selection_type: "single",
       min_selections: 1,
       max_selections: 1,
@@ -200,7 +253,7 @@ export function getDefaultChoiceGroupsForProduct(productName: string): ProductCh
     })
   }
 
-  // 5. Side Choice: Fries / Salad for Sandwiches & Quiche
+  // 6. Side Choice: Fries / Salad for Sandwiches & Quiche
   if (name.includes("grilled chicken sandwich") || name.includes("quiche")) {
     groups.push({
       id: "side",
@@ -208,6 +261,7 @@ export function getDefaultChoiceGroupsForProduct(productName: string): ProductCh
       title: "Choose a side",
       instructions: "Select 1 side dish",
       required: true,
+      enabled: true,
       selection_type: "single",
       min_selections: 1,
       max_selections: 1,
@@ -228,11 +282,11 @@ export function getApplicableModifierGroups(
   if (!productOrName) return []
   if (typeof productOrName === "object") {
     if (Array.isArray(productOrName.choice_groups)) {
-      return normalizeChoiceGroups(productOrName.choice_groups)
+      return normalizeChoiceGroups(productOrName.choice_groups).filter((g) => g.enabled !== false)
     }
-    return getDefaultChoiceGroupsForProduct(productOrName.name || "")
+    return getDefaultChoiceGroupsForProduct(productOrName.name || "").filter((g) => g.enabled !== false)
   }
-  return getDefaultChoiceGroupsForProduct(productOrName)
+  return getDefaultChoiceGroupsForProduct(productOrName).filter((g) => g.enabled !== false)
 }
 
 export function formatChoiceSnapshotLabel(choice: SelectedChoiceSnapshot): string {
@@ -243,7 +297,7 @@ export function formatChoiceSnapshotLabel(choice: SelectedChoiceSnapshot): strin
   return baseLabel
 }
 
-interface ModifierModalProps {
+export interface ModifierModalProps {
   product: Product | null
   isOpen: boolean
   onClose: () => void
@@ -252,11 +306,25 @@ interface ModifierModalProps {
     selectedModifiers: string[],
     extraPrice: number,
     notes?: string,
-    selectedChoices?: SelectedChoiceSnapshot[]
+    selectedChoices?: SelectedChoiceSnapshot[],
+    cartItemId?: string
   ) => void
+  initialSelectedChoices?: SelectedChoiceSnapshot[]
+  initialNotes?: string
+  cartItemId?: string
+  isEditing?: boolean
 }
 
-export function ModifierModal({ product, isOpen, onClose, onAdd }: ModifierModalProps) {
+export function ModifierModal({
+  product,
+  isOpen,
+  onClose,
+  onAdd,
+  initialSelectedChoices,
+  initialNotes,
+  cartItemId,
+  isEditing = false,
+}: ModifierModalProps) {
   // Map of group.id -> array of selected option labels
   const [selections, setSelections] = useState<Record<string, string[]>>({})
   const [note, setNote] = useState("")
@@ -265,22 +333,37 @@ export function ModifierModal({ product, isOpen, onClose, onAdd }: ModifierModal
   const groups = product ? getApplicableModifierGroups(product) : []
 
   useEffect(() => {
-    if (product) {
+    if (product && isOpen) {
       const initial: Record<string, string[]> = {}
       const prodGroups = getApplicableModifierGroups(product)
       prodGroups.forEach((g) => {
-        const availableOpts = g.options.filter((o) => o.available !== false)
-        if (g.defaultOption && availableOpts.some((o) => o.label === g.defaultOption)) {
-          initial[g.id] = [g.defaultOption]
+        const matchingChoices = Array.isArray(initialSelectedChoices)
+          ? initialSelectedChoices.filter(
+              (c) =>
+                c.group_id === g.id ||
+                c.group_name.trim().toLowerCase() === g.name.trim().toLowerCase()
+            )
+          : []
+
+        if (matchingChoices.length > 0) {
+          const matchedLabels = matchingChoices
+            .map((c) => c.label || c.option_name)
+            .filter((lbl) => g.options.some((o) => o.label === lbl))
+          initial[g.id] = matchedLabels
         } else {
-          initial[g.id] = []
+          const availableOpts = g.options.filter((o) => o.available !== false)
+          if (g.defaultOption && availableOpts.some((o) => o.label === g.defaultOption)) {
+            initial[g.id] = [g.defaultOption]
+          } else {
+            initial[g.id] = []
+          }
         }
       })
       setSelections(initial)
-      setNote("")
+      setNote(initialNotes || "")
       setValidationError(null)
     }
-  }, [product?.id, isOpen])
+  }, [product?.id, isOpen, initialSelectedChoices, initialNotes])
 
   if (!product) return null
 
@@ -363,7 +446,7 @@ export function ModifierModal({ product, isOpen, onClose, onAdd }: ModifierModal
       setValidationError(`Please complete required choices: ${missingGroups.join(", ")}`)
       return
     }
-    onAdd(product, chosenModifiers, extraPrice, note.trim() || undefined, selectedChoices)
+    onAdd(product, chosenModifiers, extraPrice, note.trim() || undefined, selectedChoices, cartItemId)
     onClose()
   }
 
@@ -378,9 +461,16 @@ export function ModifierModal({ product, isOpen, onClose, onAdd }: ModifierModal
               className="size-14 rounded-xl object-cover border border-[#E5D8CF]"
             />
             <div className="min-w-0 flex-1">
-              <DialogTitle className="font-serif text-lg font-bold text-[#343428] truncate">
-                {product.name}
-              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <DialogTitle className="font-serif text-lg font-bold text-[#343428] truncate">
+                  {product.name}
+                </DialogTitle>
+                {isEditing && (
+                  <Badge className="bg-[#FAF5F1] text-[#808068] border border-[#E5D8CF] text-[10px]">
+                    Editing Options
+                  </Badge>
+                )}
+              </div>
               <DialogDescription className="text-xs text-[#808068] mt-0.5">
                 Base price: LKR {Number(product.price).toLocaleString()} • {product.category}
               </DialogDescription>
@@ -530,7 +620,9 @@ export function ModifierModal({ product, isOpen, onClose, onAdd }: ModifierModal
             onClick={handleConfirm}
             className="flex-1 rounded-xl bg-[#D67B6B] hover:bg-[#c26555] text-white font-semibold h-11 shadow-sm"
           >
-            Add to Order • LKR {totalPrice.toLocaleString()}
+            {isEditing
+              ? `Update Order • LKR ${totalPrice.toLocaleString()}`
+              : `Add to Order • LKR ${totalPrice.toLocaleString()}`}
           </Button>
         </DialogFooter>
       </DialogContent>

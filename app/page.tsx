@@ -620,6 +620,7 @@ export default function POSPage() {
   const [orderCount, setOrderCount] = useState<number>(100)
   const [activeOpenOrder, setActiveOpenOrder] = useState<OrderRecord | null>(null)
   const [modifierProduct, setModifierProduct] = useState<Product | null>(null)
+  const [editingCartItem, setEditingCartItem] = useState<CartItem | null>(null)
 
   function getNextOrderNumberInfo(): { orderNum: string; receiptNum: string; nextSeq: number } {
     let maxSeq = 100
@@ -1616,6 +1617,41 @@ export default function POSPage() {
         },
       ]
     })
+  }
+
+  function handleUpdateCartItem(
+    cartItemId: string,
+    customModifiers?: string[],
+    extraPrice = 0,
+    itemNotes?: string,
+    selectedChoices?: SelectedChoiceSnapshot[]
+  ) {
+    setCart((items) =>
+      items.map((item) => {
+        const itemKey = item.cartItemId || item.id
+        if (itemKey !== cartItemId) return item
+
+        const existingChoiceCost = Array.isArray(item.selected_choices)
+          ? item.selected_choices.reduce((sum, c) => sum + (Number(c.price) || 0), 0)
+          : 0
+        const basePrice =
+          item.base_price !== undefined
+            ? item.base_price
+            : Math.max(0, item.price - existingChoiceCost)
+        const validMods = customModifiers?.filter(Boolean) || []
+        const newUnitPrice = Math.max(0, basePrice + (extraPrice || 0))
+
+        return {
+          ...item,
+          base_price: basePrice,
+          price: newUnitPrice,
+          modifiers: validMods.length > 0 ? validMods : undefined,
+          notes: itemNotes,
+          selected_choices: selectedChoices && selectedChoices.length > 0 ? selectedChoices : undefined,
+        }
+      })
+    )
+    toast.success("Updated item options")
   }
 
   function addAllProductsToCart() {
@@ -3140,6 +3176,7 @@ export default function POSPage() {
                   addToCart(p)
                 }
               }}
+              onEditCartItem={(item: CartItem) => setEditingCartItem(item)}
               addAllProductsToCart={addAllProductsToCart}
               activeOpenOrder={activeOpenOrder}
               startNewOrder={startNewOrder}
@@ -5216,12 +5253,30 @@ export default function POSPage() {
       </Dialog>
 
       <ModifierModal
-        product={modifierProduct}
-        isOpen={Boolean(modifierProduct)}
-        onClose={() => setModifierProduct(null)}
-        onAdd={(product, modifiers, extraPrice, notes, selectedChoices) => {
-          addToCart(product, modifiers, extraPrice, notes, selectedChoices)
+        product={editingCartItem || modifierProduct}
+        isOpen={Boolean(editingCartItem || modifierProduct)}
+        isEditing={Boolean(editingCartItem)}
+        initialSelectedChoices={editingCartItem?.selected_choices}
+        initialNotes={editingCartItem?.notes}
+        cartItemId={editingCartItem ? (editingCartItem.cartItemId || editingCartItem.id) : undefined}
+        onClose={() => {
           setModifierProduct(null)
+          setEditingCartItem(null)
+        }}
+        onAdd={(product, modifiers, extraPrice, notes, selectedChoices, cartItemId) => {
+          if (editingCartItem || cartItemId) {
+            handleUpdateCartItem(
+              cartItemId || editingCartItem?.cartItemId || product.id,
+              modifiers,
+              extraPrice,
+              notes,
+              selectedChoices
+            )
+          } else {
+            addToCart(product, modifiers, extraPrice, notes, selectedChoices)
+          }
+          setModifierProduct(null)
+          setEditingCartItem(null)
         }}
       />
     </div>
@@ -5244,6 +5299,7 @@ function POSView({
   setSelectedTable,
   addToCart,
   onSelectProduct,
+  onEditCartItem,
   addAllProductsToCart,
   activeOpenOrder,
   startNewOrder,
@@ -5637,9 +5693,24 @@ function POSView({
                           Note: {item.notes}
                         </p>
                       )}
-                      <p className="font-mono text-xs sm:text-sm font-semibold text-stone-500 mt-0.5">
-                        Rs. {item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })} ea
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                        <p className="font-mono text-xs sm:text-sm font-semibold text-stone-500">
+                          Rs. {item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })} ea
+                        </p>
+                        {(getApplicableModifierGroups(item).length > 0 ||
+                          (item.selected_choices && item.selected_choices.length > 0)) &&
+                          onEditCartItem && (
+                            <button
+                              type="button"
+                              onClick={() => onEditCartItem(item)}
+                              className="text-[11px] font-bold text-[#808068] hover:text-[#D67B6B] hover:underline inline-flex items-center gap-1"
+                              title="Edit product choices and options"
+                            >
+                              <SlidersHorizontal className="size-3" />
+                              Edit options
+                            </button>
+                          )}
+                      </div>
                     </div>
 
                     {/* Quantity & Total */}
@@ -6035,9 +6106,24 @@ function POSView({
                         Note: {item.notes}
                       </p>
                     )}
-                    <p className="font-mono text-xs sm:text-sm font-semibold text-stone-500 mt-0.5">
-                      Rs. {item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })} ea
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      <p className="font-mono text-xs sm:text-sm font-semibold text-stone-500">
+                        Rs. {item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })} ea
+                      </p>
+                      {(getApplicableModifierGroups(item).length > 0 ||
+                        (item.selected_choices && item.selected_choices.length > 0)) &&
+                        onEditCartItem && (
+                          <button
+                            type="button"
+                            onClick={() => onEditCartItem(item)}
+                            className="text-[11px] font-bold text-[#808068] hover:text-[#D67B6B] hover:underline inline-flex items-center gap-1"
+                            title="Edit product choices and options"
+                          >
+                            <SlidersHorizontal className="size-3" />
+                            Edit options
+                          </button>
+                        )}
+                    </div>
                   </div>
 
                   {/* Quantity & Total */}

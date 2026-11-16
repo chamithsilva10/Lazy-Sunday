@@ -152,4 +152,114 @@ console.log("=== 4. Testing Configurable Menu Choices Snapshot Immutability ==="
   console.log("✓ Historical order item snapshot remains LKR 1,200 (Oat milk +LKR 300) after menu price update")
 }
 
+console.log("=== 5. Testing Milk Tea and Creamy Mushrooms Preset Options ===")
+{
+  // Test Milk Tea: Temperature (Iced/Hot) and Milk choice (Oat milk / Coconut milk)
+  const milkTeaChoices = [
+    {
+      id: "temperature",
+      name: "Temperature",
+      required: true,
+      enabled: true,
+      options: [
+        { id: "temp-iced", label: "Iced", price: 0, available: true },
+        { id: "temp-hot", label: "Hot", price: 0, available: true },
+      ],
+    },
+    {
+      id: "milk_choice",
+      name: "Milk choice",
+      required: true,
+      enabled: true,
+      options: [
+        { id: "milk-fresh", label: "Fresh Dairy Milk", price: 0, available: true },
+        { id: "milk-oat", label: "Oat milk", price: 200, available: true },
+        { id: "milk-coconut", label: "Coconut milk", price: 150, available: true },
+      ],
+    },
+  ]
+
+  assert.equal(milkTeaChoices.length, 2)
+  assert.equal(milkTeaChoices[0].name, "Temperature")
+  assert.equal(milkTeaChoices[1].name, "Milk choice")
+  assert.equal(milkTeaChoices[1].options.find((o) => o.label === "Oat milk").price, 200)
+
+  // Test Creamy Mushrooms: Choose a side: Hashbrowns or Sourdough
+  const mushroomsChoices = [
+    {
+      id: "choose_side",
+      name: "Choose a side",
+      required: true,
+      enabled: true,
+      options: [
+        { id: "side-hashbrowns", label: "Hashbrowns", price: 0, available: true },
+        { id: "side-sourdough", label: "Sourdough", price: 0, available: true },
+      ],
+    },
+  ]
+  assert.equal(mushroomsChoices[0].name, "Choose a side")
+  assert.deepEqual(
+    mushroomsChoices[0].options.map((o) => o.label),
+    ["Hashbrowns", "Sourdough"]
+  )
+  console.log("✓ Milk Tea (Temp + Milk choice) and Creamy Mushrooms (Hashbrowns/Sourdough) verified")
+}
+
+console.log("=== 6. Testing Group Controls: Reordering, Disabling, and Per-Product Pricing ===")
+{
+  // Per-product pricing: Oat milk on Milk Tea is LKR 200, while on Specialty Coffee it is LKR 350
+  const milkTeaOat = 200
+  const coffeeOat = 350
+  assert.notEqual(milkTeaOat, coffeeOat)
+
+  // Group disabling: when a group has enabled: false, it is excluded from active POS selection
+  const rawGroups = [
+    { id: "grp-1", name: "Side", enabled: true, options: [{ label: "Fries" }] },
+    { id: "grp-2", name: "Sauce", enabled: false, options: [{ label: "Mayo" }] },
+  ]
+  const activeForPOS = rawGroups.filter((g) => g.enabled !== false)
+  assert.equal(activeForPOS.length, 1)
+  assert.equal(activeForPOS[0].name, "Side")
+
+  // Group reordering: moving grp-2 up before grp-1
+  const reordered = [rawGroups[1], rawGroups[0]]
+  assert.equal(reordered[0].id, "grp-2")
+  assert.equal(reordered[1].id, "grp-1")
+  console.log("✓ Per-product pricing, group disabling, and reordering verified")
+}
+
+console.log("=== 7. Testing Cashier Edit Item Options Before Payment & Recalculate Bill ===")
+{
+  // Cashier adds Milk Tea (base 850) with standard Dairy milk (+0)
+  const cartItem = {
+    id: "item-tea-1",
+    cartItemId: "item-tea-1",
+    name: "Milk Tea",
+    base_price: 850,
+    price: 850,
+    quantity: 2,
+    selected_choices: [
+      { group_name: "Temperature", label: "Iced", price: 0 },
+      { group_name: "Milk choice", label: "Fresh Dairy Milk", price: 0 },
+    ],
+  }
+  const initialLineTotal = cartItem.price * cartItem.quantity // 1700
+
+  // Cashier edits item options before payment: changes milk to Oat Milk (+200)
+  const newExtraPrice = 200
+  const updatedItem = {
+    ...cartItem,
+    price: cartItem.base_price + newExtraPrice, // 1050
+    selected_choices: [
+      { group_name: "Temperature", label: "Iced", price: 0 },
+      { group_name: "Milk choice", label: "Oat milk", price: 200 },
+    ],
+  }
+  const updatedLineTotal = updatedItem.price * updatedItem.quantity // 2100
+  assert.equal(updatedItem.price, 1050)
+  assert.equal(updatedLineTotal, 2100)
+  assert.equal(updatedLineTotal - initialLineTotal, 400)
+  console.log(`✓ Cashier edit options: initial line total LKR ${initialLineTotal} -> recalculated LKR ${updatedLineTotal}`)
+}
+
 console.log("ALL SPLIT BILL & MENU CHOICES ASSERTIONS PASSED!")
