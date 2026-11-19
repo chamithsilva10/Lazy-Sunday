@@ -65,6 +65,11 @@ export interface OrderSplitConfig {
   item_assignments: Record<string, SplitItemAssignment>
   diner_shares: DinerCalculatedShare[]
   payments: SplitPaymentRecord[]
+  original_total?: number
+  discount_type?: "none" | "percent" | "fixed"
+  discount_value?: number
+  discount_amount?: number
+  final_total?: number
   total_bill: number
   total_paid: number
   total_remaining: number
@@ -135,6 +140,9 @@ export interface SplitCalculationInput {
   discount: number
   charges: number // serviceCharge + tax
   total: number
+  originalTotal?: number
+  discountType?: "none" | "percent" | "fixed"
+  discountValue?: number
 }
 
 export interface SplitCalculationResult {
@@ -145,6 +153,11 @@ export interface SplitCalculationResult {
   percentageTotal: number
   allocatedAmountTotal: number
   unallocatedAmount: number
+  originalTotal: number
+  discountAmount: number
+  discountType: "none" | "percent" | "fixed"
+  discountValue: number
+  finalTotal: number
   totalPaid: number
   totalRemaining: number
   allSharesPaid: boolean
@@ -167,7 +180,7 @@ export function calculateSplitBillSummary(input: SplitCalculationInput): SplitCa
   const unassignedItems: string[] = []
 
   if (!diners || diners.length < 2) {
-    validationErrors.push("Add at least 2 diners to split the bill.")
+    validationErrors.push("Add at least 2 people to split the bill.")
   }
 
   const dinerCount = diners.length
@@ -181,8 +194,46 @@ export function calculateSplitBillSummary(input: SplitCalculationInput): SplitCa
     dinerAssignedMap[d.id] = []
   })
 
-  const effectiveCharges = roundCurrency(total - subtotal + discount)
-  const effectiveChargesToUse = Math.abs(effectiveCharges - charges) <= 1 ? effectiveCharges : roundCurrency(charges)
+  // Determine original undiscounted total
+  const origTotal =
+    typeof input.originalTotal === "number" && input.originalTotal > 0
+      ? roundCurrency(input.originalTotal)
+      : roundCurrency(subtotal + charges > 0 ? subtotal + charges : total)
+
+  // Resolve discount configuration and compute discount amount
+  const discountType = input.discountType || (discount > 0 ? "fixed" : "none")
+  const discountVal =
+    typeof input.discountValue === "number"
+      ? Math.max(0, input.discountValue)
+      : discountType === "fixed"
+      ? roundCurrency(discount)
+      : 0
+
+  let discountAmount = 0
+  if (discountType === "percent") {
+    if (discountVal > 100) {
+      validationErrors.push(`Discount percentage (${discountVal}%) cannot exceed 100%.`)
+    }
+    discountAmount = roundCurrency((origTotal * Math.min(100, discountVal)) / 100)
+  } else if (discountType === "fixed") {
+    if (discountVal > origTotal) {
+      validationErrors.push(
+        `Discount amount (LKR ${discountVal.toLocaleString("en-US", { minimumFractionDigits: 2 })}) cannot exceed bill total (LKR ${origTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}).`
+      )
+    }
+    discountAmount = roundCurrency(Math.min(origTotal, discountVal))
+  } else {
+    discountAmount = roundCurrency(discount || 0)
+    if (discountAmount > origTotal) {
+      validationErrors.push(
+        `Discount amount (LKR ${discountAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}) cannot exceed bill total (LKR ${origTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}).`
+      )
+      discountAmount = origTotal
+    }
+  }
+
+  const finalTotal = Math.max(0, roundCurrency(origTotal - discountAmount))
+  const effectiveChargesToUse = roundCurrency(charges)
 
   let percentageTotal = 0
   let allocatedAmountTotal = 0
@@ -280,14 +331,15 @@ export function calculateSplitBillSummary(input: SplitCalculationInput): SplitCa
 
     if (unassignedItems.length > 0) {
       validationErrors.push(
-        `Assign all products to diners before confirming (${unassignedItems.length} unassigned: ${unassignedItems.slice(0, 3).join(", ")}${
+        `Assign all products to people before confirming (${unassignedItems.length} unassigned: ${unassignedItems.slice(0, 3).join(", ")}${
           unassignedItems.length > 3 ? "…" : ""
         }).`
       )
     }
 
     const assignedSubtotalSum = roundCurrency(dinerSubtotals.reduce((a, b) => a + b, 0))
-    const discountAlloc = allocateProportionally(discount, dinerSubtotals)
+    // Distribute bill-level discount proportionally based on each person's assigned item value
+    const discountAlloc = allocateProportionally(discountAmount, dinerSubtotals)
     const chargesAlloc = allocateProportionally(effectiveChargesToUse, dinerSubtotals)
 
     for (let i = 0; i < dinerCount; i++) {
@@ -295,18 +347,17 @@ export function calculateSplitBillSummary(input: SplitCalculationInput): SplitCa
       dinerCharges[i] = chargesAlloc[i]
       dinerTotals[i] = roundCurrency(dinerSubtotals[i] - dinerDiscounts[i] + dinerCharges[i])
       dinerPercentages[i] =
-        subtotal > 0 ? roundCurrency((dinerSubtotals[i] / subtotal) * 100) : 0
+        finalTotal > 0 ? roundCurrency((dinerTotals[i] / finalTotal) * 100) : 0
     }
 
     // Reconcile any 1-cent difference if all items are assigned
     if (unassignedItems.length === 0 && Math.abs(assignedSubtotalSum - subtotal) <= 0.05 && dinerCount > 0) {
       const currentTotalSum = roundCurrency(dinerTotals.reduce((a, b) => a + b, 0))
-      const diff = roundCurrency(total - currentTotalSum)
+      const diff = roundCurrency(finalTotal - currentTotalSum)
       if (Math.abs(diff) > 0 && Math.abs(diff) <= 0.05) {
-        // Add remainder to last diner with positive subtotal
+        // Add remainder to last person with positive subtotal
         for (let i = dinerCount - 1; i >= 0; i--) {
           if (dinerSubtotals[i] > 0) {
-            dinerCharges[i] = roundCurrency(dinerCharges[i] + diff)
             dinerTotals[i] = roundCurrency(dinerTotals[i] + diff)
             break
           }
@@ -330,9 +381,8 @@ export function calculateSplitBillSummary(input: SplitCalculationInput): SplitCa
     }
 
     const subAlloc = allocateProportionally(subtotal, pctWeights)
-    const discAlloc = allocateProportionally(discount, pctWeights)
-    const chgAlloc = allocateProportionally(effectiveChargesToUse, pctWeights)
-    const totAlloc = allocateProportionally(total, pctWeights)
+    const discAlloc = allocateProportionally(discountAmount, pctWeights)
+    const totAlloc = allocateProportionally(finalTotal, pctWeights)
 
     for (let i = 0; i < dinerCount; i++) {
       dinerPercentages[i] = roundCurrency(pctWeights[i])
@@ -345,9 +395,9 @@ export function calculateSplitBillSummary(input: SplitCalculationInput): SplitCa
         // Preview proportional to current percentage (out of 100%)
         const ratio = pctWeights[i] / 100
         dinerSubtotals[i] = roundCurrency(subtotal * ratio)
-        dinerDiscounts[i] = roundCurrency(discount * ratio)
+        dinerDiscounts[i] = roundCurrency(discountAmount * ratio)
         dinerCharges[i] = roundCurrency(effectiveChargesToUse * ratio)
-        dinerTotals[i] = roundCurrency(total * ratio)
+        dinerTotals[i] = roundCurrency(finalTotal * ratio)
       }
     }
 
@@ -355,30 +405,30 @@ export function calculateSplitBillSummary(input: SplitCalculationInput): SplitCa
   } else if (method === "by_amount") {
     const fixedAmounts = diners.map((d) => Math.max(0, roundCurrency(Number(d.fixed_amount) || 0)))
     allocatedAmountTotal = roundCurrency(fixedAmounts.reduce((a, b) => a + b, 0))
-    const diff = roundCurrency(total - allocatedAmountTotal)
+    const diff = roundCurrency(finalTotal - allocatedAmountTotal)
 
     if (Math.abs(diff) > 0.01) {
       validationErrors.push(
         diff > 0
-          ? `LKR ${diff.toLocaleString("en-US", { minimumFractionDigits: 2 })} remaining to allocate (allocated LKR ${allocatedAmountTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })} of LKR ${total.toLocaleString("en-US", { minimumFractionDigits: 2 })}).`
-          : `Allocated amount exceeds bill total by LKR ${Math.abs(diff).toLocaleString("en-US", { minimumFractionDigits: 2 })}.`
+          ? `LKR ${diff.toLocaleString("en-US", { minimumFractionDigits: 2 })} remaining to allocate (allocated LKR ${allocatedAmountTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })} of discounted total LKR ${finalTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}).`
+          : `Allocated amount exceeds discounted bill total by LKR ${Math.abs(diff).toLocaleString("en-US", { minimumFractionDigits: 2 })}.`
       )
     }
 
     const subAlloc = allocateProportionally(subtotal, fixedAmounts)
-    const discAlloc = allocateProportionally(discount, fixedAmounts)
+    const discAlloc = allocateProportionally(discountAmount, fixedAmounts)
 
     for (let i = 0; i < dinerCount; i++) {
       dinerTotals[i] = fixedAmounts[i]
-      dinerPercentages[i] = total > 0 ? roundCurrency((fixedAmounts[i] / total) * 100) : 0
+      dinerPercentages[i] = finalTotal > 0 ? roundCurrency((fixedAmounts[i] / finalTotal) * 100) : 0
       if (Math.abs(diff) <= 0.01) {
         dinerSubtotals[i] = subAlloc[i]
         dinerDiscounts[i] = discAlloc[i]
         dinerCharges[i] = roundCurrency(dinerTotals[i] - dinerSubtotals[i] + dinerDiscounts[i])
       } else {
-        const ratio = total > 0 ? fixedAmounts[i] / total : 0
+        const ratio = finalTotal > 0 ? fixedAmounts[i] / finalTotal : 0
         dinerSubtotals[i] = roundCurrency(subtotal * ratio)
-        dinerDiscounts[i] = roundCurrency(discount * ratio)
+        dinerDiscounts[i] = roundCurrency(discountAmount * ratio)
         dinerCharges[i] = roundCurrency(dinerTotals[i] - dinerSubtotals[i] + dinerDiscounts[i])
       }
     }
@@ -432,10 +482,10 @@ export function calculateSplitBillSummary(input: SplitCalculationInput): SplitCa
   const totalPaid = roundCurrency(
     activePayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0)
   )
-  const totalRemaining = Math.max(0, roundCurrency(total - totalPaid))
-  const unallocatedAmount = roundCurrency(total - allocatedAmountTotal)
+  const totalRemaining = Math.max(0, roundCurrency(finalTotal - totalPaid))
+  const unallocatedAmount = roundCurrency(finalTotal - allocatedAmountTotal)
   const isValidSplit = validationErrors.length === 0 && Math.abs(unallocatedAmount) <= 0.01
-  const allSharesPaid = isValidSplit && total > 0 && totalRemaining <= 0.01
+  const allSharesPaid = isValidSplit && (finalTotal === 0 || totalRemaining <= 0.01)
 
   return {
     dinerShares,
@@ -445,6 +495,11 @@ export function calculateSplitBillSummary(input: SplitCalculationInput): SplitCa
     percentageTotal,
     allocatedAmountTotal,
     unallocatedAmount,
+    originalTotal: origTotal,
+    discountAmount,
+    discountType,
+    discountValue: discountVal,
+    finalTotal,
     totalPaid,
     totalRemaining,
     allSharesPaid,

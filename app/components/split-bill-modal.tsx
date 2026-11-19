@@ -106,9 +106,11 @@ export function SplitBillModal({
   const effectiveInitialConfig = existingSplitConfig || initialSplitConfig || null
   const [method, setMethod] = useState<SplitMethod>("by_items")
   const [diners, setDiners] = useState<SplitDiner[]>([
-    { id: "diner-1", name: "Me", percentage: 50, fixed_amount: 0 },
-    { id: "diner-2", name: "Friend", percentage: 50, fixed_amount: 0 },
+    { id: "diner-1", name: "Person 1", percentage: 50, fixed_amount: 0 },
+    { id: "diner-2", name: "Person 2", percentage: 50, fixed_amount: 0 },
   ])
+  const [discountType, setDiscountType] = useState<"none" | "percent" | "fixed">("none")
+  const [discountValueInput, setDiscountValueInput] = useState<string>("")
   const [itemAssignments, setItemAssignments] = useState<Record<string, SplitItemAssignment>>({})
   const [payments, setPayments] = useState<SplitPaymentRecord[]>([])
   const [splitConfirmed, setSplitConfirmed] = useState(false)
@@ -180,14 +182,39 @@ export function SplitBillModal({
       setPayments(effectiveInitialConfig.payments || [])
       setSplitConfirmed(Boolean(effectiveInitialConfig.confirmed))
       setPayingDinerId(null)
+      if (effectiveInitialConfig.discount_type) {
+        setDiscountType(effectiveInitialConfig.discount_type)
+        setDiscountValueInput(
+          effectiveInitialConfig.discount_value !== undefined && effectiveInitialConfig.discount_value > 0
+            ? String(effectiveInitialConfig.discount_value)
+            : ""
+        )
+      } else if (discount > 0) {
+        setDiscountType("fixed")
+        setDiscountValueInput(String(discount))
+      } else {
+        setDiscountType("none")
+        setDiscountValueInput("")
+      }
       return
     }
 
     // Default fresh split initialization
-    const evenAmounts = allocateProportionally(total, [1, 1])
+    const originalBillTotal = roundCurrency(subtotal + serviceCharge + tax > 0 ? subtotal + serviceCharge + tax : total)
+    let initialDiscVal = 0
+    if (discount > 0) {
+      initialDiscVal = roundCurrency(discount)
+      setDiscountType("fixed")
+      setDiscountValueInput(String(discount))
+    } else {
+      setDiscountType("none")
+      setDiscountValueInput("")
+    }
+    const initialFinalTotal = Math.max(0, roundCurrency(originalBillTotal - initialDiscVal))
+    const evenAmounts = allocateProportionally(initialFinalTotal, [1, 1])
     const defaultDiners: SplitDiner[] = [
-      { id: "diner-1", name: "Me", percentage: 50, fixed_amount: evenAmounts[0] || 0 },
-      { id: "diner-2", name: "Friend", percentage: 50, fixed_amount: evenAmounts[1] || 0 },
+      { id: "diner-1", name: "Person 1", percentage: 50, fixed_amount: evenAmounts[0] || 0 },
+      { id: "diner-2", name: "Person 2", percentage: 50, fixed_amount: evenAmounts[1] || 0 },
     ]
     setDiners(defaultDiners)
     setMethod("by_items")
@@ -246,6 +273,16 @@ export function SplitBillModal({
   }, [assignableItems, diners, isModalOpen])
 
   const chargesTotal = useMemo(() => roundCurrency(serviceCharge + tax), [serviceCharge, tax])
+  const originalBillTotal = useMemo(
+    () => roundCurrency(subtotal + chargesTotal > 0 ? subtotal + chargesTotal : total),
+    [subtotal, chargesTotal, total]
+  )
+
+  const parsedDiscountValue = useMemo(() => {
+    if (discountType === "none") return 0
+    const val = parseFloat(discountValueInput)
+    return isNaN(val) ? 0 : Math.max(0, val)
+  }, [discountType, discountValueInput])
 
   const splitSummary = useMemo(() => {
     return calculateSplitBillSummary({
@@ -255,11 +292,26 @@ export function SplitBillModal({
       itemAssignments,
       payments,
       subtotal,
-      discount,
+      discount: parsedDiscountValue,
       charges: chargesTotal,
       total,
+      originalTotal: originalBillTotal,
+      discountType,
+      discountValue: parsedDiscountValue,
     })
-  }, [method, diners, assignableItems, itemAssignments, payments, subtotal, discount, chargesTotal, total])
+  }, [
+    method,
+    diners,
+    assignableItems,
+    itemAssignments,
+    payments,
+    subtotal,
+    parsedDiscountValue,
+    chargesTotal,
+    total,
+    originalBillTotal,
+    discountType,
+  ])
 
   const activePayingDinerShare = useMemo(() => {
     if (!payingDinerId) return null
@@ -271,7 +323,7 @@ export function SplitBillModal({
     const newId = `diner-${Date.now()}-${nextNum}`
     const newDiner: SplitDiner = {
       id: newId,
-      name: `Diner ${nextNum}`,
+      name: `Person ${nextNum}`,
       percentage: 0,
       fixed_amount: 0,
     }
@@ -282,7 +334,7 @@ export function SplitBillModal({
 
   function handleRemoveDiner(dinerId: string) {
     if (diners.length <= 2) {
-      toast.error("At least 2 diners are required to split a bill.")
+      toast.error("At least 2 people are required to split a bill.")
       return
     }
     const hasPaid = payments.some(
@@ -339,7 +391,8 @@ export function SplitBillModal({
   function handleDistributeAmountEvenly() {
     const count = diners.length
     if (count === 0) return
-    const evenShares = allocateProportionally(total, new Array(count).fill(1))
+    const targetTotal = splitSummary.finalTotal
+    const evenShares = allocateProportionally(targetTotal, new Array(count).fill(1))
     setDiners((prev) =>
       prev.map((d, idx) => ({
         ...d,
@@ -350,10 +403,11 @@ export function SplitBillModal({
   }
 
   function handleFillRemainingAmount(dinerId: string) {
+    const targetTotal = splitSummary.finalTotal
     const otherSum = diners
       .filter((d) => d.id !== dinerId)
       .reduce((acc, d) => acc + (Number(d.fixed_amount) || 0), 0)
-    const rem = Math.max(0, roundCurrency(total - otherSum))
+    const rem = Math.max(0, roundCurrency(targetTotal - otherSum))
     setDiners((prev) =>
       prev.map((d) => (d.id === dinerId ? { ...d, fixed_amount: rem } : d))
     )
@@ -410,7 +464,7 @@ export function SplitBillModal({
       return
     }
     setSplitConfirmed(true)
-    toast.success("Bill split confirmed! Each diner can now pay their share separately.")
+    toast.success("Bill split confirmed! Each person can now pay their share separately.")
   }
 
   function openDinerPaymentDrawer(dinerShare: DinerCalculatedShare) {
@@ -438,9 +492,12 @@ export function SplitBillModal({
       itemAssignments,
       payments: nextPayments,
       subtotal,
-      discount,
+      discount: parsedDiscountValue,
       charges: chargesTotal,
       total,
+      originalTotal: originalBillTotal,
+      discountType,
+      discountValue: parsedDiscountValue,
     })
 
     return {
@@ -450,7 +507,12 @@ export function SplitBillModal({
       item_assignments: itemAssignments,
       diner_shares: calc.dinerShares,
       payments: nextPayments,
-      total_bill: total,
+      original_total: calc.originalTotal,
+      discount_type: calc.discountType,
+      discount_value: calc.discountValue,
+      discount_amount: calc.discountAmount,
+      final_total: calc.finalTotal,
+      total_bill: calc.finalTotal,
       total_paid: calc.totalPaid,
       total_remaining: calc.totalRemaining,
       updated_at: new Date().toISOString(),
@@ -590,10 +652,10 @@ export function SplitBillModal({
             <div>
               <DialogTitle className="font-serif text-lg sm:text-xl text-white flex items-center gap-2">
                 <Split className="size-5 text-[#EAB8B5]" />
-                FLEXIBLE BILL SPLITTING &amp; DINER PAYMENTS
+                FLEXIBLE BILL SPLITTING &amp; PAYMENTS
               </DialogTitle>
               <DialogDescription className="text-xs text-[#F4EBE4]/85 mt-0.5">
-                Order #{orderNumber} • {tableName} • Bill Total: LKR {total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                Order #{orderNumber} • {tableName} • Final Bill Total: LKR {splitSummary.finalTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
               </DialogDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -615,7 +677,7 @@ export function SplitBillModal({
 
         {/* BODY */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-          {/* 1. SPLIT METHOD SELECTOR + DINERS BAR */}
+          {/* 1. SPLIT METHOD SELECTOR + PEOPLE BAR */}
           <div className="bg-white rounded-2xl p-4 border border-[#E5D8CF] shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
               <div>
@@ -623,7 +685,7 @@ export function SplitBillModal({
                   1. Choose Split Method
                 </p>
                 <p className="text-[11px] text-gray-500">
-                  Taxes, 10% service charge, and discounts are applied proportionally and rounded to match LKR {total.toLocaleString("en-US", { minimumFractionDigits: 2 })}.
+                  Taxes, service charges, and discounts are applied proportionally and rounded to match LKR {splitSummary.finalTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}.
                 </p>
               </div>
               <div className="grid grid-cols-3 gap-1.5 bg-[#FAF5F1] p-1 rounded-xl border border-[#E5D8CF]">
@@ -675,12 +737,12 @@ export function SplitBillModal({
               </div>
             </div>
 
-            {/* DINERS MANAGEMENT ROW */}
+            {/* PEOPLE ON THIS BILL ROW */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold uppercase tracking-wider text-[#808068] flex items-center gap-1.5">
                   <Users className="size-3.5 text-[#D67B6B]" />
-                  Diners on this Bill ({diners.length})
+                  People on this Bill ({diners.length})
                 </label>
                 <Button
                   type="button"
@@ -690,7 +752,7 @@ export function SplitBillModal({
                   className="h-8 text-xs rounded-xl border-[#D67B6B]/40 text-[#D67B6B] hover:bg-[#FAF5F1] gap-1 font-semibold"
                 >
                   <Plus className="size-3.5" />
-                  Add Diner
+                  Add Person
                 </Button>
               </div>
 
@@ -709,7 +771,7 @@ export function SplitBillModal({
                       <input
                         type="text"
                         value={diner.name}
-                        aria-label={`Diner ${idx + 1} Name`}
+                        aria-label={`Person ${idx + 1} Name`}
                         onChange={(e) => handleRenameDiner(diner.id, e.target.value)}
                         className="w-24 sm:w-28 bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs font-semibold text-gray-800 focus:outline-none focus:border-[#D67B6B]"
                       />
@@ -730,16 +792,147 @@ export function SplitBillModal({
             </div>
           </div>
 
+          {/* BILL DISCOUNT & FINANCIAL BASE */}
+          <div className="bg-white rounded-2xl p-4 border border-[#E5D8CF] shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-wider text-[#343428] flex items-center gap-1.5">
+                  <Percent className="size-3.5 text-[#D67B6B]" />
+                  Bill Discount &amp; Allocation Base
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  Apply percentage or fixed LKR discount before allocating shares. Distributed proportionally across shares.
+                </p>
+              </div>
+              {/* Discount Type Selector */}
+              <div className="grid grid-cols-3 gap-1 bg-[#FAF5F1] p-1 rounded-xl border border-[#E5D8CF] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDiscountType("none")
+                    setDiscountValueInput("")
+                    setSplitConfirmed(false)
+                  }}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    discountType === "none"
+                      ? "bg-[#808068] text-white shadow-xs"
+                      : "text-[#545442] hover:bg-white"
+                  }`}
+                >
+                  No Discount
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDiscountType("percent")
+                    setSplitConfirmed(false)
+                  }}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    discountType === "percent"
+                      ? "bg-[#D67B6B] text-white shadow-xs"
+                      : "text-[#545442] hover:bg-white"
+                  }`}
+                >
+                  % Percentage
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDiscountType("fixed")
+                    setSplitConfirmed(false)
+                  }}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    discountType === "fixed"
+                      ? "bg-[#D67B6B] text-white shadow-xs"
+                      : "text-[#545442] hover:bg-white"
+                  }`}
+                >
+                  Fixed LKR
+                </button>
+              </div>
+            </div>
+
+            {/* Discount Input & Preset Chips */}
+            {discountType !== "none" && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FAF5F1]/60 p-3 rounded-xl border border-[#E5D8CF]">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-bold text-gray-700 whitespace-nowrap">
+                    {discountType === "percent" ? "Discount Rate:" : "Discount Amount:"}
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    {discountType === "fixed" && <span className="text-xs font-bold text-gray-500">LKR</span>}
+                    <Input
+                      type="number"
+                      min="0"
+                      max={discountType === "percent" ? 100 : splitSummary.originalTotal}
+                      step={discountType === "percent" ? "1" : "50"}
+                      placeholder={discountType === "percent" ? "10" : "500"}
+                      value={discountValueInput}
+                      onChange={(e) => {
+                        setDiscountValueInput(e.target.value)
+                        setSplitConfirmed(false)
+                      }}
+                      className="w-28 h-9 text-right font-mono font-bold text-sm bg-white border-[#E5D8CF] rounded-lg"
+                    />
+                    {discountType === "percent" && <span className="text-xs font-bold text-gray-500">%</span>}
+                  </div>
+                </div>
+
+                {/* Preset Chips */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-semibold text-gray-500">Quick presets:</span>
+                  {(discountType === "percent" ? [5, 10, 15, 20] : [250, 500, 1000, 2000]).map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        setDiscountValueInput(String(preset))
+                        setSplitConfirmed(false)
+                      }}
+                      className="px-2 py-1 rounded-md bg-white border border-[#E5D8CF] text-[11px] font-bold text-[#808068] hover:border-[#D67B6B] hover:text-[#D67B6B] transition-colors"
+                    >
+                      {discountType === "percent" ? `${preset}%` : `LKR ${preset}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Real-time Financial Breakdown Banner */}
+            <div className="grid grid-cols-3 gap-2 bg-[#FAF5F1] p-3 rounded-xl border border-[#E5D8CF] text-center">
+              <div className="p-1">
+                <p className="text-[10px] uppercase font-bold text-gray-500">Original Total</p>
+                <p className="font-mono text-xs sm:text-sm font-bold text-[#343428] mt-0.5">
+                  LKR {splitSummary.originalTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="p-1 border-x border-[#E5D8CF]">
+                <p className="text-[10px] uppercase font-bold text-red-600">
+                  Discount {splitSummary.discountType === "percent" && splitSummary.discountValue > 0 ? `(${splitSummary.discountValue}%)` : ""}
+                </p>
+                <p className="font-mono text-xs sm:text-sm font-bold text-red-600 mt-0.5">
+                  -LKR {splitSummary.discountAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="p-1">
+                <p className="text-[10px] uppercase font-bold text-emerald-700">Final Total to Split</p>
+                <p className="font-mono text-xs sm:text-sm font-extrabold text-emerald-700 mt-0.5">
+                  LKR {splitSummary.finalTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* 2. METHOD-SPECIFIC CONFIGURATION PANEL */}
           {method === "by_items" && (
             <div className="bg-white rounded-2xl p-4 border border-[#E5D8CF] shadow-xs space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-extrabold uppercase tracking-wider text-[#343428]">
-                    2. Assign Products to Diners
+                    2. Assign Products to People
                   </p>
                   <p className="text-[11px] text-gray-500">
-                    Assign each product to a single diner, or share a product across multiple diners (even split or custom share).
+                    Assign each product to a single person, or share a product across multiple people (even split or custom share).
                   </p>
                 </div>
                 <Button
@@ -820,7 +1013,7 @@ export function SplitBillModal({
                           )}
                         </div>
 
-                        {/* Mode Selector: Single Diner vs Shared Even vs Shared Custom */}
+                        {/* Mode Selector: Single Person vs Shared Even vs Shared Custom */}
                         <div className="flex items-center gap-1 bg-[#FAF5F1] p-1 rounded-lg border border-[#E5D8CF] self-start sm:self-auto">
                           <button
                             type="button"
@@ -836,7 +1029,7 @@ export function SplitBillModal({
                                 : "text-gray-600 hover:bg-white"
                             }`}
                           >
-                            Single Diner
+                            Single Person
                           </button>
                           <button
                             type="button"
@@ -911,7 +1104,7 @@ export function SplitBillModal({
                       {assign.mode === "shared_even" && (
                         <div className="space-y-1.5">
                           <p className="text-[10px] font-medium text-gray-500">
-                            Select diners sharing this item evenly:
+                            Select people sharing this item evenly:
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {diners.map((d) => {
@@ -1043,10 +1236,10 @@ export function SplitBillModal({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-extrabold uppercase tracking-wider text-[#343428]">
-                    2. Assign Percentage per Diner (Must Total 100%)
+                    2. Assign Percentage per Person (Must Total 100%)
                   </p>
                   <p className="text-[11px] text-gray-500">
-                    Enter the percentage of the bill for each diner. Corresponding LKR amounts include proportional charges.
+                    Enter the percentage of the bill for each person. Shares are calculated directly from the discounted bill total.
                   </p>
                 </div>
                 <Button
@@ -1132,10 +1325,10 @@ export function SplitBillModal({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-extrabold uppercase tracking-wider text-[#343428]">
-                    2. Enter Fixed LKR Amount per Diner
+                    2. Enter Fixed LKR Amount per Person
                   </p>
                   <p className="text-[11px] text-gray-500">
-                    Enter the exact LKR amount each diner will pay. Confirmation is enabled once the full bill total is allocated.
+                    Enter the exact LKR amount each person will pay. Confirmation is enabled once the discounted bill total is fully allocated.
                   </p>
                 </div>
                 <Button
@@ -1145,7 +1338,7 @@ export function SplitBillModal({
                   onClick={handleDistributeAmountEvenly}
                   className="h-8 text-xs rounded-xl border-[#E5D8CF] text-[#808068] hover:bg-[#FAF5F1]"
                 >
-                  Split Evenly (LKR {total.toLocaleString()})
+                  Split Evenly (LKR {splitSummary.finalTotal.toLocaleString()})
                 </Button>
               </div>
 
@@ -1158,7 +1351,7 @@ export function SplitBillModal({
                 }`}
               >
                 <span>
-                  Allocated: LKR {splitSummary.allocatedAmountTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })} / LKR {total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  Allocated: LKR {splitSummary.allocatedAmountTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })} / LKR {splitSummary.finalTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </span>
                 <span>
                   {Math.abs(splitSummary.unallocatedAmount) <= 0.01
@@ -1236,8 +1429,8 @@ export function SplitBillModal({
               <div className="flex items-center gap-2 text-xs text-emerald-900">
                 <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
                 <span>
-                  <strong>Split Balanced Exactly:</strong> All {diners.length} diner shares add up to{" "}
-                  <strong className="font-mono">LKR {total.toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong>.
+                  <strong>Split Balanced Exactly:</strong> All {diners.length} shares add up to{" "}
+                  <strong className="font-mono">LKR {splitSummary.finalTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</strong>.
                 </span>
               </div>
               {!splitConfirmed ? (
@@ -1257,14 +1450,14 @@ export function SplitBillModal({
             </div>
           )}
 
-          {/* 3. DINER BREAKDOWN & INDIVIDUAL SHARE PAYMENT CARDS */}
+          {/* 3. SHARE BREAKDOWN & INDIVIDUAL PAYMENTS */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-extrabold uppercase tracking-wider text-[#343428]">
-                3. Diner Share Breakdown &amp; Individual Payments
+                3. Share Breakdown &amp; Individual Payments per Person
               </p>
               <span className="text-[11px] text-gray-500">
-                Bill stays OPEN until every diner&apos;s share is paid in full.
+                Bill stays OPEN until every person&apos;s share is paid in full.
               </span>
             </div>
 

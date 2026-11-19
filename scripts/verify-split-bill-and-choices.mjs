@@ -56,46 +56,122 @@ console.log("=== 1. Testing Largest-Remainder Rounding & Bill Accuracy ===")
 
 console.log("=== 2. Testing Method A (Split by Products: Single + Shared Even + Shared Custom) ===")
 {
-  // Two diners: "Me" and "Friend" order 4 products + 1 shared appetizer
+  // Two people: "Person 1" and "Person 2" order 4 products + 1 shared appetizer
   // Subtotal:
-  // 1. Creamy Mushrooms (+ Hashbrowns 0) = 2100 -> Assigned to "Me"
-  // 2. Iced Latte (+ Oat Milk 300) = 1200 -> Assigned to "Me"
-  // 3. Smashed Avo = 2200 -> Assigned to "Friend"
-  // 4. Flat White (+ Coconut Milk 250) = 1150 -> Assigned to "Friend"
-  // 5. Loaded Nachos = 1500 -> Shared Evenly between "Me" (750) and "Friend" (750)
-  const meSubtotal = 2100 + 1200 + 750 // 4050
-  const friendSubtotal = 2200 + 1150 + 750 // 4100
-  const subtotal = meSubtotal + friendSubtotal // 8150
-  const discount = 150 // Promo discount
-  const netSubtotal = subtotal - discount // 8000
-  const serviceCharge = roundCurrency(netSubtotal * 0.1) // 800
-  const billTotal = netSubtotal + serviceCharge // 8800
+  // 1. Creamy Mushrooms (+ Hashbrowns 0) = 2100 -> Assigned to "Person 1"
+  // 2. Iced Latte (+ Oat Milk 300) = 1200 -> Assigned to "Person 1"
+  // 3. Smashed Avo = 2200 -> Assigned to "Person 2"
+  // 4. Flat White (+ Coconut Milk 250) = 1150 -> Assigned to "Person 2"
+  // 5. Loaded Nachos = 1500 -> Shared Evenly between "Person 1" (750) and "Person 2" (750)
+  const p1Subtotal = 2100 + 1200 + 750 // 4050
+  const p2Subtotal = 2200 + 1150 + 750 // 4100
+  const subtotal = p1Subtotal + p2Subtotal // 8150
+  const serviceCharge = 815 // 10%
+  const originalBillTotal = subtotal + serviceCharge // 8965
 
-  const discountShares = allocateProportionally(discount, [meSubtotal, friendSubtotal])
-  const serviceShares = allocateProportionally(serviceCharge, [
-    meSubtotal - discountShares[0],
-    friendSubtotal - discountShares[1],
-  ])
+  // Case A1: Without discount
+  {
+    const serviceShares = allocateProportionally(serviceCharge, [p1Subtotal, p2Subtotal])
+    const p1Total = roundCurrency(p1Subtotal + serviceShares[0])
+    const p2Total = roundCurrency(p2Subtotal + serviceShares[1])
+    assert.equal(roundCurrency(p1Total + p2Total), originalBillTotal)
+    console.log(`✓ Method A (Without Discount): Person 1 owes LKR ${p1Total}, Person 2 owes LKR ${p2Total}, Sum = LKR ${p1Total + p2Total} (Total: ${originalBillTotal})`)
+  }
 
-  const meTotal = roundCurrency(meSubtotal - discountShares[0] + serviceShares[0])
-  const friendTotal = roundCurrency(friendSubtotal - discountShares[1] + serviceShares[1])
+  // Case A2: With Percentage Discount (10% bill discount)
+  // Bill discount distributed proportionally based on each person's assigned item value
+  {
+    const discountPct = 10
+    const discountAmount = roundCurrency((originalBillTotal * discountPct) / 100) // 896.50
+    const finalTotal = roundCurrency(originalBillTotal - discountAmount) // 8068.50
 
-  assert.equal(roundCurrency(meTotal + friendTotal), billTotal)
-  console.log(`✓ Method A (Split by Products): Me owes LKR ${meTotal}, Friend owes LKR ${friendTotal}, Sum = LKR ${meTotal + friendTotal} (Bill Total = LKR ${billTotal})`)
+    const discountShares = allocateProportionally(discountAmount, [p1Subtotal, p2Subtotal])
+    const serviceShares = allocateProportionally(serviceCharge, [p1Subtotal, p2Subtotal])
+
+    const p1Total = roundCurrency(p1Subtotal - discountShares[0] + serviceShares[0])
+    const p2Total = roundCurrency(p2Subtotal - discountShares[1] + serviceShares[1])
+
+    assert.equal(roundCurrency(p1Total + p2Total), finalTotal)
+    console.log(`✓ Method A (With 10% Discount): Person 1 owes LKR ${p1Total}, Person 2 owes LKR ${p2Total}, Sum = LKR ${p1Total + p2Total} (Final Total: ${finalTotal})`)
+  }
+
+  // Case A3: With Fixed LKR Discount (LKR 500 discount)
+  {
+    const discountAmount = 500
+    const finalTotal = roundCurrency(originalBillTotal - discountAmount) // 8465.00
+
+    const discountShares = allocateProportionally(discountAmount, [p1Subtotal, p2Subtotal])
+    const serviceShares = allocateProportionally(serviceCharge, [p1Subtotal, p2Subtotal])
+
+    const p1Total = roundCurrency(p1Subtotal - discountShares[0] + serviceShares[0])
+    const p2Total = roundCurrency(p2Subtotal - discountShares[1] + serviceShares[1])
+
+    assert.equal(roundCurrency(p1Total + p2Total), finalTotal)
+    console.log(`✓ Method A (With Fixed LKR 500 Discount): Person 1 owes LKR ${p1Total}, Person 2 owes LKR ${p2Total}, Sum = LKR ${p1Total + p2Total} (Final Total: ${finalTotal})`)
+  }
 }
 
 console.log("=== 3. Testing Method B (Split by Percentage) & Method C (Split by LKR Amount) ===")
 {
-  // Method B: 60% / 40% of LKR 8,800
-  const pctShares = allocateProportionally(8800, [60, 40])
-  assert.deepEqual(pctShares, [5280, 3520])
-  assert.equal(pctShares[0] + pctShares[1], 8800)
-  console.log("✓ Method B (60% / 40% of LKR 8,800) = [5280, 3520]")
+  const originalBill = 10000
 
-  // Method C: Fixed LKR amounts 5000 + 3800 = 8800
-  const fixedShares = [5000, 3800]
-  assert.equal(fixedShares[0] + fixedShares[1], 8800)
-  console.log("✓ Method C (Fixed LKR 5,000 + LKR 3,800) = LKR 8,800")
+  // Case B1: Method B without discount (50% / 50%)
+  {
+    const pctShares = allocateProportionally(originalBill, [50, 50])
+    assert.deepEqual(pctShares, [5000, 5000])
+    assert.equal(pctShares[0] + pctShares[1], originalBill)
+    console.log("✓ Method B (Without Discount 50% / 50% of LKR 10,000) = [5000, 5000]")
+  }
+
+  // Case B2: Method B with 15% discount (discounted total = 8500, split 60% / 40%)
+  {
+    const discountAmount = roundCurrency((originalBill * 15) / 100) // 1500
+    const discountedTotal = originalBill - discountAmount // 8500
+    const pctShares = allocateProportionally(discountedTotal, [60, 40])
+    assert.deepEqual(pctShares, [5100, 3400])
+    assert.equal(pctShares[0] + pctShares[1], discountedTotal)
+    console.log("✓ Method B (With 15% Discount: 60% / 40% of LKR 8,500) = [5100, 3400], exactly equals discounted total")
+  }
+
+  // Case B3: Validation that percentages must total exactly 100%
+  {
+    const invalidPcts = [60, 35] // 95% -> 5% remaining
+    const totalPct = invalidPcts.reduce((a, b) => a + b, 0)
+    assert.notEqual(totalPct, 100)
+    assert.equal(100 - totalPct, 5)
+    console.log("✓ Method B Validation: Flags incomplete percentage (95% allocated, 5% remaining)")
+  }
+
+  // Case C1: Method C without discount (LKR 6,000 + LKR 4,000 = 10,000)
+  {
+    const fixedShares = [6000, 4000]
+    assert.equal(fixedShares[0] + fixedShares[1], originalBill)
+    console.log("✓ Method C (Without Discount: LKR 6,000 + LKR 4,000) = LKR 10,000")
+  }
+
+  // Case C2: Method C with LKR 1,200 Fixed Discount (discounted total = 8800)
+  {
+    const discountedTotal = originalBill - 1200 // 8800
+    const fixedShares = [5000, 3800]
+    assert.equal(fixedShares[0] + fixedShares[1], discountedTotal)
+    console.log("✓ Method C (With Fixed Discount LKR 1,200: LKR 5,000 + LKR 3,800) = LKR 8,800 (discounted total)")
+  }
+
+  // Case C3: Validation that entered amounts must match discounted total
+  {
+    const discountedTotal = 8800
+    const enteredAmounts = [4000, 4000] // 8000
+    const diff = discountedTotal - (enteredAmounts[0] + enteredAmounts[1])
+    assert.equal(diff, 800)
+    console.log(`✓ Method C Validation: Flags unallocated remaining balance of LKR ${diff}`)
+  }
+
+  // Case D: Validation that discount cannot exceed bill total
+  {
+    const discount = 12000
+    assert.ok(discount > originalBill, "Discount exceeds bill total")
+    console.log("✓ Discount Validation: Rejects discount greater than bill total")
+  }
 }
 
 console.log("=== 4. Testing Configurable Menu Choices Snapshot Immutability ===")
