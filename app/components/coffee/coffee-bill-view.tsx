@@ -22,7 +22,9 @@ import {
   X,
   FileText,
   Table2,
+  Mail,
 } from "lucide-react"
+import { EmailBillModal } from "@/app/components/email-bill-modal"
 import { CoffeeProduct, CoffeeBill, CoffeeBillItem, CoffeePaymentMethod } from "@/lib/coffee/types"
 import { CoffeeStorageService } from "@/lib/coffee/storage"
 import { SharedPosService, type SharedTable } from "@/lib/shared-pos-service"
@@ -71,6 +73,10 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
   // Print Receipt Modal State
   const [printReceiptBill, setPrintReceiptBill] = useState<CoffeeBill | null>(null)
   const [printModalOpen, setPrintModalOpen] = useState(false)
+
+  // Email Bill Modal State
+  const [emailModalOpen, setEmailModalOpen] = useState(false)
+  const [emailTargetBill, setEmailTargetBill] = useState<any>(null)
 
   // Load active products & next bill number
   async function loadInitialData() {
@@ -372,6 +378,55 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
     } catch (err: any) {
       toast.error(err.message || "Failed to save coffee bill")
     }
+  }
+
+  // Open Email Bill Modal for current active bill
+  function handleOpenEmailForCurrentBill() {
+    if (billItems.length === 0) {
+      toast.error("Please add at least one coffee item to the bill first.")
+      return
+    }
+    const currentBillPayload = {
+      id: editingBillId || "current-coffee-bill",
+      bill_number: billNumber,
+      order_number: billNumber,
+      receipt_number: `CFE-${billNumber}`,
+      bill_date: billDate,
+      table_name: selectedTable,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      items: billItems.map((bi) => ({
+        id: bi.coffee_product_id || bi.id,
+        item_name: bi.item_name,
+        name: bi.item_name,
+        quantity: bi.quantity,
+        unit_price: bi.unit_price,
+        price: bi.unit_price,
+      })),
+      subtotal,
+      service_charge: taxNum,
+      service_charge_rate: 0.1,
+      discount: discountNum,
+      grand_total: grandTotal,
+      total: grandTotal,
+      payment_method: paymentMethod,
+      cash_received: paymentMethod === "cash" && cashReceivedNum > 0 ? cashReceivedNum : grandTotal,
+      change_amount: changeDue,
+      notes,
+    }
+    setEmailTargetBill(currentBillPayload)
+    setEmailModalOpen(true)
+  }
+
+  // Open Email Bill Modal for past bill
+  function handleOpenEmailForPastBill(bill: CoffeeBill) {
+    setEmailTargetBill({
+      ...bill,
+      order_number: bill.bill_number,
+      receipt_number: `CFE-${bill.bill_number}`,
+      table_name: (bill as any).table_name || selectedTable || "Takeaway",
+    })
+    setEmailModalOpen(true)
   }
 
   // Edit past bill
@@ -794,7 +849,7 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
               )}
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-2 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
                 <Button
                   onClick={() => handleSaveBill(false)}
                   disabled={billItems.length === 0}
@@ -811,6 +866,17 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                 >
                   <Printer className="size-4" />
                   Save & Print
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={handleOpenEmailForCurrentBill}
+                  disabled={billItems.length === 0}
+                  className="bg-[#2D6A4F] text-white hover:bg-[#245640] rounded-xl h-11 text-xs font-semibold gap-1.5 shadow-sm"
+                  title="Email bill receipt and 80mm PDF to customer"
+                >
+                  <Mail className="size-4" />
+                  Email Bill
                 </Button>
               </div>
             </CardContent>
@@ -881,6 +947,16 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
                     >
                       <Printer className="size-3.5" />
                       Print
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenEmailForPastBill(b)}
+                      className="h-8 rounded-lg text-xs gap-1 border-gray-200 text-[#2D6A4F] hover:bg-emerald-50"
+                      title="Email Bill"
+                    >
+                      <Mail className="size-3.5" />
+                      Email
                     </Button>
                     <Button
                       variant="outline"
@@ -967,6 +1043,19 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
               Close
             </Button>
             <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (printReceiptBill) {
+                  handleOpenEmailForPastBill(printReceiptBill)
+                }
+              }}
+              className="rounded-xl border-[#2D6A4F] text-[#2D6A4F] hover:bg-emerald-50 text-xs h-10 px-4 gap-1.5 font-bold"
+            >
+              <Mail className="size-4" />
+              Email Bill
+            </Button>
+            <Button
               onClick={handlePrintAction}
               className="bg-[#D67B6B] text-white hover:bg-[#c36859] rounded-xl text-xs h-10 px-5 gap-1.5 shadow-sm font-bold"
             >
@@ -976,6 +1065,15 @@ export function CoffeeBillView({ role = "cashier" }: CoffeeBillViewProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Email Bill Receipt Modal */}
+      <EmailBillModal
+        open={emailModalOpen}
+        onOpenChange={setEmailModalOpen}
+        bill={emailTargetBill}
+        defaultEmail={emailTargetBill?.customer_email || ""}
+        defaultName={emailTargetBill?.customer_name || customerName || ""}
+      />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Mail } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   LAZY_SUNDAY_LOGO_COLOR_DATA_URL,
@@ -66,6 +67,7 @@ export interface PosReceiptProps {
   showBarcode?: boolean
   isGuestBill?: boolean
   onPrintAgain?: () => void
+  onEmailBill?: () => void
 }
 
 /** FNV-1a hash to generate consistent visual barcode pattern from receipt number */
@@ -118,6 +120,7 @@ export function PosReceipt({
   showBarcode = false,
   isGuestBill = false,
   onPrintAgain,
+  onEmailBill,
 }: PosReceiptProps) {
   const now = new Date()
   const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
@@ -426,16 +429,29 @@ export function PosReceipt({
           </div>
         )}
 
-        {/* Print Again Button */}
-        {onPrintAgain && (
-          <div className="mt-5 text-center print:hidden">
-            <button
-              type="button"
-              onClick={onPrintAgain}
-              className="bg-black hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-bold text-xs shadow-sm transition-colors uppercase tracking-wider"
-            >
-              Print Receipt
-            </button>
+        {/* Print Again & Email Buttons */}
+        {(onPrintAgain || onEmailBill) && (
+          <div className="mt-5 flex items-center justify-center gap-2 print:hidden">
+            {onEmailBill && (
+              <button
+                type="button"
+                onClick={onEmailBill}
+                className="bg-[#2D6A4F] hover:bg-[#245640] text-white px-5 py-2 rounded-lg font-bold text-xs shadow-sm transition-colors uppercase tracking-wider flex items-center gap-1.5"
+                title="Email Bill Receipt"
+              >
+                <Mail className="size-3.5" />
+                Email Bill
+              </button>
+            )}
+            {onPrintAgain && (
+              <button
+                type="button"
+                onClick={onPrintAgain}
+                className="bg-black hover:bg-gray-800 text-white px-5 py-2 rounded-lg font-bold text-xs shadow-sm transition-colors uppercase tracking-wider"
+              >
+                Print Receipt
+              </button>
+            )}
           </div>
         )}
       </article>

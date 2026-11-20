@@ -53,7 +53,9 @@ import {
   Camera,
   ImagePlus,
   Minus,
+  Mail,
 } from "lucide-react"
+import { EmailBillModal } from "@/app/components/email-bill-modal"
 import { createClient, getBrowserSession, isSupabaseConfigured } from "@/lib/supabase/client"
 import { isDemoMode, playCashDrawerSound } from "@/lib/config/demo"
 import { BarcodeScannerModal } from "@/app/components/barcode-scanner-modal"
@@ -749,6 +751,7 @@ export default function POSPage() {
 
   // Receipt Modal States
   const [completedReceipt, setCompletedReceipt] = useState<OrderRecord | null>(null)
+  const [completedReceiptEmailOpen, setCompletedReceiptEmailOpen] = useState(false)
   const [dialogType, setDialogType] = useState<"product" | "table" | "stock" | "category" | null>(null)
   const [newCategoryName, setNewCategoryName] = useState("")
   const [showAddCategoryInline, setShowAddCategoryInline] = useState(false)
@@ -4639,25 +4642,45 @@ export default function POSPage() {
                 animated={true}
                 showBarcode={true}
                 onPrintAgain={() => printThermalReceipt(completedReceipt)}
+                onEmailBill={() => setCompletedReceiptEmailOpen(true)}
               />
             )}
           </div>
 
-          {/* Action Buttons: PRINT RECEIPT & CLOSE */}
+          {/* Action Buttons: PRINT RECEIPT, EMAIL RECEIPT & CLOSE */}
           <div className="p-3 sm:p-4 bg-white border-t flex items-center justify-between gap-2 sm:gap-3 shrink-0">
-            <Button variant="outline" onClick={() => setCompletedReceipt(null)} className="w-1/3 h-11 rounded-xl text-xs sm:text-sm">
+            <Button variant="outline" onClick={() => setCompletedReceipt(null)} className="w-1/4 h-11 rounded-xl text-xs sm:text-sm">
               Close
             </Button>
             <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCompletedReceiptEmailOpen(true)}
+              className="flex-1 border-[#2D6A4F] text-[#2D6A4F] hover:bg-emerald-50 font-bold h-11 gap-1.5 rounded-xl text-xs sm:text-sm"
+              title="Email Bill Receipt to customer"
+            >
+              <Mail className="size-4 shrink-0" />
+              Email Receipt
+            </Button>
+            <Button
               onClick={() => printThermalReceipt(completedReceipt)}
-              className="w-2/3 bg-[#D67B6B] hover:bg-[#c26555] text-white font-bold h-11 gap-1.5 sm:gap-2 rounded-xl text-xs sm:text-sm shadow-sm"
+              className="flex-1 bg-[#D67B6B] hover:bg-[#c26555] text-white font-bold h-11 gap-1.5 sm:gap-2 rounded-xl text-xs sm:text-sm shadow-sm"
             >
               <Printer className="size-4 shrink-0" />
-              PRINT RECEIPT (80mm)
+              PRINT (80mm)
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Email Bill Modal for Completed POS Receipt */}
+      <EmailBillModal
+        open={completedReceiptEmailOpen}
+        onOpenChange={setCompletedReceiptEmailOpen}
+        bill={completedReceipt}
+        defaultEmail=""
+        defaultName={completedReceipt?.cashier_name || ""}
+      />
 
       {/* ========================================================= */}
       {/* BARCODE SCANNER SIMULATOR MODAL                           */}
